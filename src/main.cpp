@@ -1,13 +1,32 @@
 #include <QCoreApplication>
+#include <QProcess>
 
 #include "worker.h"
+#include "grinwalletmanager/grinwalletmanager.h"
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    Worker worker;
-    worker.initBot();
+    // Manager
+    GrinWalletManager manager;
+    if (!manager.startWallet()) {
+        return 0;
+    }
+
+    // Start worker, wait x msecs
+    QTimer::singleShot(3000, [&]() {
+        Worker *worker = new Worker();
+        if (!worker->init()) {
+            QCoreApplication::quit();
+        }
+    });
 
     return a.exec();
 }
