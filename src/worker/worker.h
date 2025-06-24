@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 
 #include "telegrambot.h"
+#include "databasemanager.h"
 #include "nodeownerapi.h"
 #include "walletownerapi.h"
 #include "walletforeignapi.h"
@@ -29,8 +30,10 @@ private:
     QString readFileToString(const QString &filePath);
     bool isAdmin(qlonglong id);
 
-    QString handleSlateS1State(QJsonObject slate);
+    QString handleSlateS1State(QJsonObject slate, TelegramBotMessage message);
+    QString handleSlateI1State(QJsonObject slate, TelegramBotMessage message);
 
+    DatabaseManager *m_dbManager;
     TelegramBot *m_bot;
     NodeOwnerApi *m_nodeOwnerApi;
     NodeForeignApi *m_nodeForeignApi;

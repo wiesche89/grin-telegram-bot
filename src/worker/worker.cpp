@@ -4,6 +4,7 @@
  * @brief Worker::Worker
  */
 Worker::Worker() :
+    m_dbManager(nullptr),
     m_bot(nullptr),
     m_nodeOwnerApi(nullptr),
     m_nodeForeignApi(nullptr),
@@ -47,10 +48,29 @@ bool Worker::init()
     //Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());    
 
+    //DB Instance
+    m_dbManager = new DatabaseManager();
+    if (m_dbManager->connectToDatabase(QCoreApplication::applicationDirPath() + "/etc/database/database.db")) {
+        // Database connection
+        qDebug()<<"db connection success!";
+    } else {
+        qDebug()<<"Error: no db connection!";
+        success = false;
+    }
+
     //Bot - Instance
     m_bot = new TelegramBot(m_settings->value("bot/token").toString());
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
     m_bot->startMessagePulling();
+
+
+    qDebug()<<"retrieveTxs: ";
+    qDebug()<<m_walletOwnerApi->retrieveTxs();
+
+
+    qDebug()<<"Cancel:";
+    qDebug()<<m_walletOwnerApi->cancelTx("",17);
+    qDebug()<<m_walletOwnerApi->cancelTx("",19);
 
     return success;
 }
@@ -191,7 +211,7 @@ void Worker::onMessage(TelegramBotUpdate update)
                 qDebug() << "Slate state: S1 (Standard Sender Init)";
 
                 m_bot->sendMessage(id,
-                                   handleSlateS1State(slateObj),
+                                   handleSlateS1State(slateObj, message),
                                    0,
                                    TelegramBot::NoFlag,
                                    TelegramKeyboardRequest(),
@@ -229,9 +249,9 @@ void Worker::onMessage(TelegramBotUpdate update)
 
                 // enable
                 if (m_settings->value("admin/enableDisableWithdrawals").toInt() == 1) {
+
                     m_bot->sendMessage(id,
-                                       "Hi " + message.from.firstName + ",\n"
-                                       + "faucet function currently not implemented!\nSlate state: I1 (Invoice Payee Init)",
+                                       handleSlateI1State(slateObj, message),
                                        0,
                                        TelegramBot::NoFlag,
                                        TelegramKeyboardRequest(),
@@ -500,8 +520,10 @@ bool Worker::isAdmin(qlonglong id)
  * @param slate
  * @return
  */
-QString Worker::handleSlateS1State(QJsonObject slate)
+QString Worker::handleSlateS1State(QJsonObject slate, TelegramBotMessage message)
 {
+    Slate slateAtt = Slate::fromJson(slate);
+
     QJsonObject slate2 = m_walletForeignApi->receiveTx(slate,"","");
     qDebug()<<"";
     qDebug()<<"receiveTx";
@@ -514,6 +536,79 @@ QString Worker::handleSlateS1State(QJsonObject slate)
     qDebug() << "slatepack: " << slatepack;
     qDebug()<<"";
 
+    Donate d(nullptr);
+    d.setUserId(QString::number(message.from.id));
+    d.setUsername(message.from.firstName);
+    d.setAmount(slateAtt.amt);
+    d.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
+    m_dbManager->insertDonate(d);
+
     return slatepack;
 
+}
+
+/**
+ * @brief Worker::handleSlateI1State
+ * @param slate
+ * @return
+ */
+QString Worker::handleSlateI1State(QJsonObject slate,TelegramBotMessage message)
+{
+    Slate slateAtt = Slate::fromJson(slate);
+    QJsonObject txData;
+
+
+
+    if(slateAtt.amt.toLongLong() > 2000000000)
+    {
+        return QString("Hi "+message.from.firstName+",\n the faucet currently only outputs 2 GRIN per day per user.");
+    }
+
+    QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
+
+    qDebug()<<"amountToday: "<<amountToday;
+    if(amountToday.toLongLong() >= 2000000000)
+    {
+        return QString("Hi "+message.from.firstName+",\n the faucet currently only outputs 2 GRIN per day per user.");
+    }
+
+    txData["src_acct_name"] = QJsonValue::Null;
+    txData["amount"] = slateAtt.amt;
+    txData["minimum_confirmations"] = 10;
+    txData["max_outputs"] = 500;
+    txData["num_change_outputs"] = 1;
+    txData["selection_strategy_is_use_all"] = false;
+    txData["target_slate_version"] = QJsonValue::Null;
+    txData["payment_proof_recipient_address"] = QJsonValue::Null;
+    txData["send_args"] = QJsonValue::Null;
+
+
+    QJsonObject slate2 = m_walletOwnerApi->processInvoiceTx(slate,txData);
+
+    Slate slate2Att = Slate::fromJson(slate2);
+    qDebug()<<"slate2Att";
+    qDebug()<<"Amt: "<<slate2Att.amt;
+    qDebug()<<"fee: "<<slate2Att.fee;
+    qDebug()<<"id: "<<slate2Att.id;
+    qDebug()<<"sta: "<<slate2Att.sta;
+    qDebug()<<"ver: "<<slate2Att.ver;
+
+    //do something with slate
+    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2,QJsonArray() , 0);
+    qDebug()<<"";
+    qDebug()<<"createSlatepackMessage";
+    qDebug() << "slatepack: " << slatepack;
+    qDebug()<<"";
+
+    qDebug()<<"Tx Lock Outputs";
+    qDebug()<<m_walletOwnerApi->txLockOutputs(slate);
+
+    Faucet f;
+    f.setUserId(QString::number(message.from.id));
+    f.setUsername(message.from.firstName);
+    f.setAmount(slateAtt.amt);
+    f.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
+    m_dbManager->insertFaucet(f);
+
+    return slatepack;
 }

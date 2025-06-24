@@ -54,7 +54,7 @@ public:
     QJsonObject nodeHeight();
     QJsonObject openWallet(QString name, QString password);
     QJsonObject postTx(QJsonObject slate, bool fluff = false);
-    QJsonObject processInvoiceTx();
+    QJsonObject processInvoiceTx(QJsonObject slate, QJsonObject args);
     QJsonObject queryTxs();
     QJsonObject retrieveOutputs();
     QJsonObject retrievePaymentProof();

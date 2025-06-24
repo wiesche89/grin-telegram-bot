@@ -1,6 +1,6 @@
 # Modules
 QT -= gui
-QT += core websockets
+QT += core websockets sql
 
 # Config
 CONFIG += console
@@ -26,6 +26,8 @@ INCLUDEPATH += \
   src/api/node/owner \
   src/api/wallet/owner \
   src/telegrambot \
+  src/database \
+  src/database/attributes \
   src/telegrambot/modules/httpserver \
   src/telegrambot/modules/sslserver \
   3rdParty \
@@ -53,7 +55,10 @@ SOURCES += \
   src/api/wallet/foreign/walletforeignapi.cpp \
   src/api/wallet/owner/walletownerapi.cpp \
   src/api/wallet/attributes/slate.cpp \
-    src/api/wallet/attributes/summaryinfo.cpp
+  src/api/wallet/attributes/summaryinfo.cpp \
+  src/database/databasemanager.cpp \
+    src/database/attributes/donate.cpp \
+    src/database/attributes/faucet.cpp
 
 # .h
 HEADERS += \
@@ -74,8 +79,11 @@ HEADERS += \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \
   3rdParty/openssl/openssl/evp.h \
   3rdParty/openssl/openssl/rand.h \
-    src/api/wallet/attributes/slate.h \
-    src/api/wallet/attributes/summaryinfo.h
+  src/api/wallet/attributes/slate.h \
+  src/api/wallet/attributes/summaryinfo.h \
+  src/database/databasemanager.h \
+    src/database/attributes/donate.h \
+    src/database/attributes/faucet.h
 
 # secp256k1
 LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1

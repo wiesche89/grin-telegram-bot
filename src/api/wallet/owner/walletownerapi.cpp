@@ -290,7 +290,23 @@ QJsonObject WalletOwnerApi::finalizeTx(const QJsonObject slate)
     params["token"] = QString(m_openWalletToken.toHex());
     params["slate"] = slate;
 
-    return postEncrypted("finalize_tx", params);
+    QJsonObject response = postEncrypted("finalize_tx", params);
+
+    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
+        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
+
+        if (slate.isEmpty()) {
+            qWarning() << "slate is empty!";
+            return QJsonObject();
+        } else {
+            return slate;
+        }
+    } else {
+        qWarning() << response;
+        qWarning() << "no slate!";
+    }
+
+    return QJsonObject();
 }
 
 /**
@@ -714,12 +730,38 @@ QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
  * @brief WalletOwnerApi::processInvoiceTx
  * @return
  */
-QJsonObject WalletOwnerApi::processInvoiceTx()
+QJsonObject WalletOwnerApi::processInvoiceTx(QJsonObject slate,QJsonObject args)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
+    params["slate"] = slate;
+    params["args"] = args;
 
-    return postEncrypted("process_invoice_tx", params);
+    QJsonObject response = postEncrypted("process_invoice_tx", params);
+
+    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
+        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
+
+        if (slate.isEmpty()) {
+            qWarning() << "slate is empty!";
+            return QJsonObject();
+        } else {
+            return slate;
+        }
+    } else {
+        if (response.contains("result") && response["result"].toObject().contains("Err")) {
+            QJsonObject err = response["result"].toObject()["Err"].toObject();
+
+            if (err.isEmpty()) {
+                qWarning() << "error by read error message!";
+                return QJsonObject();
+            } else {
+                return err;
+            }
+        }
+    }
+
+    return QJsonObject();
 }
 
 /**
