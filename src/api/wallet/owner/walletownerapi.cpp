@@ -377,12 +377,14 @@ QJsonObject WalletOwnerApi::getSlatepackSecretKey()
  */
 QJsonObject WalletOwnerApi::getStoredTx(QString slateId, int id)
 {
+    Q_UNUSED(id);
+
     QJsonObject args;
     args["token"] = QString(m_openWalletToken.toHex());
     args["slate_id"] = slateId;
     args["id"] = QJsonValue::Null;
 
-    qDebug()<<args;
+    qDebug() << args;
 
     return postEncrypted("get_stored_tx", args);
 }
@@ -422,8 +424,7 @@ QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimu
     QJsonObject response = postEncrypted("retrieve_summary_info", args);
     QJsonArray okArray = response["result"].toObject()["Ok"].toArray();
 
-    if(okArray.size() == 2)
-    {
+    if (okArray.size() == 2) {
         QJsonObject summaryInfo = okArray[1].toObject();
         if (summaryInfo.isEmpty()) {
             qWarning() << "summaryInfo is empty!";
@@ -431,9 +432,7 @@ QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimu
         } else {
             return summaryInfo;
         }
-    }
-    else
-    {
+    } else {
         qWarning() << response;
         qWarning() << "no summaryInfo!";
     }
@@ -448,11 +447,26 @@ QJsonObject WalletOwnerApi::retrieveTxs()
 {
     QJsonObject args;
     args["token"] = QString(m_openWalletToken.toHex());
-    args["refresh_from_node"]= true;
-    args["tx_id"]= QJsonValue::Null;
-    args["tx_slate_id"]= QJsonValue::Null;
+    args["refresh_from_node"] = true;
+    args["tx_id"] = QJsonValue::Null;
+    args["tx_slate_id"] = QJsonValue::Null;
 
-    return postEncrypted("retrieve_txs", args);
+    QJsonObject response = postEncrypted("retrieve_txs", args);
+    QJsonArray okArray = response["result"].toObject()["Ok"].toArray();
+
+    if (okArray.size() == 2) {
+        QJsonObject retrieveTxs = okArray[1].toObject();
+        if (retrieveTxs.isEmpty()) {
+            qWarning() << "retrieveTxs is empty!";
+            return QJsonObject();
+        } else {
+            return retrieveTxs;
+        }
+    } else {
+        qWarning() << response;
+        qWarning() << "no retrieveTxs!";
+    }
+    return QJsonObject();
 }
 
 /**
@@ -662,12 +676,9 @@ QJsonObject WalletOwnerApi::cancelTx(QString txSlateId, int id)
 {
     QJsonObject args;
     args["token"] = QString(m_openWalletToken.toHex());
-    if(txSlateId.isEmpty())
-    {
+    if (txSlateId.isEmpty()) {
         args["tx_slate_id"] = QJsonValue::Null;
-    }
-    else
-    {
+    } else {
         args["tx_slate_id"] = txSlateId;
     }
     args["tx_id"] = id;
@@ -730,7 +741,7 @@ QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
  * @brief WalletOwnerApi::processInvoiceTx
  * @return
  */
-QJsonObject WalletOwnerApi::processInvoiceTx(QJsonObject slate,QJsonObject args)
+QJsonObject WalletOwnerApi::processInvoiceTx(QJsonObject slate, QJsonObject args)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
@@ -910,7 +921,7 @@ QString WalletOwnerApi::createSlatepackMessage(QJsonObject slate, QJsonArray rec
     params["recipients"] = recipients;
     params["sender_index"] = senderIndex;
 
-    qDebug()<<params;
+    qDebug() << params;
 
     QJsonObject response = postEncrypted("create_slatepack_message", params);
 

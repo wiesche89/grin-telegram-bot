@@ -20,24 +20,24 @@ Worker::Worker() :
  */
 bool Worker::init()
 {
-    //Todo checking success instances
+    // Todo checking success instances
     bool success = true;
 
     // Node Owner Api Instance
     m_nodeOwnerApi = new NodeOwnerApi(m_settings->value("node/ownerUrl").toString(),
                                       m_settings->value("node/ownerApiKey").toString());
 
-    //need to check connection/online
+    // need to check connection/online
     m_nodeOwnerApi->getStatus();
 
-    //Node Foreign Api Instance
+    // Node Foreign Api Instance
     m_nodeForeignApi = new NodeForeignApi(m_settings->value("node/foreignUrl").toString(),
                                           m_settings->value("node/foreignApiKey").toString());
 
-    //need to check connection/online
+    // need to check connection/online
     m_nodeForeignApi->getVersion();
 
-    //Wallet Owner Api Instance
+    // Wallet Owner Api Instance
     m_walletOwnerApi = new WalletOwnerApi(m_settings->value("wallet/ownerUrl").toString(),
                                           m_settings->value("wallet/user").toString(),
                                           m_settings->value("wallet/apiSecret").toString());
@@ -45,32 +45,26 @@ bool Worker::init()
     m_walletOwnerApi->initSecureApi();
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
-    //Wallet Foreign Api Instance
-    m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());    
+    // Wallet Foreign Api Instance
+    m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
 
-    //DB Instance
+    // DB Instance
     m_dbManager = new DatabaseManager();
     if (m_dbManager->connectToDatabase(QCoreApplication::applicationDirPath() + "/etc/database/database.db")) {
         // Database connection
-        qDebug()<<"db connection success!";
+        qDebug() << "db connection success!";
     } else {
-        qDebug()<<"Error: no db connection!";
+        qDebug() << "Error: no db connection!";
         success = false;
     }
 
-    //Bot - Instance
+    // Bot - Instance
     m_bot = new TelegramBot(m_settings->value("bot/token").toString());
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
     m_bot->startMessagePulling();
 
-
-    qDebug()<<"retrieveTxs: ";
-    qDebug()<<m_walletOwnerApi->retrieveTxs();
-
-
-    qDebug()<<"Cancel:";
-    qDebug()<<m_walletOwnerApi->cancelTx("",17);
-    qDebug()<<m_walletOwnerApi->cancelTx("",19);
+    // Helper transactions cleanup
+    outputRetrieveTxs();
 
     return success;
 }
@@ -145,12 +139,12 @@ void Worker::onMessage(TelegramBotUpdate update)
         if (m_settings->value("admin/enableDisableDeposits").toInt() == 1) {
             m_bot->sendMessage(id,
                                "Hi " + message.from.firstName
-                               + ",\nnice that you want to make a donation."+ "\n"
-                               + "### Deposit protocol"+ "\n"
-                               + "1) User runs '/donate' to get manual"+ "\n"
-                               + "2) Send a Slatepack to donate GRIN"+ "\n"
-                               + "3) Bot send repsonse Slatepack"+ "\n"
-                               + "4) Finalize"+ "\n"
+                               + ",\nnice that you want to make a donation." + "\n"
+                               + "### Deposit protocol" + "\n"
+                               + "1) User runs '/donate' to get manual" + "\n"
+                               + "2) Send a Slatepack to donate GRIN" + "\n"
+                               + "3) Bot send repsonse Slatepack" + "\n"
+                               + "4) Finalize" + "\n"
                                + "\n",
                                0,
                                TelegramBot::NoFlag,
@@ -174,11 +168,9 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
-
         QJsonObject slateObj = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
-        if(slateObj.isEmpty())
-        {
-            qWarning()<<"slate error";
+        if (slateObj.isEmpty()) {
+            qWarning() << "slate error";
             m_bot->sendMessage(id,
                                "Hi " + message.from.firstName + ",\n"
                                + "error to decrypt Slatepack!",
@@ -190,11 +182,11 @@ void Worker::onMessage(TelegramBotUpdate update)
         }
 
         Slate slate = Slate::fromJson(slateObj);
-        qDebug()<<"Amt: "<<slate.amt;
-        qDebug()<<"Fee: "<<slate.fee;
-        qDebug()<<"Id: "<< slate.id;
-        qDebug()<<"Sta: "<<slate.sta;
-        qDebug()<<"Ver: "<<slate.ver;
+        qDebug() << "Amt: " << slate.amt;
+        qDebug() << "Fee: " << slate.fee;
+        qDebug() << "Id: " << slate.id;
+        qDebug() << "Sta: " << slate.sta;
+        qDebug() << "Ver: " << slate.ver;
 
         bool ok = false;
         qlonglong amount = slate.amt.toLongLong(&ok);
@@ -206,104 +198,103 @@ void Worker::onMessage(TelegramBotUpdate update)
         }
 
         switch (slateStateFromString(slate.sta)) {
-            case SlateState::S1:
-                // S1 - Standard: Sender hat Slate mit Inputs, Change, Nonce, Excess erstellt
-                qDebug() << "Slate state: S1 (Standard Sender Init)";
+        case SlateState::S1:
+            // S1 - Standard: Sender hat Slate mit Inputs, Change, Nonce, Excess erstellt
+            qDebug() << "Slate state: S1 (Standard Sender Init)";
 
+            m_bot->sendMessage(id,
+                               handleSlateS1State(slateObj, message),
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+            break;
+
+        case SlateState::S2:
+            // S2 - Standard: Empfänger hat Outputs, Nonce, PartialSig beigefügt
+            qDebug() << "Slate state: S2 (Standard Recipient Response)";
+            m_bot->sendMessage(id,
+                               "Hi " + message.from.firstName + ",\n"
+                               + "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)",
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+
+            break;
+
+        case SlateState::S3:
+            // S3 - Standard: Slate vollständig, bereit zum Posten
+            qDebug() << "Slate state: S3 (Standard Finalized)";
+            m_bot->sendMessage(id,
+                               "Hi " + message.from.firstName + ",\n"
+                               + "function currently not implemented!\nSlate state: S3 (Standard Finalized)",
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+            break;
+
+        case SlateState::I1:
+            // I1 - Invoice: Payee (Zahlungsempfänger) beginnt Transaktion
+            qDebug() << "Slate state: I1 (Invoice Payee Init)";
+
+            // enable
+            if (m_settings->value("admin/enableDisableWithdrawals").toInt() == 1) {
                 m_bot->sendMessage(id,
-                                   handleSlateS1State(slateObj, message),
+                                   handleSlateI1State(slateObj, message),
                                    0,
                                    TelegramBot::NoFlag,
                                    TelegramKeyboardRequest(),
                                    nullptr);
-                break;
-
-            case SlateState::S2:
-                // S2 - Standard: Empfänger hat Outputs, Nonce, PartialSig beigefügt
-                qDebug() << "Slate state: S2 (Standard Recipient Response)";
+            }
+            // disable
+            else {
                 m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)",
+                                   "Hi " + message.from.firstName + ",\nfaucet function currently disable!",
                                    0,
                                    TelegramBot::NoFlag,
                                    TelegramKeyboardRequest(),
                                    nullptr);
+            }
 
-                break;
+            break;
 
-            case SlateState::S3:
-                // S3 - Standard: Slate vollständig, bereit zum Posten
-                qDebug() << "Slate state: S3 (Standard Finalized)";
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + "function currently not implemented!\nSlate state: S3 (Standard Finalized)",
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
-                break;
+        case SlateState::I2:
+            // I2 - Invoice: Payer hat Inputs, Change und Signature beigefügt
+            qDebug() << "Slate state: I2 (Invoice Payer Response)";
+            m_bot->sendMessage(id,
+                               "Hi " + message.from.firstName + ",\n"
+                               + "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)",
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+            break;
 
-            case SlateState::I1:
-                // I1 - Invoice: Payee (Zahlungsempfänger) beginnt Transaktion
-                qDebug() << "Slate state: I1 (Invoice Payee Init)";
+        case SlateState::I3:
+            // I3 - Invoice: Slate vollständig, bereit zum Posten
+            qDebug() << "Slate state: I3 (Invoice Finalized)";
+            m_bot->sendMessage(id,
+                               "Hi " + message.from.firstName + ",\n"
+                               + "function currently not implemented!\nSlate state: I3 (Invoice Finalized)",
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+            break;
 
-                // enable
-                if (m_settings->value("admin/enableDisableWithdrawals").toInt() == 1) {
-
-                    m_bot->sendMessage(id,
-                                       handleSlateI1State(slateObj, message),
-                                       0,
-                                       TelegramBot::NoFlag,
-                                       TelegramKeyboardRequest(),
-                                       nullptr);
-                }
-                // disable
-                else {
-                    m_bot->sendMessage(id,
-                                       "Hi " + message.from.firstName + ",\nfaucet function currently disable!",
-                                       0,
-                                       TelegramBot::NoFlag,
-                                       TelegramKeyboardRequest(),
-                                       nullptr);
-                }
-
-                break;
-
-            case SlateState::I2:
-                // I2 - Invoice: Payer hat Inputs, Change und Signature beigefügt
-                qDebug() << "Slate state: I2 (Invoice Payer Response)";
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)",
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
-                break;
-
-            case SlateState::I3:
-                // I3 - Invoice: Slate vollständig, bereit zum Posten
-                qDebug() << "Slate state: I3 (Invoice Finalized)";
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + "function currently not implemented!\nSlate state: I3 (Invoice Finalized)",
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
-                break;
-
-            case SlateState::Unknown:
-            default:
-                qWarning() << "Unknown Slate-State!";
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + "function currently not implemented!\nUnknown Slate-State!",
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
-                break;
+        case SlateState::Unknown:
+        default:
+            qWarning() << "Unknown Slate-State!";
+            m_bot->sendMessage(id,
+                               "Hi " + message.from.firstName + ",\n"
+                               + "function currently not implemented!\nUnknown Slate-State!",
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+            break;
         }
         return;
     }
@@ -314,12 +305,12 @@ void Worker::onMessage(TelegramBotUpdate update)
     if (message.text.contains("/faucet")) {
         m_bot->sendMessage(id,
                            "Hi " + message.from.firstName
-                           + ",\nsend a Slatepack to get GRIN."+"\n"
-                           +"### Withdrawal protocol"+"\n"
-                           +"1) User runs '/faucet' to get manual"+"\n"
-                           +"2) Send a Slatepack to receive GRIN"+"\n"
-                           +"3) Bot send repsonse Slatepack"+"\n"
-                           +"4) Finalize"+"\n"
+                           + ",\nsend a Slatepack to get GRIN." + "\n"
+                           + "### Withdrawal protocol" + "\n"
+                           + "1) User runs '/faucet' to get manual" + "\n"
+                           + "2) Send a Slatepack to receive GRIN" + "\n"
+                           + "3) Bot send repsonse Slatepack" + "\n"
+                           + "4) Finalize" + "\n"
                            + "\n",
                            0,
                            TelegramBot::NoFlag,
@@ -446,22 +437,21 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminamount
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminamount")) {
-
-            SummaryInfo sumInfo = SummaryInfo::fromJson(m_walletOwnerApi->retrieveSummaryInfo(true,1));
+            SummaryInfo sumInfo = SummaryInfo::fromJson(m_walletOwnerApi->retrieveSummaryInfo(true, 1));
 
             QString info;
-            info.append("amountAwaitingConfirmation: "+QString::number(sumInfo.amountAwaitingConfirmation)+"\n");
-            info.append("amountAwaitingFinalization: "+QString::number(sumInfo.amountAwaitingFinalization)+"\n");
-            info.append("amountCurrentlySpendable: "+QString::number(sumInfo.amountCurrentlySpendable)+"\n");
-            info.append("amountImmature: "+QString::number(sumInfo.amountImmature)+"\n");
-            info.append("amountLocked: "+QString::number(sumInfo.amountLocked)+"\n");
-            info.append("amountReverted: "+QString::number(sumInfo.amountReverted)+"\n");
-            info.append("lastConfirmedHeight: "+QString::number(sumInfo.lastConfirmedHeight)+"\n");
-            info.append("minimumConfirmations: "+QString::number(sumInfo.minimumConfirmations)+"\n");
-            info.append("total: "+QString::number(sumInfo.total)+"\n");
+            info.append("amountAwaitingConfirmation: " + QString::number(sumInfo.amountAwaitingConfirmation) + "\n");
+            info.append("amountAwaitingFinalization: " + QString::number(sumInfo.amountAwaitingFinalization) + "\n");
+            info.append("amountCurrentlySpendable: " + QString::number(sumInfo.amountCurrentlySpendable) + "\n");
+            info.append("amountImmature: " + QString::number(sumInfo.amountImmature) + "\n");
+            info.append("amountLocked: " + QString::number(sumInfo.amountLocked) + "\n");
+            info.append("amountReverted: " + QString::number(sumInfo.amountReverted) + "\n");
+            info.append("lastConfirmedHeight: " + QString::number(sumInfo.lastConfirmedHeight) + "\n");
+            info.append("minimumConfirmations: " + QString::number(sumInfo.minimumConfirmations) + "\n");
+            info.append("total: " + QString::number(sumInfo.total) + "\n");
 
             m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"+info,
+                               "Hi " + message.from.firstName + ",\n" + info,
                                0,
                                TelegramBot::NoFlag,
                                TelegramKeyboardRequest(),
@@ -524,17 +514,17 @@ QString Worker::handleSlateS1State(QJsonObject slate, TelegramBotMessage message
 {
     Slate slateAtt = Slate::fromJson(slate);
 
-    QJsonObject slate2 = m_walletForeignApi->receiveTx(slate,"","");
-    qDebug()<<"";
-    qDebug()<<"receiveTx";
-    qDebug()<<slate2;
-    qDebug()<<"";
+    QJsonObject slate2 = m_walletForeignApi->receiveTx(slate, "", "");
+    qDebug() << "";
+    qDebug() << "receiveTx";
+    qDebug() << slate2;
+    qDebug() << "";
 
-    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2,QJsonArray() , 0);
-    qDebug()<<"";
-    qDebug()<<"createSlatepackMessage";
+    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+    qDebug() << "";
+    qDebug() << "createSlatepackMessage";
     qDebug() << "slatepack: " << slatepack;
-    qDebug()<<"";
+    qDebug() << "";
 
     Donate d(nullptr);
     d.setUserId(QString::number(message.from.id));
@@ -544,7 +534,6 @@ QString Worker::handleSlateS1State(QJsonObject slate, TelegramBotMessage message
     m_dbManager->insertDonate(d);
 
     return slatepack;
-
 }
 
 /**
@@ -552,24 +541,20 @@ QString Worker::handleSlateS1State(QJsonObject slate, TelegramBotMessage message
  * @param slate
  * @return
  */
-QString Worker::handleSlateI1State(QJsonObject slate,TelegramBotMessage message)
+QString Worker::handleSlateI1State(QJsonObject slate, TelegramBotMessage message)
 {
     Slate slateAtt = Slate::fromJson(slate);
     QJsonObject txData;
 
-
-
-    if(slateAtt.amt.toLongLong() > 2000000000)
-    {
-        return QString("Hi "+message.from.firstName+",\n the faucet currently only outputs 2 GRIN per day per user.");
+    if (slateAtt.amt.toLongLong() > 2000000000) {
+        return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
     }
 
     QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
 
-    qDebug()<<"amountToday: "<<amountToday;
-    if(amountToday.toLongLong() >= 2000000000)
-    {
-        return QString("Hi "+message.from.firstName+",\n the faucet currently only outputs 2 GRIN per day per user.");
+    qDebug() << "amountToday: " << amountToday;
+    if (amountToday.toLongLong() >= 2000000000) {
+        return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
     }
 
     txData["src_acct_name"] = QJsonValue::Null;
@@ -582,26 +567,25 @@ QString Worker::handleSlateI1State(QJsonObject slate,TelegramBotMessage message)
     txData["payment_proof_recipient_address"] = QJsonValue::Null;
     txData["send_args"] = QJsonValue::Null;
 
-
-    QJsonObject slate2 = m_walletOwnerApi->processInvoiceTx(slate,txData);
+    QJsonObject slate2 = m_walletOwnerApi->processInvoiceTx(slate, txData);
 
     Slate slate2Att = Slate::fromJson(slate2);
-    qDebug()<<"slate2Att";
-    qDebug()<<"Amt: "<<slate2Att.amt;
-    qDebug()<<"fee: "<<slate2Att.fee;
-    qDebug()<<"id: "<<slate2Att.id;
-    qDebug()<<"sta: "<<slate2Att.sta;
-    qDebug()<<"ver: "<<slate2Att.ver;
+    qDebug() << "slate2Att";
+    qDebug() << "Amt: " << slate2Att.amt;
+    qDebug() << "fee: " << slate2Att.fee;
+    qDebug() << "id: " << slate2Att.id;
+    qDebug() << "sta: " << slate2Att.sta;
+    qDebug() << "ver: " << slate2Att.ver;
 
-    //do something with slate
-    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2,QJsonArray() , 0);
-    qDebug()<<"";
-    qDebug()<<"createSlatepackMessage";
+    // do something with slate
+    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+    qDebug() << "";
+    qDebug() << "createSlatepackMessage";
     qDebug() << "slatepack: " << slatepack;
-    qDebug()<<"";
+    qDebug() << "";
 
-    qDebug()<<"Tx Lock Outputs";
-    qDebug()<<m_walletOwnerApi->txLockOutputs(slate);
+    qDebug() << "Tx Lock Outputs";
+    qDebug() << m_walletOwnerApi->txLockOutputs(slate);
 
     Faucet f;
     f.setUserId(QString::number(message.from.id));
@@ -611,4 +595,36 @@ QString Worker::handleSlateI1State(QJsonObject slate,TelegramBotMessage message)
     m_dbManager->insertFaucet(f);
 
     return slatepack;
+}
+
+/**
+ * @brief Worker::outputRetrieveTxs
+ */
+void Worker::outputRetrieveTxs()
+{
+    // qDebug()<<"retrieveTxs: ";
+    QList<Transaction> transactions;
+
+    QJsonDocument doc(m_walletOwnerApi->retrieveTxs());
+    QJsonArray txArray = doc.array();
+
+    for (const QJsonValue &value : txArray) {
+        if (value.isObject()) {
+            Transaction tx;
+            tx.fromJson(value.toObject());
+            transactions.append(tx);
+        }
+    }
+
+    // Example
+    for (int i = 0; i < transactions.length(); i++) {
+        qDebug() << "id: " << transactions[i].id();
+        qDebug() << "isConfirmed: " << transactions[i].isConfirmed();
+        qDebug() << "txSlateId: " << transactions[i].txSlateId();
+        qDebug() << "tx_type: " << transactions[i].txType();
+        qDebug() << "";
+    }
+
+    // qDebug()<<"Cancel:";
+    // qDebug()<<m_walletOwnerApi->cancelTx("",17);
 }

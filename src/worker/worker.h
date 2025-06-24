@@ -14,6 +14,7 @@
 
 #include "slate.h"
 #include "summaryinfo.h"
+#include "transaction.h"
 
 class Worker : public QObject
 {
@@ -32,6 +33,8 @@ private:
 
     QString handleSlateS1State(QJsonObject slate, TelegramBotMessage message);
     QString handleSlateI1State(QJsonObject slate, TelegramBotMessage message);
+
+    void outputRetrieveTxs();
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;

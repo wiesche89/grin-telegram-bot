@@ -45,6 +45,7 @@ INCLUDEPATH += \
 SOURCES += \
   src/api/node/foreign/nodeforeignapi.cpp \
   src/api/node/owner/nodeownerapi.cpp \
+    src/api/wallet/attributes/transaction.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
   src/main.cpp \
   src/telegrambot/jsonhelper.cpp \
@@ -64,6 +65,7 @@ SOURCES += \
 HEADERS += \
   src/api/node/foreign/nodeforeignapi.h \
   src/api/node/owner/nodeownerapi.h \
+    src/api/wallet/attributes/transaction.h \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
   src/grinwalletmanager/grinwalletmanager.h \
