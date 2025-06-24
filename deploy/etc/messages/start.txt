@@ -1,0 +1,17 @@
+### Getting the address
+1. User runs `/address` command.
+2. Bot replies with slatepack address.
+
+The response message template should be customizable.
+
+### Deposit protocol
+1) User runs '/donate' to get manual
+2) Send a Slatepack to donate GRIN
+3) Bot send repsonse Slatepack
+4) Finalize
+
+### Withdrawal protocol
+1) User runs '/faucet' to get manual
+2) Send a Slatepack to receive GRIN
+3) Bot send repsonse Slatepack
+4) Finalize
