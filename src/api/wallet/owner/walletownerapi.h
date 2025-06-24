@@ -59,7 +59,7 @@ public:
     QJsonObject retrieveOutputs();
     QJsonObject retrievePaymentProof();
     QJsonObject retrieveSummaryInfo(bool refreshFromNode, int minimum_confirmations);
-    QJsonObject retrieveTxs();
+    QJsonArray retrieveTxs();
     QJsonObject scan();
     QJsonObject scanRewindHash();
     QJsonObject setActiveAccount();

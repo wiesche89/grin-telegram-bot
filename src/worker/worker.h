@@ -26,6 +26,7 @@ public:
 
 private slots:
     void onMessage(TelegramBotUpdate update);
+    void cleanupRetrieveTxs();
 
 private:
     QString readFileToString(const QString &filePath);
@@ -33,8 +34,6 @@ private:
 
     QString handleSlateS1State(QJsonObject slate, TelegramBotMessage message);
     QString handleSlateI1State(QJsonObject slate, TelegramBotMessage message);
-
-    void outputRetrieveTxs();
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;

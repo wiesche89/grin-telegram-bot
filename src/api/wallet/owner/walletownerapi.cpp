@@ -443,7 +443,7 @@ QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimu
  * @brief WalletOwnerApi::retrieveTxs
  * @return
  */
-QJsonObject WalletOwnerApi::retrieveTxs()
+QJsonArray WalletOwnerApi::retrieveTxs()
 {
     QJsonObject args;
     args["token"] = QString(m_openWalletToken.toHex());
@@ -455,10 +455,10 @@ QJsonObject WalletOwnerApi::retrieveTxs()
     QJsonArray okArray = response["result"].toObject()["Ok"].toArray();
 
     if (okArray.size() == 2) {
-        QJsonObject retrieveTxs = okArray[1].toObject();
+        QJsonArray retrieveTxs = okArray[1].toArray();
         if (retrieveTxs.isEmpty()) {
             qWarning() << "retrieveTxs is empty!";
-            return QJsonObject();
+            return QJsonArray();
         } else {
             return retrieveTxs;
         }
@@ -466,7 +466,7 @@ QJsonObject WalletOwnerApi::retrieveTxs()
         qWarning() << response;
         qWarning() << "no retrieveTxs!";
     }
-    return QJsonObject();
+    return QJsonArray();
 }
 
 /**

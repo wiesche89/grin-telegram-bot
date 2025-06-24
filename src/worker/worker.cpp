@@ -64,7 +64,16 @@ bool Worker::init()
     m_bot->startMessagePulling();
 
     // Helper transactions cleanup
-    outputRetrieveTxs();
+    QTimer* cleanupTimer = new QTimer(this);
+
+    // Connect timer's timeout signal to your slot/function
+    connect(cleanupTimer, &QTimer::timeout, this, &Worker::cleanupRetrieveTxs);
+
+    // Set interval to 5 minutes (300,000 milliseconds)
+    cleanupTimer->start(5 * 60 * 1000);
+
+    // Optional: call it once immediately at startup
+    cleanupRetrieveTxs();
 
     return success;
 }
@@ -600,13 +609,12 @@ QString Worker::handleSlateI1State(QJsonObject slate, TelegramBotMessage message
 /**
  * @brief Worker::outputRetrieveTxs
  */
-void Worker::outputRetrieveTxs()
+void Worker::cleanupRetrieveTxs()
 {
-    // qDebug()<<"retrieveTxs: ";
+    qDebug()<<QDateTime::currentDateTime().toString()<<"  cleanupRetrieveTxs";
     QList<Transaction> transactions;
 
-    QJsonDocument doc(m_walletOwnerApi->retrieveTxs());
-    QJsonArray txArray = doc.array();
+    QJsonArray txArray = m_walletOwnerApi->retrieveTxs();
 
     for (const QJsonValue &value : txArray) {
         if (value.isObject()) {
@@ -618,11 +626,17 @@ void Worker::outputRetrieveTxs()
 
     // Example
     for (int i = 0; i < transactions.length(); i++) {
-        qDebug() << "id: " << transactions[i].id();
-        qDebug() << "isConfirmed: " << transactions[i].isConfirmed();
-        qDebug() << "txSlateId: " << transactions[i].txSlateId();
-        qDebug() << "tx_type: " << transactions[i].txType();
-        qDebug() << "";
+
+        //broken transactions
+        if(transactions[i].isConfirmed() == false && (transactions[i].txType() == "TxReceived" || transactions[i].txType() =="TxSent"))
+        {
+            qDebug() << "id: " << transactions[i].id();
+            qDebug() << "isConfirmed: " << transactions[i].isConfirmed();
+            qDebug() << "txSlateId: " << transactions[i].txSlateId();
+            qDebug() << "tx_type: " << transactions[i].txType();
+            qDebug() << "tx_type: " << transactions[i].creationTimestamp();
+            qDebug() << "";
+        }
     }
 
     // qDebug()<<"Cancel:";
