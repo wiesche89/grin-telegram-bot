@@ -92,5 +92,7 @@ LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
 INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
 
 # openssl
-LIBS += -L$$PWD/3rdParty/openssl/lib -llibcrypto
+unix:LIBS += -lcrypto
+win32:LIBS += -L$$PWD/3rdParty/openssl/lib -llibcrypto
+
 DEFINES += OPENSSL_NO_DEPRECATED_3_0
