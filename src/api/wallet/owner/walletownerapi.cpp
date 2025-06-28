@@ -520,9 +520,17 @@ QJsonObject WalletOwnerApi::setTopLevelDirectory()
  */
 QJsonObject WalletOwnerApi::setTorConfig()
 {
-    QJsonObject args;
+    // Create the "tor_config" JSON object
+     QJsonObject torConfig;
+     torConfig["use_tor_listener"] = true;
+     torConfig["socks_proxy_addr"] = "127.0.0.1:3415";
+     torConfig["send_config_dir"] = ".";
 
-    return postEncrypted("set_tor_config", args);
+     // Nest "tor_config" inside a "params" object
+     QJsonObject params;
+     params["tor_config"] = torConfig;
+
+    return postEncrypted("set_tor_config", params);
 }
 
 /**

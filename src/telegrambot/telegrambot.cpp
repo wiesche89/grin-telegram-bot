@@ -1161,7 +1161,8 @@ void TelegramBot::parseMessage(QByteArray &data, bool singleMessage)
 
     // handle parse error
     if (jError.error != QJsonParseError::NoError) {
-        return (void)qDebug("TelegramBot::parseMessage - Parse Error: %s", qPrintable(jError.errorString()));
+        qDebug("TelegramBot::parseMessage - Parse Error: %s", qPrintable(jError.errorString()));
+        return;
     }
 
     if (!singleMessage && !JsonHelper::jsonPathGet(oUpdate, "ok").toBool()) {

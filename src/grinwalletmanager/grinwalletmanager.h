@@ -6,7 +6,7 @@
 #include <QDebug>
 #include <QCoreApplication>
 #include <QTimer>
-#include <windows.h>
+//#include <windows.h>
 
 class GrinWalletManager : public QObject
 {
@@ -23,7 +23,7 @@ private:
     void setupJobObject();
 
     QProcess *m_walletProcess;
-    HANDLE m_jobHandle;
+    //HANDLE m_jobHandle;
     int m_pid;
 };
 

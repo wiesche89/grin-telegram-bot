@@ -45,6 +45,8 @@ bool Worker::init()
     m_walletOwnerApi->initSecureApi();
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
+    //qDebug()<<m_walletOwnerApi->setTorConfig();
+
     // Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
 

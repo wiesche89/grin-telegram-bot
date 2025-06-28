@@ -7,7 +7,7 @@
 GrinWalletManager::GrinWalletManager(QObject *parent) :
     QObject(parent),
     m_walletProcess(new QProcess(this)),
-    m_jobHandle(nullptr),
+    //m_jobHandle(nullptr),
     m_pid(-1)
 {
     setupJobObject();
@@ -37,10 +37,10 @@ GrinWalletManager::GrinWalletManager(QObject *parent) :
 GrinWalletManager::~GrinWalletManager()
 {
     stopWallet();
-    if (m_jobHandle) {
-        CloseHandle(m_jobHandle);
-        m_jobHandle = nullptr;
-    }
+//    if (m_jobHandle) {
+//        CloseHandle(m_jobHandle);
+//        m_jobHandle = nullptr;
+//    }
 }
 
 /**
@@ -48,21 +48,21 @@ GrinWalletManager::~GrinWalletManager()
  */
 void GrinWalletManager::setupJobObject()
 {
-    m_jobHandle = CreateJobObject(nullptr, nullptr);
-    if (m_jobHandle == nullptr) {
-        qWarning() << "CreateJobObject failed:" << GetLastError();
-        return;
-    }
+//    m_jobHandle = CreateJobObject(nullptr, nullptr);
+//    if (m_jobHandle == nullptr) {
+//        qWarning() << "CreateJobObject failed:" << GetLastError();
+//        return;
+//    }
 
     // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE causes all processes in the job to be terminated when the job handle is closed
-    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = {};
-    jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+//    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = {};
+//    jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-    if (!SetInformationJobObject(m_jobHandle, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli))) {
-        qWarning() << "SetInformationJobObject failed:" << GetLastError();
-        CloseHandle(m_jobHandle);
-        m_jobHandle = nullptr;
-    }
+//    if (!SetInformationJobObject(m_jobHandle, JobObjectExtendedLimitInformation, &jeli, sizeof(jeli))) {
+//        qWarning() << "SetInformationJobObject failed:" << GetLastError();
+//        CloseHandle(m_jobHandle);
+//        m_jobHandle = nullptr;
+//    }
 }
 
 /**
@@ -83,18 +83,18 @@ bool GrinWalletManager::startWallet()
     }
 
     // Kindprozess dem Job Object zuweisen
-    HANDLE processHandle = (HANDLE)m_walletProcess->processId();
-    if (m_jobHandle && processHandle) {
-        HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_walletProcess->processId());
-        if (hProcess) {
-            if (!AssignProcessToJobObject(m_jobHandle, hProcess)) {
-                qWarning() << "AssignProcessToJobObject failed:" << GetLastError();
-            }
-            CloseHandle(hProcess);
-        } else {
-            qWarning() << "OpenProcess failed:" << GetLastError();
-        }
-    }
+//    HANDLE processHandle = (HANDLE)m_walletProcess->processId();
+//    if (m_jobHandle && processHandle) {
+//        HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, m_walletProcess->processId());
+//        if (hProcess) {
+//            if (!AssignProcessToJobObject(m_jobHandle, hProcess)) {
+//                qWarning() << "AssignProcessToJobObject failed:" << GetLastError();
+//            }
+//            CloseHandle(hProcess);
+//        } else {
+//            qWarning() << "OpenProcess failed:" << GetLastError();
+//        }
+//    }
 
     m_pid = m_walletProcess->processId();
     qDebug() << "grin-wallet started, PID:" << m_pid;
