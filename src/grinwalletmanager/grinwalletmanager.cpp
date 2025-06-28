@@ -75,7 +75,15 @@ bool GrinWalletManager::startWallet()
         return false;
     }
 
-    m_walletProcess->start("./grin-wallet", {"owner_api", "--run_foreign"});
+    QString program;
+
+    #ifdef Q_OS_WIN
+        program = "grin-wallet";
+    #else
+        program = "./grin-wallet";
+    #endif
+
+    m_walletProcess->start(program, {"owner_api", "--run_foreign"});
 
     if (!m_walletProcess->waitForStarted(3000)) {
         qCritical() << "Error: grin-wallet process could not be started.";
