@@ -88,7 +88,8 @@ HEADERS += \
     src/database/attributes/faucet.h
 
 # secp256k1
-LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
+unix:LIBS += -lsecp256k1
+win32:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
 INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
 
 # openssl
