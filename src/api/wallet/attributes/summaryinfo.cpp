@@ -1,7 +1,5 @@
 #include "summaryinfo.h"
 
-#include "SummaryInfo.h"
-
 SummaryInfo SummaryInfo::fromJson(const QJsonObject& obj) {
     SummaryInfo info;
     info.amountAwaitingConfirmation = obj["amount_awaiting_confirmation"].toString().toLongLong();
