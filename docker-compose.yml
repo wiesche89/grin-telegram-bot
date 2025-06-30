@@ -1,0 +1,24 @@
+services:
+  grin-telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: grin-telegram-bot-container
+    image: grin-telegram-bot
+    command: ["./grin-telegram-bot"]
+    environment:
+      - RUST_BACKTRACE=1
+      - GRIN_CHAIN_TYPE=Testnet
+    ports:
+      - "13415:13415"
+    volumes:
+      - grin-wallet-data:/opt/grin-telegram-bot/wallet
+    networks:
+      - grin-network
+
+volumes:
+  grin-wallet-data:
+
+networks:
+  grin-network:
+    name: grin_network
