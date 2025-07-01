@@ -30,7 +30,6 @@ public:
 private:
     QJsonObject post(const QString &method, const QJsonObject &params);
 
-
     QString m_apiUrl;
     QNetworkAccessManager *m_networkManager;
 };

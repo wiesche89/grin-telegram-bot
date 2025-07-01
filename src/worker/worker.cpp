@@ -133,7 +133,8 @@ void Worker::onMessage(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/address")) {
         m_bot->sendMessage(id,
-                           "Hi " + message.from.firstName + ",\nhere is the Slatepack address:\n\n" + m_walletOwnerApi->getSlatepackAddress(),
+                           "Hi " + message.from.firstName + ",\nhere is the Slatepack address:\n\n"
+                           + m_walletOwnerApi->getSlatepackAddress(0),
                            0,
                            TelegramBot::NoFlag,
                            TelegramKeyboardRequest(),
@@ -179,8 +180,8 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
-        QJsonObject slateObj = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
-        if (slateObj.isEmpty()) {
+        Slate slate = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+        if (!slate.isValid()) {
             qWarning() << "slate error";
             m_bot->sendMessage(id,
                                "Hi " + message.from.firstName + ",\n"
@@ -190,23 +191,6 @@ void Worker::onMessage(TelegramBotUpdate update)
                                TelegramKeyboardRequest(),
                                nullptr);
             return;
-        }
-
-        Slate slate = Slate::fromJson(slateObj);
-
-        qDebug() << "Amt: " << slate.amt();
-        qDebug() << "Fee: " << slate.fee();
-        qDebug() << "Id: " << slate.id();
-        qDebug() << "Sta: " << slate.sta();
-        qDebug() << "Ver: " << slate.ver();
-
-        bool ok = false;
-        qlonglong amount = slate.amt().toLongLong(&ok);
-
-        if (ok) {
-            qDebug() << "Amount (qlonglong):" << amount;
-        } else {
-            qWarning() << "convert failed!";
         }
 
         switch (Slate::slateStateFromString(slate.sta())) {
@@ -449,18 +433,18 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminamount
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminamount")) {
-            SummaryInfo sumInfo = SummaryInfo::fromJson(m_walletOwnerApi->retrieveSummaryInfo(true, 1));
+            WalletInfo walletInfo = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
 
             QString info;
-            info.append("amountAwaitingConfirmation: " + QString::number(sumInfo.amountAwaitingConfirmation()) + "\n");
-            info.append("amountAwaitingFinalization: " + QString::number(sumInfo.amountAwaitingFinalization()) + "\n");
-            info.append("amountCurrentlySpendable: " + QString::number(sumInfo.amountCurrentlySpendable()) + "\n");
-            info.append("amountImmature: " + QString::number(sumInfo.amountImmature()) + "\n");
-            info.append("amountLocked: " + QString::number(sumInfo.amountLocked()) + "\n");
-            info.append("amountReverted: " + QString::number(sumInfo.amountReverted()) + "\n");
-            info.append("lastConfirmedHeight: " + QString::number(sumInfo.lastConfirmedHeight()) + "\n");
-            info.append("minimumConfirmations: " + QString::number(sumInfo.minimumConfirmations()) + "\n");
-            info.append("total: " + QString::number(sumInfo.total()) + "\n");
+            info.append("amountAwaitingConfirmation: " + QString::number(walletInfo.amountAwaitingConfirmation()) + "\n");
+            info.append("amountAwaitingFinalization: " + QString::number(walletInfo.amountAwaitingFinalization()) + "\n");
+            info.append("amountCurrentlySpendable: " + QString::number(walletInfo.amountCurrentlySpendable()) + "\n");
+            info.append("amountImmature: " + QString::number(walletInfo.amountImmature()) + "\n");
+            info.append("amountLocked: " + QString::number(walletInfo.amountLocked()) + "\n");
+            info.append("amountReverted: " + QString::number(walletInfo.amountReverted()) + "\n");
+            info.append("lastConfirmedHeight: " + QString::number(walletInfo.lastConfirmedHeight()) + "\n");
+            info.append("minimumConfirmations: " + QString::number(walletInfo.minimumConfirmations()) + "\n");
+            info.append("total: " + QString::number(walletInfo.total()) + "\n");
 
             m_bot->sendMessage(id,
                                "Hi " + message.from.firstName + ",\n" + info,
@@ -524,33 +508,19 @@ bool Worker::isAdmin(qlonglong id)
  */
 QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
 {
+    qDebug()<<"donate "<<message.from.firstName<<" :"<<slate.amt();
+
     Slate slate2 = m_walletForeignApi->receiveTx(slate, "", "");
 
-    if(slate2.error().isValid())
-    {
+    if (slate2.error().isValid()) {
         return slate2.error().message();
     }
-    qDebug() << "";
-    qDebug() << "receiveTx";
-    qDebug() << slate2.toJson();
-    qDebug() << "";
-
-    qDebug()<<"slate2.toJson()";
-    qDebug()<<slate2.toJson();
-
-
 
     QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
 
-    if(slatepack.isEmpty())
-    {
+    if (slatepack.isEmpty()) {
         return "error, can't create slatepack!";
     }
-
-    qDebug() << "";
-    qDebug() << "createSlatepackMessage";
-    qDebug() << "slatepack: " << slatepack;
-    qDebug() << "";
 
     Donate donate;
     donate.setUserId(QString::number(message.from.id));
@@ -569,7 +539,9 @@ QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
  */
 QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
 {
-    //check
+    qDebug()<<"faucet "<<message.from.firstName<<" :"<<slate.amt();
+
+    // check
     if (slate.amt().toLongLong() > 2000000000) {
         return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
     }
@@ -591,24 +563,12 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     txData["payment_proof_recipient_address"] = QJsonValue::Null;
     txData["send_args"] = QJsonValue::Null;
 
-    QJsonObject slate2 = m_walletOwnerApi->processInvoiceTx(slate, txData);
-    Slate slate2Att = Slate::fromJson(slate2);
-
-    qDebug() << "slate2Att";
-    qDebug() << "Amt: " << slate2Att.amt();
-    qDebug() << "fee: " << slate2Att.fee();
-    qDebug() << "id: " << slate2Att.id();
-    qDebug() << "sta: " << slate2Att.sta();
-    qDebug() << "ver: " << slate2Att.ver();
+    Slate slate2 = m_walletOwnerApi->processInvoiceTx(slate, txData);
 
     // do something with slate
-    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2Att, QJsonArray(), 0);
-    qDebug() << "";
-    qDebug() << "createSlatepackMessage";
-    qDebug() << "slatepack: " << slatepack;
-    qDebug() << "";
-    qDebug() << "Tx Lock Outputs";
-    qDebug() << m_walletOwnerApi->txLockOutputs(slate);
+    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+
+    qDebug() <<"txLockOutputs: "<< m_walletOwnerApi->txLockOutputs(slate);
 
     Faucet f;
     f.setUserId(QString::number(message.from.id));
@@ -626,42 +586,23 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
 void Worker::cleanupRetrieveTxs()
 {
     qDebug() << QDateTime::currentDateTime().toString() << "  cleanupRetrieveTxs";
-    QList<Transaction> transactions;
 
-    QJsonArray txArray = m_walletOwnerApi->retrieveTxs();
+    QList<TxLogEntry> txList;
+    bool log = true;
 
-    for (const QJsonValue &value : txArray) {
-        if (value.isObject()) {
-            Transaction tx;
-            tx = Transaction::fromJson(value.toObject());
-            transactions.append(tx);
-        }
-    }
+    txList = m_walletOwnerApi->retrieveTxs(true, 0, "");
 
-    // Example
-    for (int i = 0; i < transactions.length(); i++) {
+    for (int i = 0; i < txList.length(); i++) {
         // broken transactions
-        if (transactions[i].isConfirmed() == false && (transactions[i].txType() == "TxReceived" || transactions[i].txType() == "TxSent")) {
-
-
-            QString timestampStr = transactions[i].creationTimestamp().left(23) + "Z"; // Trim to milliseconds
-
-            QDateTime txTime = QDateTime::fromString(timestampStr, Qt::ISODateWithMs);
-            txTime.setTimeSpec(Qt::UTC); // Ensure it's treated as UTC
-
+        if (txList[i].confirmed() == false && (txList[i].txType() == "TxReceived" || txList[i].txType() == "TxSent")) {
             QDateTime now = QDateTime::currentDateTimeUtc();
 
-            if (txTime.secsTo(now) > 36000) { // Older than 10 hours
+            if (txList[i].creationTs().secsTo(now) > 36000) { // Older than 10 hours
                 qDebug() << "Transaction is older than 10 hours:";
-                qDebug() << "ID:" << transactions[i].id();
-                qDebug() << "Confirmed:" << transactions[i].isConfirmed();
-                qDebug() << "Slate ID:" << transactions[i].txSlateId();
-                qDebug() << "Type:" << transactions[i].txType();
-                qDebug() << "Timestamp:" << transactions[i].creationTimestamp();
-                qDebug() << "";
+                qInfo().noquote() << debugJsonString(txList[i]);
 
                 // Cancel the old transaction
-                qDebug() << m_walletOwnerApi->cancelTx("", transactions[i].id());
+                qDebug() << m_walletOwnerApi->cancelTx("", txList[i].id());
             }
         }
     }

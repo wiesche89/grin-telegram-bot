@@ -8,6 +8,7 @@
 
 #include "signature.h"
 #include "com.h"
+#include "proof.h"
 #include "error.h"
 
 /**
@@ -26,6 +27,9 @@ enum class SlateState {
 class Slate
 {
 public:
+
+    Slate();
+    bool isValid();
 
     static SlateState slateStateFromString(const QString &str);
 
@@ -59,17 +63,21 @@ public:
     QString off() const;
     void setOff(const QString &off);
 
+    Proof proof() const;
+
+    void setProof(const Proof &newProof);
+
 private:
     QString m_amt;
     QString m_fee;
     QString m_id;
     QList<Signature> m_sigs;
     QList<Com> m_coms;
+    Proof m_proof;
     QString m_sta;
     QString m_ver;
     QString m_off;
     Error m_error;
-
 };
 
 #endif // SLATE_H

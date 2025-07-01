@@ -257,13 +257,35 @@ QByteArray WalletOwnerApi::generateAuthHeader() const
  * @param args
  * @return
  */
-QJsonObject WalletOwnerApi::initSendTx(const QJsonObject &args)
+Slate WalletOwnerApi::initSendTx(InitTxArgs args)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
-    params["args"] = args;
+    params["args"] = args.toJson();
 
-    return postEncrypted("init_send_tx", params);
+    QJsonObject rpcJson = postEncrypted("init_send_tx", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -274,28 +296,41 @@ QJsonObject WalletOwnerApi::initSendTx(const QJsonObject &args)
  * who should add their inputs and signature data and return the slate via the Foreign API’s finalize_tx method.
  * @return
  */
-QJsonObject WalletOwnerApi::issueInvoiceTx()
+Slate WalletOwnerApi::issueInvoiceTx(QString amount, QString destAcctName, QString targetSlateVersion)
 {
     QJsonObject params;
+    QJsonObject args;
+
+    args["amount"] = amount;
+    args["dest_acct_name"] = destAcctName.isEmpty() ? QJsonValue::Null : QJsonValue(destAcctName);
+    args["target_slate_version"] = targetSlateVersion.isEmpty() ? QJsonValue::Null : QJsonValue(targetSlateVersion);
+
     params["token"] = QString(m_openWalletToken.toHex());
+    params["args"] = args;
 
-    return postEncrypted("issue_invoice_tx", params);
-}
+    QJsonObject rpcJson = postEncrypted("issue_invoice_tx", params);
 
-/**
- * @brief WalletOwnerApi::newApiInstance
- * Create a new API instance with the given wallet instance. All subsequent API
- * calls will operate on this instance of the wallet.
- * Each method will call the WalletBackend’s open_with_credentials (initialising a keychain with the master seed,)
- * perform its operation, then close the keychain with a call to close
- * @return
- */
-QJsonObject WalletOwnerApi::newApiInstance()
-{
-    QJsonObject params;
-    params["token"] = QString(m_openWalletToken.toHex());
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
+    }
 
-    return postEncrypted("new", params);
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -308,12 +343,29 @@ QJsonObject WalletOwnerApi::newApiInstance()
  * Clients should generally ensure the updated_from_node field is returned as true before assuming the height for any operation.
  * @return
  */
-QJsonObject WalletOwnerApi::nodeHeight()
+NodeHeight WalletOwnerApi::nodeHeight()
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
 
-    return postEncrypted("node_height", params);
+    QJsonObject rpcJson = postEncrypted("node_height", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return NodeHeight();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return NodeHeight();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    NodeHeight nh;
+    nh.fromJson(okObj);
+
+    return nh;
 }
 
 /**
@@ -325,29 +377,35 @@ QJsonObject WalletOwnerApi::nodeHeight()
  * @param slate
  * @return
  */
-QJsonObject WalletOwnerApi::finalizeTx(const QJsonObject slate)
+Slate WalletOwnerApi::finalizeTx(const QJsonObject slate)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
     params["slate"] = slate;
 
-    QJsonObject response = postEncrypted("finalize_tx", params);
+    QJsonObject rpcJson = postEncrypted("finalize_tx", params);
 
-    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
-        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
-
-        if (slate.isEmpty()) {
-            qWarning() << "slate is empty!";
-            return QJsonObject();
-        } else {
-            return slate;
-        }
-    } else {
-        qWarning() << response;
-        qWarning() << "no slate!";
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
     }
 
-    return QJsonObject();
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -356,10 +414,32 @@ QJsonObject WalletOwnerApi::finalizeTx(const QJsonObject slate)
  * file with the given password, and thus does not need the wallet to be open.
  * @return
  */
-QJsonObject WalletOwnerApi::getMnemonic()
+QString WalletOwnerApi::getMnemonic(QString name, QString password)
 {
-    QJsonObject args;
-    return postEncrypted("get_mnemonic", args);
+    QJsonObject params;
+    params["name"] = name.isEmpty() ? QJsonValue::Null : QJsonValue(name);
+    params["password"] = password;
+
+    QJsonObject rpcJson = postEncrypted("get_mnemonic", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return QString();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return QString();
+    }
+
+    QJsonValue okVal = resultObj["Ok"];
+
+    // if ok
+    if (okVal.isString()) {
+        return okVal.toString();
+    }
+
+    return QString();
 }
 
 /**
@@ -369,8 +449,9 @@ QJsonObject WalletOwnerApi::getMnemonic()
  */
 RewindHash WalletOwnerApi::getRewindHash()
 {
-    QJsonObject args;
-    QJsonObject rpcJson = postEncrypted("get_rewind_hash", args);
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    QJsonObject rpcJson = postEncrypted("get_rewind_hash", params);
 
     if (rpcJson.contains("result") && rpcJson["result"].isObject()) {
         QJsonObject result = rpcJson["result"].toObject();
@@ -399,27 +480,21 @@ RewindHash WalletOwnerApi::getRewindHash()
  * configured by the wallet listener.
  * @return
  */
-QString WalletOwnerApi::getSlatepackAddress()
+QString WalletOwnerApi::getSlatepackAddress(int derivationIndex)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
-    args["derivation_index"] = 0;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["derivation_index"] = derivationIndex;
 
-    QJsonObject response = postEncrypted("get_slatepack_address", args);
+    QJsonObject response = postEncrypted("get_slatepack_address", params);
 
     if (response.contains("result") && response["result"].toObject().contains("Ok")) {
         QString slatepackAddress = response["result"].toObject()["Ok"].toString();
-
         if (slatepackAddress.isEmpty()) {
-            qWarning() << "slatepackAddress is empty!";
             return QString();
-        } else {
-            return slatepackAddress;
         }
-    } else {
-        qWarning() << "no slatepackAddress token!";
+        return slatepackAddress;
     }
-
     return QString();
 }
 
@@ -428,10 +503,22 @@ QString WalletOwnerApi::getSlatepackAddress()
  * Retrieve the private ed25519 slatepack key at the given derivation index. Currently used to decrypt encrypted slatepack messages.
  * @return
  */
-QJsonObject WalletOwnerApi::getSlatepackSecretKey()
+QString WalletOwnerApi::getSlatepackSecretKey(int derivationIndex)
 {
-    QJsonObject args;
-    return postEncrypted("get_slatepack_secret_key", args);
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["derivation_index"] = derivationIndex;
+
+    QJsonObject response = postEncrypted("get_slatepack_secret_key", params);
+
+    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
+        QString slatepackSecretKey = response["result"].toObject()["Ok"].toString();
+        if (slatepackSecretKey.isEmpty()) {
+            return QString();
+        }
+        return slatepackSecretKey;
+    }
+    return QString();
 }
 
 /**
@@ -442,18 +529,42 @@ QJsonObject WalletOwnerApi::getSlatepackSecretKey()
  * If both are supplied, the Transaction Log ID is preferred.
  * @return
  */
-QJsonObject WalletOwnerApi::getStoredTx(QString slateId, int id)
+Slate WalletOwnerApi::getStoredTx(QString slateId, int id)
 {
     Q_UNUSED(id);
 
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
-    args["slate_id"] = slateId;
-    args["id"] = QJsonValue::Null;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["slate_id"] = slateId;
+    if (id == 0) {
+        params["id"] = QJsonValue::Null;
+    } else {
+        params["id"] = id;
+    }
 
-    qDebug() << args;
+    QJsonObject rpcJson = postEncrypted("get_stored_tx", params);
 
-    return postEncrypted("get_stored_tx", args);
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -466,10 +577,16 @@ QJsonObject WalletOwnerApi::getStoredTx(QString slateId, int id)
  * ~/.grin// otherwise
  * @return
  */
-QJsonObject WalletOwnerApi::getTopLevelDirectory()
+QString WalletOwnerApi::getTopLevelDirectory()
 {
-    QJsonObject args;
-    return postEncrypted("get_top_level_directory", args);
+    QJsonObject params;
+    QJsonObject response = postEncrypted("get_top_level_directory", params);
+
+    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
+        QString dir = response["result"].toObject()["Ok"].toString();
+        return dir;
+    }
+    return QString();
 }
 
 /**
@@ -481,10 +598,61 @@ QJsonObject WalletOwnerApi::getTopLevelDirectory()
  * interval should result in a complete message history.
  * @return
  */
-QJsonObject WalletOwnerApi::getUpdaterMessages()
+StatusMessage WalletOwnerApi::getUpdaterMessages(QString &message, quint8 &progress)
 {
     QJsonObject args;
-    return postEncrypted("get_updater_messages", args);
+
+    message.clear();
+    progress = 0;
+
+    QJsonObject json = postEncrypted("get_updater_messages", args);
+
+    if (!json.contains("result") || !json["result"].isObject()) {
+        return StatusMessage::StatusMessageUnknown;
+    }
+
+    QJsonObject resultObj = json["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return StatusMessage::StatusMessageUnknown;
+    }
+
+    QJsonObject statusObj = resultObj["Ok"].toObject();
+
+    if (statusObj.size() != 1) {
+        return StatusMessage::StatusMessageUnknown;
+    }
+
+    QString key = statusObj.keys().first();
+    QJsonValue value = statusObj.value(key);
+
+    if (key == "UpdatingOutputs") {
+        return StatusMessage::StatusMessageUpdatingOutputs;
+    }
+    if (key == "UpdatingTransactions") {
+        return StatusMessage::StatusMessageUpdatingTransactions;
+    }
+    if (key == "FullScanWarn") {
+        return StatusMessage::StatusMessageFullScanWarn;
+    }
+    if (key == "Scanning") {
+        if (value.isArray()) {
+            QJsonArray arr = value.toArray();
+            if (arr.size() == 2 && arr[0].isString() && arr[1].isDouble()) {
+                message = arr[0].toString();
+                progress = static_cast<quint8>(arr[1].toInt());
+            }
+        }
+        return StatusMessage::StatusMessageScanning;
+    }
+    if (key == "ScanningComplete") {
+        return StatusMessage::StatusMessageScanningComplete;
+    }
+    if (key == "UpdateWarning") {
+        return StatusMessage::StatusMessageUpdateWarning;
+    }
+
+    return StatusMessage::StatusMessageUnknown;
 }
 
 /**
@@ -493,29 +661,38 @@ QJsonObject WalletOwnerApi::getUpdaterMessages()
  * @param refreshFromNode
  * @param minimum_confirmations
  */
-QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimum_confirmations)
+WalletInfo WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimum_confirmations)
 {
     QJsonObject args;
     args["refresh_from_node"] = refreshFromNode;
     args["minimum_confirmations"] = minimum_confirmations;
     args["token"] = QString(m_openWalletToken.toHex());
 
-    QJsonObject response = postEncrypted("retrieve_summary_info", args);
-    QJsonArray okArray = response["result"].toObject()["Ok"].toArray();
+    QJsonObject rootObj = postEncrypted("retrieve_summary_info", args);
 
-    if (okArray.size() == 2) {
-        QJsonObject summaryInfo = okArray[1].toObject();
-        if (summaryInfo.isEmpty()) {
-            qWarning() << "summaryInfo is empty!";
-            return QJsonObject();
-        } else {
-            return summaryInfo;
-        }
-    } else {
-        qWarning() << response;
-        qWarning() << "no summaryInfo!";
+    if (!rootObj.contains("result")) {
+        return WalletInfo();
     }
-    return QJsonObject();
+
+    QJsonObject resultObj = rootObj.value("result").toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return WalletInfo();
+    }
+
+    // Array: [true, {...}]
+    QJsonArray okArray = resultObj.value("Ok").toArray();
+
+    if (okArray.size() < 2) {
+        return WalletInfo();
+    }
+
+    QJsonObject walletInfoJson = okArray.at(1).toObject();
+
+    WalletInfo walletInfo;
+    walletInfo.fromJson(walletInfoJson);
+
+    return walletInfo;
 }
 
 /**
@@ -523,30 +700,45 @@ QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimu
  * Returns a list of Transaction Log Entries from the active account in the wallet.
  * @return
  */
-QJsonArray WalletOwnerApi::retrieveTxs()
+QList<TxLogEntry> WalletOwnerApi::retrieveTxs(bool refreshFromNode, int txId, QString txSlateId)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
-    args["refresh_from_node"] = true;
-    args["tx_id"] = QJsonValue::Null;
-    args["tx_slate_id"] = QJsonValue::Null;
+    QList<TxLogEntry> entries;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["refresh_from_node"] = refreshFromNode;
+    params["tx_id"] = (txId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txId);
+    params["tx_slate_id"] = (txSlateId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
 
-    QJsonObject response = postEncrypted("retrieve_txs", args);
-    QJsonArray okArray = response["result"].toObject()["Ok"].toArray();
+    QJsonObject rpcJson = postEncrypted("retrieve_txs", params);
 
-    if (okArray.size() == 2) {
-        QJsonArray retrieveTxs = okArray[1].toArray();
-        if (retrieveTxs.isEmpty()) {
-            qWarning() << "retrieveTxs is empty!";
-            return QJsonArray();
-        } else {
-            return retrieveTxs;
-        }
-    } else {
-        qWarning() << response;
-        qWarning() << "no retrieveTxs!";
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return entries;
     }
-    return QJsonArray();
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isArray()) {
+        return entries;
+    }
+
+    QJsonArray okArray = resultObj["Ok"].toArray();
+
+    // [true, [Array TxLogEntry objs]]
+    if (okArray.size() < 2 || !okArray[1].isArray()) {
+        return entries;
+    }
+
+    QJsonArray txArray = okArray[1].toArray();
+
+    for (const QJsonValue &val : txArray) {
+        if (val.isObject()) {
+            TxLogEntry entry;
+            entry.fromJson(val.toObject());
+            entries.append(entry);
+        }
+    }
+
+    return entries;
 }
 
 /**
@@ -560,12 +752,24 @@ QJsonArray WalletOwnerApi::retrieveTxs()
  * When an output is found that doesn’t exist in the wallet, a corresponding TxLogEntry is created.
  * @return
  */
-QJsonObject WalletOwnerApi::scan()
+bool WalletOwnerApi::scan(int startHeight, bool deleteUnconfirmed)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["start_height"] = startHeight;
+    params["delete_unconfirmed"] = deleteUnconfirmed;
 
-    return postEncrypted("scan", args);
+    QJsonObject rpcJson = postEncrypted("scan", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -604,12 +808,23 @@ ViewWallet WalletOwnerApi::scanRewindHash(RewindHash rewindHash, int startHeight
  * Sets the wallet’s currently active account. This sets the BIP32 parent path used for most key-derivation operations.
  * @return
  */
-QJsonObject WalletOwnerApi::setActiveAccount()
+bool WalletOwnerApi::setActiveAccount(QString label)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["label"] = label;
 
-    return postEncrypted("set_active_account", args);
+    QJsonObject rpcJson = postEncrypted("set_active_account", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -618,11 +833,22 @@ QJsonObject WalletOwnerApi::setActiveAccount()
  * Set get_top_level_directory for a description of the top level directory and default paths.
  * @return
  */
-QJsonObject WalletOwnerApi::setTopLevelDirectory()
+bool WalletOwnerApi::setTopLevelDirectory(QString dir)
 {
-    QJsonObject args;
+    QJsonObject params;
+    params["dir"] = dir;
 
-    return postEncrypted("set_top_level_directory", args);
+    QJsonObject rpcJson = postEncrypted("set_top_level_directory", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -630,19 +856,23 @@ QJsonObject WalletOwnerApi::setTopLevelDirectory()
  * Set the TOR configuration for this instance of the OwnerAPI, used during init_send_tx when send args are present and a TOR address is specified
  * @return
  */
-QJsonObject WalletOwnerApi::setTorConfig()
+bool WalletOwnerApi::setTorConfig(TorConfig torConfig)
 {
-    // Create the "tor_config" JSON object
-    QJsonObject torConfig;
-    torConfig["use_tor_listener"] = true;
-    torConfig["socks_proxy_addr"] = "127.0.0.1:3415";
-    torConfig["send_config_dir"] = ".";
-
     // Nest "tor_config" inside a "params" object
     QJsonObject params;
-    params["tor_config"] = torConfig;
+    params["tor_config"] = torConfig.toJson();
 
-    return postEncrypted("set_tor_config", params);
+    QJsonObject rpcJson = postEncrypted("set_tor_config", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -651,32 +881,36 @@ QJsonObject WalletOwnerApi::setTorConfig()
  * address derivation path indices.
  * @return
  */
-QJsonObject WalletOwnerApi::slateFromSlatepackMessage(QString message)
+Slate WalletOwnerApi::slateFromSlatepackMessage(QString message, QJsonArray secretIndices)
 {
-    QJsonObject args;
-    QJsonArray si;
-    si.append(0);
-    args["token"] = QString(m_openWalletToken.toHex());
-    args["secret_indices"] = si;
-    args["message"] = message;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["secret_indices"] = secretIndices;
+    params["message"] = message;
 
-    QJsonObject response = postEncrypted("slate_from_slatepack_message", args);
+    QJsonObject rpcJson = postEncrypted("slate_from_slatepack_message", params);
 
-    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
-        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
-
-        if (slate.isEmpty()) {
-            qWarning() << "slate is empty!";
-            return QJsonObject();
-        } else {
-            return slate;
-        }
-    } else {
-        qWarning() << response;
-        qWarning() << "no slate!";
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
     }
 
-    return QJsonObject();
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -693,11 +927,23 @@ QJsonObject WalletOwnerApi::slateFromSlatepackMessage(QString message)
  * The wallet status can be determined by calling the get_updater_messages.
  * @return
  */
-QJsonObject WalletOwnerApi::startUpdater()
+bool WalletOwnerApi::startUpdater(int frequency)
 {
-    QJsonObject args;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["frequency"] = frequency;
 
-    return postEncrypted("start_updater", args);
+    QJsonObject rpcJson = postEncrypted("start_updater", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -705,11 +951,20 @@ QJsonObject WalletOwnerApi::startUpdater()
  * Stops the background update thread. If the updater is currently updating, the thread will stop after the next update
  * @return
  */
-QJsonObject WalletOwnerApi::stopUpdater()
+bool WalletOwnerApi::stopUpdater()
 {
-    QJsonObject args;
+    QJsonObject params;
+    QJsonObject rpcJson = postEncrypted("stop_updater", params);
 
-    return postEncrypted("stop_updater", args);
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -721,18 +976,24 @@ QJsonObject WalletOwnerApi::stopUpdater()
  * Transactions can be cancelled by transaction log id or slate id (call with either set to Some, not both)
  * @param id
  */
-QJsonObject WalletOwnerApi::cancelTx(QString txSlateId, int id)
+bool WalletOwnerApi::cancelTx(QString txSlateId, int id)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
-    if (txSlateId.isEmpty()) {
-        args["tx_slate_id"] = QJsonValue::Null;
-    } else {
-        args["tx_slate_id"] = txSlateId;
-    }
-    args["tx_id"] = id;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["tx_slate_id"] = txSlateId.isEmpty() ? QJsonValue() : QJsonValue(txSlateId);
+    params["tx_id"] = id;
 
-    return postEncrypted("cancel_tx", args);
+    QJsonObject rpcJson = postEncrypted("cancel_tx", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -745,10 +1006,24 @@ QJsonObject WalletOwnerApi::cancelTx(QString txSlateId, int id)
  * directory encrypted with the old password.
  * @return
  */
-QJsonObject WalletOwnerApi::changePassword()
+bool WalletOwnerApi::changePassword(QString name, QString oldPw, QString newPw)
 {
-    QJsonObject args;
-    return postEncrypted("change_password", args);
+    QJsonObject params;
+    params["name"] = name.isEmpty() ? QJsonValue::Null : QJsonValue(name);
+    params["old"] = oldPw;
+    params["new"] = newPw;
+
+    QJsonObject rpcJson = postEncrypted("change_password", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -756,10 +1031,22 @@ QJsonObject WalletOwnerApi::changePassword()
  * Close a wallet, removing the master seed from memory.
  * @return
  */
-QJsonObject WalletOwnerApi::closeWallet()
+bool WalletOwnerApi::closeWallet(QString name)
 {
-    QJsonObject args;
-    return postEncrypted("close_wallet", args);
+    QJsonObject params;
+    params["name"] = name.isEmpty() ? QJsonValue::Null : QJsonValue(name);
+
+    QJsonObject rpcJson = postEncrypted("close_wallet", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -767,10 +1054,32 @@ QJsonObject WalletOwnerApi::closeWallet()
  * Creates a new ‘account’, which is a mapping of a user-specified label to a BIP32 path
  * @return
  */
-QJsonObject WalletOwnerApi::createAccountPath()
+QString WalletOwnerApi::createAccountPath(QString label)
 {
-    QJsonObject args;
-    return postEncrypted("create_account_path", args);
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["label"] = label;
+
+    QJsonObject rpcJson = postEncrypted("create_account_path", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return QString();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return QString();
+    }
+
+    QJsonValue okVal = resultObj["Ok"];
+
+    // if ok
+    if (okVal.isString()) {
+        return okVal.toString();
+    }
+
+    return QString();
 }
 
 /**
@@ -781,10 +1090,25 @@ QJsonObject WalletOwnerApi::createAccountPath()
  * so path-related values in the optional configuration structs will be ignored.
  * @return
  */
-QJsonObject WalletOwnerApi::createConfig()
+bool WalletOwnerApi::createConfig(Config config)
 {
-    QJsonObject args;
-    return postEncrypted("create_config", args);
+    QJsonObject params;
+    params["chain_type"] = config.chainType();
+    params["wallet_config"] = config.walletConfig().toJson();
+    params["logging_config"] = config.loggingConfig().toJson();
+    params["tor_config"] = config.torConfig().toJson();
+
+    QJsonObject rpcJson = postEncrypted("create_config", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -793,14 +1117,24 @@ QJsonObject WalletOwnerApi::createConfig()
  * @param
  * @return
  */
-QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
+bool WalletOwnerApi::postTx(Slate slate, bool fluff)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
-    params["slate"] = slate;
+    params["slate"] = slate.toJson();
     params["fluff"] = fluff;
 
-    return postEncrypted("post_tx", params);
+    QJsonObject rpcJson = postEncrypted("post_tx", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -817,38 +1151,81 @@ QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
  * This function also stores the final transaction in the user’s wallet files for retrieval via the get_stored_tx function.
  * @return
  */
-QJsonObject WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
+Slate WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
     params["slate"] = slate.toJson();
     params["args"] = args;
 
-    QJsonObject response = postEncrypted("process_invoice_tx", params);
+    QJsonObject rpcJson = postEncrypted("process_invoice_tx", params);
 
-    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
-        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
+    }
 
-        if (slate.isEmpty()) {
-            qWarning() << "slate is empty!";
-            return QJsonObject();
-        } else {
-            return slate;
-        }
-    } else {
-        if (response.contains("result") && response["result"].toObject().contains("Err")) {
-            QJsonObject err = response["result"].toObject()["Err"].toObject();
+    QJsonObject resultObj = rpcJson["result"].toObject();
 
-            if (err.isEmpty()) {
-                qWarning() << "error by read error message!";
-                return QJsonObject();
-            } else {
-                return err;
-            }
+    if (!resultObj.contains("Ok")) {
+        return Slate();
+    }
+
+    if (resultObj["Ok"].isNull()) {
+        return Slate();
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
+}
+
+/**
+ * @brief WalletOwnerApi::queryTxs
+ * Networked version of Owner::retrieve_txs, which passes only the tx_query_args parameter.
+ */
+QList<TxLogEntry> WalletOwnerApi::queryTxs(bool refreshFromNode, Query query)
+{
+    QJsonObject params;
+    QList<TxLogEntry> entries;
+
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["refresh_from_node"] = refreshFromNode;
+    params["query"] = query.toJson();
+
+    QJsonObject rpcJson = postEncrypted("query_txs", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return entries;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isArray()) {
+        return entries;
+    }
+
+    QJsonArray okArray = resultObj["Ok"].toArray();
+
+    // [true, [Array TxLogEntry objs]]
+    if (okArray.size() < 2 || !okArray[1].isArray()) {
+        return entries;
+    }
+
+    QJsonArray txArray = okArray[1].toArray();
+
+    for (const QJsonValue &val : txArray) {
+        if (val.isObject()) {
+            TxLogEntry entry;
+            entry.fromJson(val.toObject());
+            entries.append(entry);
         }
     }
 
-    return QJsonObject();
+    return entries;
 }
 
 /**
@@ -856,12 +1233,49 @@ QJsonObject WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
  * Returns a list of outputs from the active account in the wallet.
  * @return
  */
-QJsonObject WalletOwnerApi::retrieveOutputs()
+QList<OutputCommitMapping> WalletOwnerApi::retrieveOutputs(bool includeSpent, bool refreshFromNode, int txId)
 {
     QJsonObject params;
-    params["token"] = QString(m_openWalletToken.toHex());
+    QList<OutputCommitMapping> list;
 
-    return postEncrypted("retrieve_outputs", params);
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["include_spent"] = includeSpent;
+    params["refresh_from_node"] = refreshFromNode;
+    params["tx_id"] = (txId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txId);
+
+    QJsonObject rootObj = postEncrypted("retrieve_outputs", params);
+
+    if (!rootObj.contains("result") || !rootObj["result"].isObject()) {
+        return list;
+    }
+
+    QJsonObject resultObj = rootObj["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isArray()) {
+        return list;
+    }
+
+    QJsonArray okArray = resultObj["Ok"].toArray();
+
+    // [ true, [ {...}, {...} ] ]
+    if (okArray.size() != 2 || !okArray[1].isArray()) {
+        return list;
+    }
+
+    QJsonArray itemsArray = okArray[1].toArray();
+
+    for (const QJsonValue &val : itemsArray) {
+        if (!val.isObject()) {
+            continue;
+        }
+
+        QJsonObject itemObj = val.toObject();
+        OutputCommitMapping mapping;
+        mapping.fromJson(itemObj);
+        list.append(mapping);
+    }
+
+    return list;
 }
 
 /**
@@ -871,12 +1285,36 @@ QJsonObject WalletOwnerApi::retrieveOutputs()
  * Either the tx_id or tx_slate_id argument must be provided, or the function will return an error.
  * @return
  */
-QJsonObject WalletOwnerApi::retrievePaymentProof()
+PaymentProof WalletOwnerApi::retrievePaymentProof(bool refreshFromNode, int txId, QString txSlateId)
 {
     QJsonObject params;
-    params["token"] = QString(m_openWalletToken.toHex());
+    PaymentProof proof;
 
-    return postEncrypted("retrieve_payment_proof", params);
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["refresh_from_node"] = refreshFromNode;
+    params["tx_id"] = (txId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txId);
+    params["tx_slate_id"] = (txSlateId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
+
+    QJsonObject json = postEncrypted("retrieve_payment_proof", params);
+
+    if (!json.contains("result")) {
+        return proof;
+    }
+
+    QJsonObject resultObj = json["result"].toObject();
+    if (!resultObj.contains("Ok")) {
+        return proof;
+    }
+
+    QJsonValue okValue = resultObj["Ok"];
+    if (!okValue.isObject()) {
+        return proof;
+    }
+
+    QJsonObject proofObj = okValue.toObject();
+
+    proof.fromJson(proofObj);
+    return proof;
 }
 
 /**
@@ -890,12 +1328,23 @@ QJsonObject WalletOwnerApi::retrievePaymentProof()
  * @param slate
  * @return
  */
-QJsonObject WalletOwnerApi::txLockOutputs(Slate slate)
+bool WalletOwnerApi::txLockOutputs(Slate slate)
 {
-    QJsonObject args;
-    args["token"] = QString(m_openWalletToken.toHex());
-    args["slate"] = slate.toJson();
-    return postEncrypted("tx_lock_outputs", args);
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["slate"] = slate.toJson();
+
+    QJsonObject rpcJson = postEncrypted("tx_lock_outputs", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -906,10 +1355,35 @@ QJsonObject WalletOwnerApi::txLockOutputs(Slate slate)
  * This function also stores the final transaction in the user’s wallet files for retrieval via the get_stored_tx function.
  * @return
  */
-QJsonObject WalletOwnerApi::verifyPaymentProof()
+VerifyPaymentProofStatus WalletOwnerApi::verifyPaymentProof(PaymentProof proof)
 {
-    QJsonObject args;
-    return postEncrypted("verify_payment_proof", args);
+    VerifyPaymentProofStatus status;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["proof"] = proof.toJson();
+
+    QJsonObject rootObj = postEncrypted("verify_payment_proof", params);
+
+    if (!rootObj.contains("result") || !rootObj["result"].isObject()) {
+        return status;
+    }
+
+    QJsonObject resultObj = rootObj["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isArray()) {
+        return status;
+    }
+
+    QJsonArray okArray = resultObj["Ok"].toArray();
+
+    if (okArray.size() >= 2) {
+        bool senderBelongs = okArray[0].toBool(false);
+        bool recipientBelongs = okArray[1].toBool(false);
+        status.setSenderBelongsToWallet(senderBelongs);
+        status.setRecipientBelongsToWallet(recipientBelongs);
+    }
+
+    return status;
 }
 
 /**
@@ -976,10 +1450,28 @@ QList<Account> WalletOwnerApi::accounts()
  * Builds an output
  * @return
  */
-QJsonObject WalletOwnerApi::buildOutputs()
+BuiltOutput WalletOwnerApi::buildOutputs(QString features, QString amount)
 {
-    QJsonObject args;
-    return postEncrypted("build_output", args);
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["features"] = features;
+    params["amount"] = amount;
+
+    QJsonObject rpcJson = postEncrypted("build_output", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return BuiltOutput();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return BuiltOutput();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return BuiltOutput::fromJson(okObj);
 }
 
 /**
@@ -990,7 +1482,7 @@ QJsonObject WalletOwnerApi::buildOutputs()
  * @param name
  * @param password
  */
-QJsonObject WalletOwnerApi::openWallet(QString name, QString password)
+QString WalletOwnerApi::openWallet(QString name, QString password)
 {
     Q_UNUSED(name);
 
@@ -1007,11 +1499,9 @@ QJsonObject WalletOwnerApi::openWallet(QString name, QString password)
             qWarning() << "token is empty!";
         }
         m_openWalletToken = token;
-    } else {
-        qWarning() << "no open_wallet token!";
+        return token;
     }
-
-    return response;
+    return QString();
 }
 
 /**
@@ -1030,19 +1520,23 @@ QString WalletOwnerApi::createSlatepackMessage(Slate slate, QJsonArray recipient
     params["recipients"] = recipients;
     params["sender_index"] = senderIndex;
 
-    qDebug() << params;
+    QJsonObject rpcJson = postEncrypted("create_slatepack_message", params);
 
-    QJsonObject response = postEncrypted("create_slatepack_message", params);
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return QString();
+    }
 
-    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
-        QString slatepack;
-        slatepack = response["result"].toObject()["Ok"].toString();
-        if (slatepack.isEmpty()) {
-            qWarning() << "slatepack is empty!";
-        }
-        return slatepack;
-    } else {
-        qWarning() << "no slatepack";
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return QString();
+    }
+
+    QJsonValue okVal = resultObj["Ok"];
+
+    // if ok
+    if (okVal.isString()) {
+        return okVal.toString();
     }
 
     return QString();
@@ -1057,10 +1551,25 @@ QString WalletOwnerApi::createSlatepackMessage(Slate slate, QJsonArray recipient
  * exist in the top level directory (can be created via a call to create_config)
  * @return
  */
-QJsonObject WalletOwnerApi::createWallet()
+bool WalletOwnerApi::createWallet(QString name, QString mnemonic, int mnemonicLength, QString password)
 {
-    QJsonObject args;
-    return postEncrypted("create_wallet", args);
+    QJsonObject params;
+    params["name"] = name.isEmpty() ? QJsonValue::Null : QJsonValue(name);
+    params["mnemonic"] = mnemonic.isEmpty() ? QJsonValue::Null : QJsonValue(mnemonic);
+    params["mnemonic_length"] = mnemonicLength;
+    params["password"] = password;
+
+    QJsonObject rpcJson = postEncrypted("create_wallet", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -1069,10 +1578,41 @@ QJsonObject WalletOwnerApi::createWallet()
  * The resulting slatepack will be decrypted by this wallet if possible
  * @return
  */
-QJsonObject WalletOwnerApi::decodeSlatepackMessage()
+Slatepack WalletOwnerApi::decodeSlatepackMessage(QJsonArray secretIndicesArray, QString message)
 {
-    QJsonObject args;
-    return postEncrypted("decode_slatepack_message", args);
+    Slatepack sp;
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+    params["secret_indices"] = secretIndicesArray;
+    params["message"] = message.isEmpty() ? QJsonValue::Null : QJsonValue(message);
+
+    QJsonObject rpcJson = postEncrypted("decode_slatepack_message", params);
+
+    // Check for "result" object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return sp;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // Check for "Ok" object inside "result"
+    if (!resultObj.contains("Ok")) {
+        return sp;
+    }
+
+    // "Ok" can be null or an object
+    if (resultObj["Ok"].isNull()) {
+        return sp;
+    }
+
+    if (!resultObj["Ok"].isObject()) {
+        return sp;
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    sp.fromJson(okObj);
+    return sp;
 }
 
 /**
@@ -1082,10 +1622,22 @@ QJsonObject WalletOwnerApi::decodeSlatepackMessage()
  * Highly recommended that the wallet be explicitly closed first via the close_wallet function.
  * @return
  */
-QJsonObject WalletOwnerApi::deleteWallet()
+bool WalletOwnerApi::deleteWallet(QString name)
 {
-    QJsonObject args;
-    return postEncrypted("delete_wallet", args);
+    QJsonObject params;
+    params["name"] = name.isEmpty() ? QJsonValue::Null : QJsonValue(name);
+
+    QJsonObject rpcJson = postEncrypted("delete_wallet", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**

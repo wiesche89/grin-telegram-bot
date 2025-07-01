@@ -12,130 +12,360 @@ NodeForeignApi::NodeForeignApi(QString apiUrl, QString apiKey) :
  * @brief NodeForeignApi::getBlock
  * @return
  */
-QJsonObject NodeForeignApi::getBlock()
+BlockPrintable NodeForeignApi::getBlock(int height, QString hash, QString commit)
 {
-    QJsonObject params;
-    return post("get_block", params);
+    BlockPrintable block;
+
+    QJsonArray params;
+    params.append(height == 0 ? QJsonValue::Null : QJsonValue(height));
+    params.append(QJsonValue(hash));
+    params.append(commit.isEmpty() ? QJsonValue::Null : QJsonValue(commit));
+
+    QJsonObject rootObj = post("get_block", params);
+
+    if (rootObj.contains("result") && rootObj["result"].isObject()) {
+        QJsonObject resultObj = rootObj["result"].toObject();
+        if (resultObj.contains("Ok") && resultObj["Ok"].isObject()) {
+            QJsonObject okObj = resultObj["Ok"].toObject();
+
+            block.fromJson(okObj);
+        }
+    }
+    return block;
 }
 
 /**
  * @brief NodeForeignApi::getBlocks
  * @return
  */
-QJsonObject NodeForeignApi::getBlocks()
+BlockListing NodeForeignApi::getBlocks(int startHeight, int endHeight, int max, bool includeProof)
 {
-    QJsonObject params;
-    return post("get_blocks", params);
+    BlockListing listing;
+    QJsonArray params;
+    params.append(QJsonValue(startHeight));
+    params.append(QJsonValue(endHeight));
+    params.append(QJsonValue(max));
+    params.append(QJsonValue(includeProof));
+
+    QJsonObject rootObj = post("get_blocks", params);
+
+    if (rootObj.contains("result")) {
+        QJsonObject resultObj = rootObj["result"].toObject();
+        if (resultObj.contains("Ok")) {
+            QJsonObject okObj = resultObj["Ok"].toObject();
+
+            listing.fromJson(okObj);
+        }
+    }
+
+    return listing;
 }
 
 /**
  * @brief NodeForeignApi::getHeader
  * @return
  */
-QJsonObject NodeForeignApi::getHeader()
+BlockHeaderPrintable NodeForeignApi::getHeader(int height, QString hash, QString commit)
 {
-    QJsonObject params;
-    return post("get_header", params);
+    QJsonArray params;
+    params.append(height == 0 ? QJsonValue::Null : QJsonValue(height));
+    params.append(QJsonValue(hash));
+    params.append(commit.isEmpty() ? QJsonValue::Null : QJsonValue(commit));
+
+    QJsonObject rootObj = post("get_header", params);
+
+    // Pfad: rootObj -> "result" -> "Ok" -> Objekt
+    QJsonObject resultObj = rootObj.value("result").toObject();
+    QJsonValue okVal = resultObj.value("Ok");
+    if (!okVal.isObject()) {
+        return BlockHeaderPrintable();
+    }
+
+    QJsonObject blockHeaderJson = okVal.toObject();
+
+    BlockHeaderPrintable blockHeader;
+    blockHeader.fromJson(blockHeaderJson);
+
+    return blockHeader;
 }
 
 /**
  * @brief NodeForeignApi::getKernel
  * @return
  */
-QJsonObject NodeForeignApi::getKernel()
+LocatedTxKernel NodeForeignApi::getKernel(QString excess, int minHeight, int maxHeight)
 {
-    QJsonObject params;
-    return post("get_kernel", params);
+    LocatedTxKernel locatedTxKernel;
+    QJsonArray params;
+    params.append(QJsonValue(excess));
+    params.append(QJsonValue(minHeight));
+    params.append(QJsonValue(maxHeight));
+
+    QJsonObject obj = post("get_kernel", params);
+
+    if (obj.contains("result")) {
+        QJsonObject resultObj = obj["result"].toObject();
+        if (resultObj.contains("Ok")) {
+            QJsonObject okObj = resultObj["Ok"].toObject();
+            locatedTxKernel.fromJson(okObj);
+        }
+    }
+
+    return locatedTxKernel;
 }
 
 /**
  * @brief NodeForeignApi::getOutputs
  * @return
  */
-QJsonObject NodeForeignApi::getOutputs()
+QList<OutputPrintable> NodeForeignApi::getOutputs(QJsonArray commits, int startHeight, int endHeight, bool includeProof,
+                                                  bool includeMerkleProof)
 {
-    QJsonObject params;
-    return post("get_outputs", params);
+    QList<OutputPrintable> list;
+    QJsonArray params;
+    params.append(commits);
+    params.append(QJsonValue(startHeight));
+    params.append(QJsonValue(endHeight));
+    params.append(QJsonValue(includeProof));
+    params.append(QJsonValue(includeMerkleProof));
+
+    QJsonObject root = post("get_outputs", params);
+
+    if (!root.contains("result") || !root.value("result").isObject()) {
+        return list;
+    }
+
+    QJsonObject resultObj = root.value("result").toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj.value("Ok").isArray()) {
+        return list;
+    }
+
+    QJsonArray okArray = resultObj.value("Ok").toArray();
+
+    for (const QJsonValue &val : okArray) {
+        if (!val.isObject()) {
+            continue;
+        }
+
+        OutputPrintable output;
+        output.fromJson(val.toObject());
+        list.append(output);
+    }
+
+    return list;
 }
 
 /**
  * @brief NodeForeignApi::getPmmrIndices
  * @return
  */
-QJsonObject NodeForeignApi::getPmmrIndices()
+OutputListing NodeForeignApi::getPmmrIndices(int startHeight, int endHeight)
 {
-    QJsonObject params;
-    return post("get_pmmr_indices", params);
+    OutputListing listing;
+    QJsonArray params;
+    params.append(QJsonValue(startHeight));
+    params.append(QJsonValue(endHeight));
+
+    QJsonObject rootJson = post("get_pmmr_indices", params);
+
+    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
+        return listing;
+    }
+    QJsonObject resultObj = rootJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return listing;
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    listing = OutputListing::fromJson(okObj);
+
+    return listing;
 }
 
 /**
  * @brief NodeForeignApi::getPoolSize
  * @return
  */
-QJsonObject NodeForeignApi::getPoolSize()
+int NodeForeignApi::getPoolSize()
 {
-    QJsonObject params;
-    return post("get_pool_size", params);
+    QJsonArray params;
+    QJsonObject rootJson = post("get_pool_size", params);
+
+    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
+        return -1;
+    }
+    QJsonObject resultObj = rootJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return -1;
+    }
+
+    // "Ok"
+    QJsonValue okVal = resultObj["Ok"];
+    if (okVal.isDouble()) {
+        return okVal.toInt();
+    }
+
+    return -1;
 }
 
 /**
  * @brief NodeForeignApi::getStempoolSize
  * @return
  */
-QJsonObject NodeForeignApi::getStempoolSize()
+int NodeForeignApi::getStempoolSize()
 {
-    QJsonObject params;
-    return post("get_stempool_size", params);
+    QJsonArray params;
+    QJsonObject rootJson = post("get_stempool_size", params);
+
+    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
+        return -1;
+    }
+    QJsonObject resultObj = rootJson["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return -1;
+    }
+
+    // "Ok"
+    QJsonValue okVal = resultObj["Ok"];
+    if (okVal.isDouble()) {
+        return okVal.toInt();
+    }
+
+    return -1;
 }
 
 /**
  * @brief NodeForeignApi::getTip
  * @return
  */
-QJsonObject NodeForeignApi::getTip()
+Tip NodeForeignApi::getTip()
 {
-    QJsonObject params;
-    return post("get_tip", params);
+    QJsonArray params;
+    QJsonObject root = post("get_tip", params);
+
+    if (!root.contains("result") || !root["result"].isObject()) {
+        qWarning() << "Kein result-Objekt";
+        return Tip();
+    }
+
+    QJsonObject result = root["result"].toObject();
+    if (!result.contains("Ok") || !result["Ok"].isObject()) {
+        qWarning() << "Kein Ok-Objekt in result";
+        return Tip();
+    }
+
+    QJsonObject ok = result["Ok"].toObject();
+
+    return Tip::fromJson(ok);
 }
 
 /**
  * @brief NodeForeignApi::getUnconfirmedTransactions
  * @return
  */
-QJsonObject NodeForeignApi::getUnconfirmedTransactions()
+QList<PoolEntry> NodeForeignApi::getUnconfirmedTransactions()
 {
-    QJsonObject params;
-    return post("get_unconfirmed_transactions", params);
+    QList<PoolEntry> entries;
+    QJsonArray params;
+
+    QJsonObject root = post("get_unconfirmed_transactions", params);
+
+    if (root.contains("result") && root["result"].isObject()) {
+        QJsonObject resultObj = root["result"].toObject();
+        if (resultObj.contains("Ok")) {
+            QJsonValue okValue = resultObj["Ok"];
+
+            QJsonArray arr = okValue.toArray();
+            for (const QJsonValue &v : arr) {
+                if (!v.isObject()) {
+                    continue;
+                }
+                PoolEntry entry = PoolEntry::fromJson(v.toObject());
+                entries.append(entry);
+            }
+            return entries;
+        }
+    }
+
+    return entries;
 }
 
 /**
  * @brief NodeForeignApi::getUnspentOutputs
  * @return
  */
-QJsonObject NodeForeignApi::getUnspentOutputs()
+BlockListing NodeForeignApi::getUnspentOutputs(int startHeight, int endHeight, int max, bool includeProof)
 {
-    QJsonObject params;
-    return post("get_unspent_outputs", params);
+    BlockListing listing;
+    QJsonArray params;
+    params.append(QJsonValue(startHeight));
+    params.append(QJsonValue(endHeight));
+    params.append(QJsonValue(max));
+    params.append(QJsonValue(includeProof));
+
+    QJsonObject rootObj = post("get_unspent_outputs", params);
+
+    if (rootObj.contains("result")) {
+        QJsonObject resultObj = rootObj["result"].toObject();
+        if (resultObj.contains("Ok")) {
+            QJsonObject okObj = resultObj["Ok"].toObject();
+
+            listing.fromJson(okObj);
+        }
+    }
+
+    return listing;
 }
 
 /**
  * @brief NodeForeignApi::getVersion
  * @return
  */
-QJsonObject NodeForeignApi::getVersion()
+NodeVersion NodeForeignApi::getVersion()
 {
-    QJsonObject params;
-    return post("get_version", params);
+    QJsonArray params;
+
+    QJsonObject rootObj = post("get_version", params);
+    if (!rootObj.contains("result") || !rootObj["result"].isObject()) {
+        return NodeVersion();
+    }
+
+    QJsonObject resultObj = rootObj["result"].toObject();
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return NodeVersion();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return NodeVersion::fromJson(okObj);
 }
 
 /**
  * @brief NodeForeignApi::pushTransaction
  * @return
  */
-QJsonObject NodeForeignApi::pushTransaction()
+bool NodeForeignApi::pushTransaction(Transaction tx, bool fluff)
 {
-    QJsonObject params;
-    return post("push_transaction", params);
+    QJsonArray params;
+    params.append(tx.toJson());
+    params.append(QJsonValue(fluff));
+
+    QJsonObject rpcJson = post("push_transaction", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
@@ -144,7 +374,7 @@ QJsonObject NodeForeignApi::pushTransaction()
  * @param params
  * @return
  */
-QJsonObject NodeForeignApi::post(const QString &method, const QJsonObject &params)
+QJsonObject NodeForeignApi::post(const QString &method, const QJsonArray &params)
 {
     QUrl url(m_apiUrl);
     QNetworkRequest request(url);

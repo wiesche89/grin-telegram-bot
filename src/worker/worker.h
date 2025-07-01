@@ -13,8 +13,9 @@
 #include "nodeforeignapi.h"
 
 #include "slate.h"
-#include "summaryinfo.h"
-#include "transaction.h"
+#include "walletinfo.h"
+#include "txlogentry.h"
+#include "debugutils.h"
 
 class Worker : public QObject
 {
@@ -42,6 +43,7 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
     QSettings *m_settings;
+
 };
 
 #endif // WORKER_H

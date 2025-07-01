@@ -5,6 +5,29 @@
  * @param str
  * @return
  */
+Slate::Slate() :
+    m_amt(QString()),
+    m_fee(QString()),
+    m_id(QString()),
+    m_sigs(QList<Signature>()),
+    m_coms(QList<Com>()),
+    m_proof(Proof()),
+    m_sta(QString()),
+    m_ver(QString()),
+    m_off(QString()),
+    m_error(Error())
+{
+}
+
+bool Slate::isValid()
+{
+    if (m_id.isEmpty()) {
+        return false;
+    }
+
+    return true;
+}
+
 SlateState Slate::slateStateFromString(const QString &str)
 {
     if (str == "S1") {
@@ -35,13 +58,11 @@ SlateState Slate::slateStateFromString(const QString &str)
 QJsonObject Slate::toJson() const
 {
     QJsonObject obj;
-    if(!m_amt.isEmpty())
-    {
+    if (!m_amt.isEmpty()) {
         obj["amt"] = m_amt;
     }
 
-    if(!m_fee.isEmpty())
-    {
+    if (!m_fee.isEmpty()) {
         obj["fee"] = m_fee;
     }
     obj["id"] = m_id;
@@ -56,17 +77,19 @@ QJsonObject Slate::toJson() const
     for (const auto &com : m_coms) {
         comArray.append(com.toJson());
     }
-    if(!comArray.isEmpty())
-    {
+    if (!comArray.isEmpty()) {
         obj["coms"] = comArray;
+    }
+
+    if (!m_proof.isEmpty()) {
+        obj["proof"] = m_proof.toJson();
     }
 
     obj["sta"] = m_sta;
     obj["ver"] = m_ver;
 
-    if(!m_off.isEmpty())
-    {
-      obj["off"] = m_off;
+    if (!m_off.isEmpty()) {
+        obj["off"] = m_off;
     }
 
     return obj;
@@ -80,6 +103,7 @@ QJsonObject Slate::toJson() const
 Slate Slate::fromJson(const QJsonObject &obj)
 {
     Slate slate;
+
     slate.setAmt(obj["amt"].toString());
     slate.setFee(obj["fee"].toString());
     slate.setId(obj["id"].toString());
@@ -101,7 +125,7 @@ Slate Slate::fromJson(const QJsonObject &obj)
         }
     }
     slate.setComs(coms);
-
+    slate.setProof(Proof::fromJson(obj["proof"].toObject()));
     slate.setSta(obj["sta"].toString());
     slate.setVer(obj["ver"].toString());
     slate.setOff(obj["off"].toString());
@@ -253,4 +277,14 @@ QString Slate::off() const
 void Slate::setOff(const QString &off)
 {
     m_off = off;
+}
+
+Proof Slate::proof() const
+{
+    return m_proof;
+}
+
+void Slate::setProof(const Proof &newProof)
+{
+    m_proof = newProof;
 }

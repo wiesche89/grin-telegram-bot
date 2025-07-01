@@ -138,9 +138,6 @@ Slate WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QString des
 
     QJsonObject okObj = resultObj["Ok"].toObject();
 
-    qDebug()<<"receive";
-    qDebug()<<okObj;
-
     return Slate::fromJson(okObj);
 }
 

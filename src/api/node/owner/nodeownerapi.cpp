@@ -14,50 +14,140 @@ NodeOwnerApi::NodeOwnerApi(QString apiUrl, QString apiKey) :
  * @brief NodeOwnerApi::banPeer
  * @return
  */
-QJsonObject NodeOwnerApi::banPeer()
+bool NodeOwnerApi::banPeer(QString peerAddr)
 {
-    QJsonObject params;
-    return post("ban_peer", params);
+    QJsonArray params;
+    params.append(QJsonValue(peerAddr));
+
+    QJsonObject rpcJson = post("ban_peer", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
  * @brief NodeOwnerApi::compactChain
  * @return
  */
-QJsonObject NodeOwnerApi::compactChain()
+bool NodeOwnerApi::compactChain()
 {
-    QJsonObject params;
-    return post("compact_chain", params);
+    QJsonArray params;
+
+    QJsonObject rpcJson = post("compact_chain", params);
+
+    // Check if "result" exists and is an object
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return false;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return resultObj.contains("Ok");
 }
 
 /**
  * @brief NodeOwnerApi::getConnectedPeers
  * @return
  */
-QJsonObject NodeOwnerApi::getConnectedPeers()
+QList<PeerInfoDisplay> NodeOwnerApi::getConnectedPeers()
 {
-    QJsonObject params;
-    return post("get_connected_peers", params);
+    QList<PeerInfoDisplay> peers;
+    QJsonArray params;
+
+    QJsonObject root = post("get_connected_peers", params);
+
+    if (!root.contains("result")) {
+        return peers;
+    }
+
+    QJsonObject result = root["result"].toObject();
+    if (!result.contains("Ok")) {
+        return peers;
+    }
+
+    QJsonArray array = result["Ok"].toArray();
+    for (const QJsonValue &val : array) {
+        if (!val.isObject()) {
+            continue;
+        }
+
+        QJsonObject peerObj = val.toObject();
+        PeerInfoDisplay peer = PeerInfoDisplay::fromJson(peerObj);
+        peers.append(peer);
+    }
+
+    return peers;
 }
 
 /**
  * @brief NodeOwnerApi::getPeers
  * @return
  */
-QJsonObject NodeOwnerApi::getPeers()
+QList<PeerData> NodeOwnerApi::getPeers(QString peerAddr)
 {
-    QJsonObject params;
-    return post("get_peers", params);
+    QList<PeerData> peers;
+    QJsonArray params;
+
+    params.append(QJsonValue(peerAddr));
+
+    QJsonObject rootObj = post("get_peers", params);
+
+    if (!rootObj.contains("result")) {
+        return peers;
+    }
+    QJsonObject resultObj = rootObj["result"].toObject();
+
+    if (!resultObj.contains("Ok")) {
+        return peers;
+    }
+    QJsonArray okArray = resultObj["Ok"].toArray();
+
+    for (const QJsonValue &val : okArray) {
+        if (!val.isObject()) {
+            continue;
+        }
+        QJsonObject peerObj = val.toObject();
+
+        PeerData peer = PeerData::fromJson(peerObj);
+        peers.append(peer);
+    }
+
+    return peers;
 }
 
 /**
  * @brief NodeOwnerApi::getStatus
  * @return
  */
-QJsonObject NodeOwnerApi::getStatus()
+Status NodeOwnerApi::getStatus()
 {
-    QJsonObject params;
-    return post("get_status", params);
+    Status status;
+    QJsonArray params;
+
+    QJsonObject obj = post("get_status", params);
+
+    if (!obj.contains("result") || !obj["result"].isObject()) {
+        return status;
+    }
+
+    QJsonObject resultObj = obj["result"].toObject();
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return status;
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    status = Status::fromJson(okObj);
+
+    return status;
 }
 
 /**
@@ -66,7 +156,7 @@ QJsonObject NodeOwnerApi::getStatus()
  */
 QJsonObject NodeOwnerApi::invalidateHeader()
 {
-    QJsonObject params;
+    QJsonArray params;
     return post("invalidate_header", params);
 }
 
@@ -76,7 +166,7 @@ QJsonObject NodeOwnerApi::invalidateHeader()
  */
 QJsonObject NodeOwnerApi::resetChainHead()
 {
-    QJsonObject params;
+    QJsonArray params;
     return post("reset_chain_head", params);
 }
 
@@ -84,9 +174,9 @@ QJsonObject NodeOwnerApi::resetChainHead()
  * @brief NodeOwnerApi::unbanPeer
  * @return
  */
-QJsonObject NodeOwnerApi::unbanPeer()
+QJsonObject NodeOwnerApi::unbanPeer(QString peerAddr)
 {
-    QJsonObject params;
+    QJsonArray params;
     return post("unban_peer", params);
 }
 
@@ -94,9 +184,9 @@ QJsonObject NodeOwnerApi::unbanPeer()
  * @brief NodeOwnerApi::validateChain
  * @return
  */
-QJsonObject NodeOwnerApi::validateChain()
+QJsonObject NodeOwnerApi::validateChain(bool assumeValidRangeproofsKernels)
 {
-    QJsonObject params;
+    QJsonArray params;
     return post("validate_chain", params);
 }
 
@@ -106,7 +196,7 @@ QJsonObject NodeOwnerApi::validateChain()
  * @param params
  * @return
  */
-QJsonObject NodeOwnerApi::post(const QString &method, const QJsonObject &params)
+QJsonObject NodeOwnerApi::post(const QString &method, const QJsonArray &params)
 {
     QUrl url(m_apiUrl);
     QNetworkRequest request(url);
