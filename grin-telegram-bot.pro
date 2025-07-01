@@ -26,6 +26,7 @@ INCLUDEPATH += \
   src/api/node/owner \
   src/api/wallet/owner \
   src/telegrambot \
+  src/grinwalletmanager \
   src/database \
   src/database/attributes \
   src/telegrambot/modules/httpserver \
@@ -45,7 +46,17 @@ INCLUDEPATH += \
 SOURCES += \
   src/api/node/foreign/nodeforeignapi.cpp \
   src/api/node/owner/nodeownerapi.cpp \
+    src/api/wallet/attributes/account.cpp \
+    src/api/wallet/attributes/coinbase.cpp \
+    src/api/wallet/attributes/com.cpp \
+    src/api/wallet/attributes/kernel.cpp \
+    src/api/wallet/attributes/output.cpp \
+    src/api/wallet/attributes/rewindhash.cpp \
+    src/api/wallet/attributes/signature.cpp \
     src/api/wallet/attributes/transaction.cpp \
+    src/api/wallet/attributes/version.cpp \
+    src/api/wallet/attributes/viewwallet.cpp \
+    src/api/wallet/attributes/viewwalletentry.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
   src/main.cpp \
   src/telegrambot/jsonhelper.cpp \
@@ -59,13 +70,24 @@ SOURCES += \
   src/api/wallet/attributes/summaryinfo.cpp \
   src/database/databasemanager.cpp \
     src/database/attributes/donate.cpp \
-    src/database/attributes/faucet.cpp
+    src/database/attributes/faucet.cpp \
+    src/api/wallet/attributes/error.cpp
 
 # .h
 HEADERS += \
   src/api/node/foreign/nodeforeignapi.h \
   src/api/node/owner/nodeownerapi.h \
+    src/api/wallet/attributes/account.h \
+    src/api/wallet/attributes/coinbase.h \
+    src/api/wallet/attributes/com.h \
+    src/api/wallet/attributes/kernel.h \
+    src/api/wallet/attributes/output.h \
+    src/api/wallet/attributes/rewindhash.h \
+    src/api/wallet/attributes/signature.h \
     src/api/wallet/attributes/transaction.h \
+    src/api/wallet/attributes/version.h \
+    src/api/wallet/attributes/viewwallet.h \
+    src/api/wallet/attributes/viewwalletentry.h \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
   src/grinwalletmanager/grinwalletmanager.h \
@@ -85,7 +107,8 @@ HEADERS += \
   src/api/wallet/attributes/summaryinfo.h \
   src/database/databasemanager.h \
     src/database/attributes/donate.h \
-    src/database/attributes/faucet.h
+    src/database/attributes/faucet.h \
+    src/api/wallet/attributes/error.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1

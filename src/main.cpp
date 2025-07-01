@@ -2,7 +2,7 @@
 #include <QProcess>
 
 #include "worker.h"
-#include "grinwalletmanager/grinwalletmanager.h"
+#include "grinwalletmanager.h"
 
 /**
  * @brief main

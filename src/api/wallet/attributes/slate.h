@@ -6,6 +6,13 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
+#include "signature.h"
+#include "com.h"
+#include "error.h"
+
+/**
+ * @brief The SlateState enum
+ */
 enum class SlateState {
     S1, // Standard: Sender has created initial Slate
     S2, // Standard: Recipient has added output, excess, partial sig
@@ -16,62 +23,53 @@ enum class SlateState {
     Unknown
 };
 
-inline SlateState slateStateFromString(const QString &str)
-{
-    if (str == "S1") {
-        return SlateState::S1;
-    }
-    if (str == "S2") {
-        return SlateState::S2;
-    }
-    if (str == "S3") {
-        return SlateState::S3;
-    }
-    if (str == "I1") {
-        return SlateState::I1;
-    }
-    if (str == "I2") {
-        return SlateState::I2;
-    }
-    if (str == "I3") {
-        return SlateState::I3;
-    }
-    return SlateState::Unknown;
-}
-
-struct Signature {
-    QString nonce;
-    QString xs;
-
-    QJsonObject toJson() const
-    {
-        QJsonObject obj;
-        obj["nonce"] = nonce;
-        obj["xs"] = xs;
-        return obj;
-    }
-
-    static Signature fromJson(const QJsonObject &obj)
-    {
-        Signature sig;
-        sig.nonce = obj["nonce"].toString();
-        sig.xs = obj["xs"].toString();
-        return sig;
-    }
-};
-
 class Slate
 {
 public:
-    QString amt;
-    QString fee;
-    QString id;
-    QList<Signature> sigs;
-    QString sta;
-    QString ver;
+
+    static SlateState slateStateFromString(const QString &str);
 
     QJsonObject toJson() const;
     static Slate fromJson(const QJsonObject &obj);
+
+    QString amt() const;
+    void setAmt(const QString &newAmt);
+
+    QString fee() const;
+    void setFee(const QString &newFee);
+
+    QString id() const;
+    void setId(const QString &newId);
+
+    QList<Signature> sigs() const;
+    void setSigs(const QList<Signature> &newSigs);
+
+    QString sta() const;
+    void setSta(const QString &newSta);
+
+    QString ver() const;
+    void setVer(const QString &newVer);
+
+    QList<Com> coms() const;
+    void setComs(const QList<Com> &newComs);
+
+    Error error() const;
+    void setError(const Error &error);
+
+    QString off() const;
+    void setOff(const QString &off);
+
+private:
+    QString m_amt;
+    QString m_fee;
+    QString m_id;
+    QList<Signature> m_sigs;
+    QList<Com> m_coms;
+    QString m_sta;
+    QString m_ver;
+    QString m_off;
+    Error m_error;
+
 };
 
 #endif // SLATE_H

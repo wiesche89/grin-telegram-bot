@@ -17,30 +17,81 @@ WalletForeignApi::WalletForeignApi(QString apiUrl) :
  * @brief WalletForeignApi::buildCoinbase
  * @return
  */
-QJsonObject WalletForeignApi::buildCoinbase()
+Coinbase WalletForeignApi::buildCoinbase(int fees, int height, QString keyId)
 {
     QJsonObject params;
-    return post("build_coinbase", params);
+    params["fees"] = fees;
+    params["height"] = height;
+    params["keyId"] = QJsonValue::Null;
+
+    QJsonObject rpcJson = post("build_coinbase", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Coinbase();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return Coinbase();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Coinbase::fromJson(okObj);
 }
 
 /**
  * @brief WalletForeignApi::checkVersion
  * @return
  */
-QJsonObject WalletForeignApi::checkVersion()
+Version WalletForeignApi::checkVersion()
 {
     QJsonObject params;
-    return post("check_version", params);
+
+    QJsonObject rpcJson = post("check_version", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Version();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return Version();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Version::fromJson(okObj);
 }
 
 /**
  * @brief WalletForeignApi::finalizeTx
  * @return
  */
-QJsonObject WalletForeignApi::finalizeTx()
+Slate WalletForeignApi::finalizeTx(Slate slate)
 {
     QJsonObject params;
-    return post("finalize_tx", params);
+    QJsonArray paramsArray;
+    paramsArray.append(slate.toJson());
+    params["params"] = paramsArray;
+
+    QJsonObject rpcJson = post("finalize_tx", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return Slate();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return Slate::fromJson(okObj);
 }
 
 /**
@@ -50,42 +101,47 @@ QJsonObject WalletForeignApi::finalizeTx()
  * @param rAddr
  * @return
  */
-QJsonObject WalletForeignApi::receiveTx(QJsonObject slate, QString destAcctName, QString dest)
+Slate WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QString dest)
 {
     Q_UNUSED(destAcctName);
     Q_UNUSED(dest);
 
     QJsonObject params;
-    params["slate"] = slate;
+    params["slate"] = slate.toJson();
     params["dest_acct_name"] = QJsonValue::Null;
     params["dest"] = QJsonValue::Null;
 
-    QJsonObject response = post("receive_tx", params);
-    qDebug()<<response;
+    QJsonObject rpcJson = post("receive_tx", params);
 
-    if (response.contains("result") && response["result"].toObject().contains("Ok")) {
-        QJsonObject slate = response["result"].toObject()["Ok"].toObject();
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        Error err;
+        Slate slate;
 
-        if (slate.isEmpty()) {
-            qWarning() << "slate is empty!";
-            return QJsonObject();
-        } else {
-            return slate;
-        }
-    } else {
-        if (response.contains("result") && response["result"].toObject().contains("Err")) {
-            QJsonObject err = response["result"].toObject()["Err"].toObject();
+        err.setMessage("Unknown error: "+ QJsonDocument(rpcJson).toJson(QJsonDocument::Compact));
+        slate.setError(err);
 
-            if (err.isEmpty()) {
-                qWarning() << "error by read error message!";
-                return QJsonObject();
-            } else {
-                return err;
-            }
-        }
+        return slate;
     }
 
-    return QJsonObject();
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+
+        Error err;
+        Slate slate;
+
+        err.parseFromJson(resultObj);
+        slate.setError(err);
+
+        return slate;
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    qDebug()<<"receive";
+    qDebug()<<okObj;
+
+    return Slate::fromJson(okObj);
 }
 
 /**

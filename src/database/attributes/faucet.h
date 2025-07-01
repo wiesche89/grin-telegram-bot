@@ -3,19 +3,11 @@
 
 #include <QObject>
 
-class Faucet : public QObject
+class Faucet
 {
-    Q_OBJECT
-    Q_PROPERTY(int id READ id WRITE setId)
-    Q_PROPERTY(QString userId READ userId WRITE setUserId)
-    Q_PROPERTY(QString username READ username WRITE setUsername)
-    Q_PROPERTY(QString amount READ amount WRITE setAmount)
-    Q_PROPERTY(QString date READ date WRITE setDate)
-
 public:
-    explicit Faucet(QObject *parent = nullptr);
-    Faucet(int id, const QString &userId, const QString &username,
-           const QString &amount, const QString &date, QObject *parent = nullptr);
+    explicit Faucet();
+    Faucet(int id, const QString &userId, const QString &username, const QString &amount, const QString &date);
 
     // Getter
     int id() const;

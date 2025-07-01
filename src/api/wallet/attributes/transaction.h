@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QJsonObject>
+#include <QDebug>
 
 class Transaction
 {
@@ -43,7 +44,7 @@ public:
 
     // JSON handling
     QJsonObject toJson() const;
-    void fromJson(const QJsonObject &obj);
+    static Transaction fromJson(const QJsonObject &obj);
 
 private:
     qint64 m_amountCredited;

@@ -10,6 +10,11 @@
 #include <QNetworkReply>
 #include <QEventLoop>
 
+#include "coinbase.h"
+#include "version.h"
+#include "slate.h"
+#include "error.h"
+
 // https://docs.rs/grin_wallet_api/5.3.3/grin_wallet_api/trait.ForeignRpc.html#tymethod.receive_tx
 class WalletForeignApi : public QObject
 {
@@ -17,13 +22,14 @@ class WalletForeignApi : public QObject
 public:
     WalletForeignApi(QString apiUrl);
 
-    QJsonObject buildCoinbase();
-    QJsonObject checkVersion();
-    QJsonObject finalizeTx();
-    QJsonObject receiveTx(QJsonObject slate, QString destAcctName, QString dest);
+    Coinbase buildCoinbase(int fees, int height, QString keyId);
+    Version checkVersion();
+    Slate finalizeTx(Slate slate);
+    Slate receiveTx(Slate slate, QString destAcctName, QString dest);
 
 private:
     QJsonObject post(const QString &method, const QJsonObject &params);
+
 
     QString m_apiUrl;
     QNetworkAccessManager *m_networkManager;

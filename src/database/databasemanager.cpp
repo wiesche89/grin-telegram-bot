@@ -60,7 +60,13 @@ QSqlDatabase DatabaseManager::getDatabase() const
 }
 
 // ------------------ Donate CRUD ------------------
-bool DatabaseManager::insertDonate(const Donate& donate) {
+/**
+ * @brief DatabaseManager::insertDonate
+ * @param donate
+ * @return
+ */
+bool DatabaseManager::insertDonate(const Donate &donate)
+{
     QSqlQuery query;
     query.prepare("INSERT INTO DONATE (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
     query.addBindValue(donate.userId());
@@ -70,7 +76,13 @@ bool DatabaseManager::insertDonate(const Donate& donate) {
     return query.exec();
 }
 
-Donate* DatabaseManager::getDonateById(int id) {
+/**
+ * @brief DatabaseManager::getDonateById
+ * @param id
+ * @return
+ */
+Donate *DatabaseManager::getDonateById(int id)
+{
     QSqlQuery query;
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM DONATE WHERE Id = ?");
     query.addBindValue(id);
@@ -84,7 +96,13 @@ Donate* DatabaseManager::getDonateById(int id) {
     return nullptr;
 }
 
-bool DatabaseManager::updateDonate(const Donate& donate) {
+/**
+ * @brief DatabaseManager::updateDonate
+ * @param donate
+ * @return
+ */
+bool DatabaseManager::updateDonate(const Donate &donate)
+{
     QSqlQuery query;
     query.prepare("UPDATE DONATE SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
     query.addBindValue(donate.userId());
@@ -95,7 +113,13 @@ bool DatabaseManager::updateDonate(const Donate& donate) {
     return query.exec();
 }
 
-bool DatabaseManager::deleteDonate(int id) {
+/**
+ * @brief DatabaseManager::deleteDonate
+ * @param id
+ * @return
+ */
+bool DatabaseManager::deleteDonate(int id)
+{
     QSqlQuery query;
     query.prepare("DELETE FROM DONATE WHERE Id = ?");
     query.addBindValue(id);
@@ -103,7 +127,13 @@ bool DatabaseManager::deleteDonate(int id) {
 }
 
 // ------------------ Faucet CRUD ------------------
-bool DatabaseManager::insertFaucet(const Faucet& faucet) {
+/**
+ * @brief DatabaseManager::insertFaucet
+ * @param faucet
+ * @return
+ */
+bool DatabaseManager::insertFaucet(const Faucet &faucet)
+{
     QSqlQuery query;
     query.prepare("INSERT INTO FAUCET (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
     query.addBindValue(faucet.userId());
@@ -113,21 +143,33 @@ bool DatabaseManager::insertFaucet(const Faucet& faucet) {
     return query.exec();
 }
 
-Faucet* DatabaseManager::getFaucetById(int id) {
+/**
+ * @brief DatabaseManager::getFaucetById
+ * @param id
+ * @return
+ */
+Faucet DatabaseManager::getFaucetById(int id)
+{
     QSqlQuery query;
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM FAUCET WHERE Id = ?");
     query.addBindValue(id);
     if (query.exec() && query.next()) {
-        return new Faucet(query.value(0).toInt(),
-                          query.value(1).toString(),
-                          query.value(2).toString(),
-                          query.value(3).toString(),
-                          query.value(4).toString());
+        return Faucet(query.value(0).toInt(),
+                      query.value(1).toString(),
+                      query.value(2).toString(),
+                      query.value(3).toString(),
+                      query.value(4).toString());
     }
-    return nullptr;
+    return Faucet();
 }
 
-bool DatabaseManager::updateFaucet(const Faucet& faucet) {
+/**
+ * @brief DatabaseManager::updateFaucet
+ * @param faucet
+ * @return
+ */
+bool DatabaseManager::updateFaucet(const Faucet &faucet)
+{
     QSqlQuery query;
     query.prepare("UPDATE FAUCET SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
     query.addBindValue(faucet.userId());
@@ -138,14 +180,26 @@ bool DatabaseManager::updateFaucet(const Faucet& faucet) {
     return query.exec();
 }
 
-bool DatabaseManager::deleteFaucet(int id) {
+/**
+ * @brief DatabaseManager::deleteFaucet
+ * @param id
+ * @return
+ */
+bool DatabaseManager::deleteFaucet(int id)
+{
     QSqlQuery query;
     query.prepare("DELETE FROM FAUCET WHERE Id = ?");
     query.addBindValue(id);
     return query.exec();
 }
 
-QString DatabaseManager::getFaucetAmountForToday(const QString& userId) {
+/**
+ * @brief DatabaseManager::getFaucetAmountForToday
+ * @param userId
+ * @return
+ */
+QString DatabaseManager::getFaucetAmountForToday(const QString &userId)
+{
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
     QSqlQuery query;
@@ -158,10 +212,8 @@ QString DatabaseManager::getFaucetAmountForToday(const QString& userId) {
     query.addBindValue(today);
 
     if (query.exec() && query.next()) {
-
         qlonglong total = query.value(0).toDouble();
-        return QString::number(total, 'f',0);
-
+        return QString::number(total, 'f', 0);
 
         return query.value(0).toString();
     }

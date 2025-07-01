@@ -34,7 +34,7 @@ public:
 
     // Faucet CRUD
     bool insertFaucet(const Faucet& faucet);
-    Faucet* getFaucetById(int id);
+    Faucet getFaucetById(int id);
     bool updateFaucet(const Faucet& faucet);
     bool deleteFaucet(int id);
     QString getFaucetAmountForToday(const QString& userId);

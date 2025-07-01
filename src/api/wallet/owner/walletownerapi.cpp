@@ -243,6 +243,17 @@ QByteArray WalletOwnerApi::generateAuthHeader() const
 
 /**
  * @brief WalletOwnerApi::initSendTx
+ * Initiates a new transaction as the sender, creating a new Slate object containing the sender’s inputs, change outputs,
+ * and public signature data. This slate can then be sent to the recipient to continue the transaction via the Foreign API’s receive_tx method.
+ * When a transaction is created, the wallet must also lock inputs (and create unconfirmed outputs) corresponding to the transaction created in the slate,
+ * so that the wallet doesn’t attempt to re-spend outputs that are already included in a transaction before the
+ * transaction is confirmed. This method also returns a function that will perform that locking, and it is up to the
+ * caller to decide the best time to call the lock function (via the tx_lock_outputs method). If the exchange method is
+ * intended to be synchronous (such as via a direct http call,) then the lock call can wait until the response is confirmed.
+ * If it is asynchronous, (such as via file transfer,) the lock call should happen immediately (before the file is sent to the recipient).
+ * If the send_args InitTxSendArgs, of the args, field is Some, this function will attempt to send the slate
+ * back to the sender using the slatepack sync send (TOR). If providing this argument, check the state field of the slate to see
+ * if the sync_send was successful (it should be S2 if the sync sent successfully). It will also post the transction if the post_tx field is set.
  * @param args
  * @return
  */
@@ -257,6 +268,10 @@ QJsonObject WalletOwnerApi::initSendTx(const QJsonObject &args)
 
 /**
  * @brief WalletOwnerApi::issueInvoiceTx
+ * Issues a new invoice transaction slate, essentially a request for payment.
+ * The slate created by this function will contain the amount, an output for the amount,
+ * as well as round 1 of singature creation complete. The slate should then be send to the payer,
+ * who should add their inputs and signature data and return the slate via the Foreign API’s finalize_tx method.
  * @return
  */
 QJsonObject WalletOwnerApi::issueInvoiceTx()
@@ -268,7 +283,29 @@ QJsonObject WalletOwnerApi::issueInvoiceTx()
 }
 
 /**
+ * @brief WalletOwnerApi::newApiInstance
+ * Create a new API instance with the given wallet instance. All subsequent API
+ * calls will operate on this instance of the wallet.
+ * Each method will call the WalletBackend’s open_with_credentials (initialising a keychain with the master seed,)
+ * perform its operation, then close the keychain with a call to close
+ * @return
+ */
+QJsonObject WalletOwnerApi::newApiInstance()
+{
+    QJsonObject params;
+    params["token"] = QString(m_openWalletToken.toHex());
+
+    return postEncrypted("new", params);
+}
+
+/**
  * @brief WalletOwnerApi::nodeHeight
+ * Retrieves the last known height known by the wallet. This is determined as follows:
+ * If the wallet can successfully contact its configured node, the reported node height is returned,
+ * and the updated_from_node field in the response is true
+ * If the wallet cannot contact the node, this function returns the maximum height of all outputs contained within the wallet,
+ * and the updated_from_node fields in the response is set to false.
+ * Clients should generally ensure the updated_from_node field is returned as true before assuming the height for any operation.
  * @return
  */
 QJsonObject WalletOwnerApi::nodeHeight()
@@ -281,6 +318,10 @@ QJsonObject WalletOwnerApi::nodeHeight()
 
 /**
  * @brief WalletOwnerApi::finalizeTx
+ * Finalizes a transaction, after all parties have filled in both rounds of Slate generation.
+ * This step adds all participants partial signatures to create the final signature, resulting in a final transaction that is ready to post to a node.
+ * Note that this function DOES NOT POST the transaction to a node for validation. This is done in separately via the post_tx function.
+ * This function also stores the final transaction in the user’s wallet files for retrieval via the get_stored_tx function.
  * @param slate
  * @return
  */
@@ -311,6 +352,8 @@ QJsonObject WalletOwnerApi::finalizeTx(const QJsonObject slate)
 
 /**
  * @brief WalletOwnerApi::getMnemonic
+ * Return the BIP39 mnemonic for the given wallet. This function will decrypt the wallet’s seed
+ * file with the given password, and thus does not need the wallet to be open.
  * @return
  */
 QJsonObject WalletOwnerApi::getMnemonic()
@@ -321,12 +364,23 @@ QJsonObject WalletOwnerApi::getMnemonic()
 
 /**
  * @brief WalletOwnerApi::getRewindHash
- * @return
+ * @return Return the rewind hash of the wallet. The rewind hash when shared,
+ * help third-party to retrieve informations (outputs, balance, …) that belongs to this wallet.
  */
-QJsonObject WalletOwnerApi::getRewindHash()
+RewindHash WalletOwnerApi::getRewindHash()
 {
     QJsonObject args;
-    return postEncrypted("get_rewind_hash", args);
+    QJsonObject rpcJson = postEncrypted("get_rewind_hash", args);
+
+    if (rpcJson.contains("result") && rpcJson["result"].isObject()) {
+        QJsonObject result = rpcJson["result"].toObject();
+        if (result.contains("Ok") && result["Ok"].isString()) {
+            QString rewindHashValue = result["Ok"].toString();
+            return RewindHash(rewindHashValue);
+        }
+    }
+
+    return RewindHash();
 }
 
 /**
@@ -334,7 +388,15 @@ QJsonObject WalletOwnerApi::getRewindHash()
  * Retrieve the public slatepack address associated with the active account at the given derivation path.
  * In this case, an “address” means a Slatepack Address corresponding to a private key derived as follows:
  * e.g. The default parent account is at
- * derivation_index - The index along the derivation path to retrieve an address for
+ * m/0/0
+ * With output blinding factors created as
+ * m/0/0/0 m/0/0/1 etc…
+ * The corresponding public address derivation path would be at:
+ * m/0/1
+ * With addresses created as:
+ * m/0/1/0 m/0/1/1 etc…
+ * Note that these addresses correspond to the public keys used in the addresses of TOR hidden services
+ * configured by the wallet listener.
  * @return
  */
 QString WalletOwnerApi::getSlatepackAddress()
@@ -363,6 +425,7 @@ QString WalletOwnerApi::getSlatepackAddress()
 
 /**
  * @brief WalletOwnerApi::getSlatepackSecretKey
+ * Retrieve the private ed25519 slatepack key at the given derivation index. Currently used to decrypt encrypted slatepack messages.
  * @return
  */
 QJsonObject WalletOwnerApi::getSlatepackSecretKey()
@@ -373,6 +436,10 @@ QJsonObject WalletOwnerApi::getSlatepackSecretKey()
 
 /**
  * @brief WalletOwnerApi::getStoredTx
+ * Retrieves the stored transaction associated with a TxLogEntry.
+ * Can be used even after the transaction has completed.
+ * Either the Transaction Log ID or the Slate UUID must be supplied.
+ * If both are supplied, the Transaction Log ID is preferred.
  * @return
  */
 QJsonObject WalletOwnerApi::getStoredTx(QString slateId, int id)
@@ -391,6 +458,12 @@ QJsonObject WalletOwnerApi::getStoredTx(QString slateId, int id)
 
 /**
  * @brief WalletOwnerApi::getTopLevelDirectory
+ * Retrieve the top-level directory for the wallet.
+ * This directory should contain the grin-wallet.toml file and the wallet_data directory that contains the wallet seed + data files.
+ * Future versions of the wallet API will support multiple wallets within the top level directory.
+ * The top level directory defaults to (in order of precedence):
+ * The current directory, from which grin-wallet or the main process was run, if it contains a grin-wallet.toml file.
+ * ~/.grin// otherwise
  * @return
  */
 QJsonObject WalletOwnerApi::getTopLevelDirectory()
@@ -401,6 +474,11 @@ QJsonObject WalletOwnerApi::getTopLevelDirectory()
 
 /**
  * @brief WalletOwnerApi::getUpdaterMessages
+ * Retrieve messages from the updater thread, up to count number of messages.
+ * The resulting array will be ordered newest messages first. The updater will store a maximum of 10,000 messages,
+ * after which it will start removing the oldest messages as newer ones are created.
+ * Messages retrieved via this method are removed from the internal queue, so calling this function at a specified
+ * interval should result in a complete message history.
  * @return
  */
 QJsonObject WalletOwnerApi::getUpdaterMessages()
@@ -411,6 +489,7 @@ QJsonObject WalletOwnerApi::getUpdaterMessages()
 
 /**
  * @brief WalletOwnerApi::retrieveSummaryInfo
+ * Returns summary information from the active account in the wallet.
  * @param refreshFromNode
  * @param minimum_confirmations
  */
@@ -441,6 +520,7 @@ QJsonObject WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int minimu
 
 /**
  * @brief WalletOwnerApi::retrieveTxs
+ * Returns a list of Transaction Log Entries from the active account in the wallet.
  * @return
  */
 QJsonArray WalletOwnerApi::retrieveTxs()
@@ -471,6 +551,13 @@ QJsonArray WalletOwnerApi::retrieveTxs()
 
 /**
  * @brief WalletOwnerApi::scan
+ * Scans the entire UTXO set from the node, identify which outputs belong to the given wallet update the wallet state to be consistent
+ * with what’s currently in the UTXO set.
+ * This function can be used to repair wallet state, particularly by restoring outputs that may be missing if
+ * the wallet owner has cancelled transactions locally that were then successfully posted to the chain.
+ * This operation scans the entire chain, and is expected to be time intensive. It is imperative that no other processes should be trying
+ * to use the wallet at the same time this function is running.
+ * When an output is found that doesn’t exist in the wallet, a corresponding TxLogEntry is created.
  * @return
  */
 QJsonObject WalletOwnerApi::scan()
@@ -483,16 +570,38 @@ QJsonObject WalletOwnerApi::scan()
 
 /**
  * @brief WalletOwnerApi::scanRewindHash
+ * Scans the entire UTXO set from the node, identify which outputs belong to the given rewind hash view wallet.
+ * This function can be used to retrieve outputs informations (outputs, balance, …) from a rewind hash view wallet.
+ * This operation scans the entire chain, and is expected to be time intensive. It is imperative that no other processes
+ * should be trying to use the wallet at the same time this function is running.
  * @return
  */
-QJsonObject WalletOwnerApi::scanRewindHash()
+ViewWallet WalletOwnerApi::scanRewindHash(RewindHash rewindHash, int startHeight)
 {
-    QJsonObject args;
-    return postEncrypted("scan_rewind_hash", args);
+    QJsonObject params;
+    params["rewind_hash"] = rewindHash.rewindHash();
+    params["start_height"] = startHeight;
+
+    QJsonObject rpcJson = postEncrypted("scan_rewind_hash", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return ViewWallet();
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
+        return ViewWallet();
+    }
+
+    QJsonObject okObj = resultObj["Ok"].toObject();
+
+    return ViewWallet::fromJson(okObj);
 }
 
 /**
  * @brief WalletOwnerApi::setActiveAccount
+ * Sets the wallet’s currently active account. This sets the BIP32 parent path used for most key-derivation operations.
  * @return
  */
 QJsonObject WalletOwnerApi::setActiveAccount()
@@ -505,6 +614,8 @@ QJsonObject WalletOwnerApi::setActiveAccount()
 
 /**
  * @brief WalletOwnerApi::setTopLevelDirectory
+ * Set the top-level directory for the wallet. This directory can be empty, and will be created during a subsequent calls to create_config
+ * Set get_top_level_directory for a description of the top level directory and default paths.
  * @return
  */
 QJsonObject WalletOwnerApi::setTopLevelDirectory()
@@ -516,25 +627,28 @@ QJsonObject WalletOwnerApi::setTopLevelDirectory()
 
 /**
  * @brief WalletOwnerApi::setTorConfig
+ * Set the TOR configuration for this instance of the OwnerAPI, used during init_send_tx when send args are present and a TOR address is specified
  * @return
  */
 QJsonObject WalletOwnerApi::setTorConfig()
 {
     // Create the "tor_config" JSON object
-     QJsonObject torConfig;
-     torConfig["use_tor_listener"] = true;
-     torConfig["socks_proxy_addr"] = "127.0.0.1:3415";
-     torConfig["send_config_dir"] = ".";
+    QJsonObject torConfig;
+    torConfig["use_tor_listener"] = true;
+    torConfig["socks_proxy_addr"] = "127.0.0.1:3415";
+    torConfig["send_config_dir"] = ".";
 
-     // Nest "tor_config" inside a "params" object
-     QJsonObject params;
-     params["tor_config"] = torConfig;
+    // Nest "tor_config" inside a "params" object
+    QJsonObject params;
+    params["tor_config"] = torConfig;
 
     return postEncrypted("set_tor_config", params);
 }
 
 /**
  * @brief WalletOwnerApi::slateFromSlatepackMessage
+ * Extract the slate from the given slatepack. If the slatepack payload is encrypted, attempting to decrypt with keys at the given
+ * address derivation path indices.
  * @return
  */
 QJsonObject WalletOwnerApi::slateFromSlatepackMessage(QString message)
@@ -567,6 +681,16 @@ QJsonObject WalletOwnerApi::slateFromSlatepackMessage(QString message)
 
 /**
  * @brief WalletOwnerApi::startUpdater
+ * Starts a background wallet update thread, which performs the wallet update process automatically at the frequency specified.
+ * The updater process is as follows:
+ * Reconcile the wallet outputs against the node’s current UTXO set, confirming transactions if needs be.
+ * Look up transactions by kernel in cases where it’s necessary (for instance, when there are no change outputs for a
+ * transaction and transaction status can’t be inferred from the output state.
+ * Incrementally perform a scan of the UTXO set, correcting outputs and transactions where their local
+ * state differs from what’s on-chain. The wallet stores the last position scanned, and will scan back 100 blocks worth of UTXOs on each update,
+ * to correct any differences due to forks or otherwise.
+ * Note that an update process can take a long time, particularly when the entire UTXO set is being scanned for correctness.
+ * The wallet status can be determined by calling the get_updater_messages.
  * @return
  */
 QJsonObject WalletOwnerApi::startUpdater()
@@ -578,6 +702,7 @@ QJsonObject WalletOwnerApi::startUpdater()
 
 /**
  * @brief WalletOwnerApi::stopUpdater
+ * Stops the background update thread. If the updater is currently updating, the thread will stop after the next update
  * @return
  */
 QJsonObject WalletOwnerApi::stopUpdater()
@@ -588,96 +713,12 @@ QJsonObject WalletOwnerApi::stopUpdater()
 }
 
 /**
- * @brief WalletOwnerApi::httpSend
- * @param amountStr
- * @param url
- * @param ttl_blocks
- * @return
- */
-QJsonObject WalletOwnerApi::httpSend(QString amount, QString url, QVariant ttlBlocks)
-{
-    QJsonObject txData;
-
-    ///----------------------------------------------------------------------------------
-    /// The API method to start a transaction is: init_send_tx. This initiates a new
-    /// transaction as the sender, creating a new Slate object containing the sender's
-    /// inputs, change outputs, and public signature data. When a transaction is created,
-    /// the wallet must also lock inputs (and create unconfirmed outputs) corresponding
-    /// to the transaction created in the slate. This is so the wallet doesn't attempt
-    /// to re-spend outputs that are already included in a transaction before the
-    /// transaction is confirmed.
-    ///----------------------------------------------------------------------------------
-    QJsonObject slate;
-    QString tx_slate_id;
-
-    if (!ttlBlocks.isValid()) {
-        txData["ttl_blocks"] = QJsonValue::Null;
-    } else {
-        txData["ttl_blocks"] = QJsonValue::Null;
-    }
-    txData["src_acct_name"] = QJsonValue::Null;
-    txData["amount"] = amount;
-    txData["minimum_confirmations"] = 10;
-    txData["max_outputs"] = 500;
-    txData["num_change_outputs"] = 1;
-    txData["selection_strategy_is_use_all"] = false;
-    txData["target_slate_version"] = QJsonValue::Null;
-    txData["payment_proof_recipient_address"] = QJsonValue::Null;
-    txData["send_args"] = QJsonValue::Null;
-
-    slate = initSendTx(txData);
-    qDebug() << "repsonse initSendTx: " << slate;
-
-    tx_slate_id = slate["id"].toString();
-    qDebug() << "tx_slate_id: " << tx_slate_id;
-
-    ///----------------------------------------------------------------------------------
-    ///To create the Slatepack Message from the slate, we need to call
-    /// create_slatepack_message and pass the slate like this:
-    ///----------------------------------------------------------------------------------
-    QString slatepack = createSlatepackMessage(slate, QJsonArray(), 0);
-    qDebug() << "slatepack: " << slatepack;
-
-    ///----------------------------------------------------------------------------------
-    ///Next, we need to call the method: receive_tx from the Foreign API which receives
-    /// a transaction created by another party, returning the modified Slate object,
-    /// modified with the recipient's output for the transaction amount, and public
-    /// signature data. This slate can then be sent back to the sender to finalize
-    /// the transaction via the Owner API's finalize_tx method. This function creates
-    /// a single output for the full amount and sets to a status of 'Awaiting finalization'.
-    /// It will remain in this state until the wallet finds the corresponding output on the
-    /// chain, at which point it will become 'Unspent'. The slate will be updated with the
-    /// results of signing round 1 and 2, adding the recipient's public nonce, public
-    /// excess value, and partial signature to the slate.
-    /// Also creates a corresponding Transaction Log Entry in the wallet's transaction log.
-    /// The positional parameters for this method are the next:
-    /// slate - The transaction Slate. The slate should contain the results of the sender's
-    /// round 1 (e.g, public nonce and public excess value).
-    /// dest_acct_name - The name of the account into which the slate should be received.
-    /// If None, the default account is used.
-    /// r_addr - If included, attempts to send the slate back to the sender using
-    /// the Slatepack sync send (TOR). If providing this argument, check the state field
-    /// of the slate to see if the sync_send was successful (it should be S3 if the
-    /// synced send sent successfully).
-    ///----------------------------------------------------------------------------------
-    WalletForeignApi walletForeignApi(url);
-    QJsonObject slate2 = walletForeignApi.receiveTx(slate, "", "");
-
-    QJsonObject txLockOutput = txLockOutputs(slate);
-
-    QJsonObject finalized = finalizeTx(slate2);
-
-    QJsonObject posted = postTx(finalized, false);
-
-    return {
-               {"tx_slate_id", tx_slate_id},
-               {"finalized", finalized},
-               {"posted", posted}
-    };
-}
-
-/**
  * @brief WalletOwnerApi::cancelTx
+ * Cancels a transaction. This entails:
+ * Setting the transaction status to either TxSentCancelled or TxReceivedCancelled
+ * Deleting all change outputs or recipient outputs associated with the transaction
+ * Setting the status of all assocatied inputs from Locked to Spent so they can be used in new transactions.
+ * Transactions can be cancelled by transaction log id or slate id (call with either set to Some, not both)
  * @param id
  */
 QJsonObject WalletOwnerApi::cancelTx(QString txSlateId, int id)
@@ -696,6 +737,12 @@ QJsonObject WalletOwnerApi::cancelTx(QString txSlateId, int id)
 
 /**
  * @brief WalletOwnerApi::changePassword
+ * Changes a wallet’s password, meaning the old seed file is decrypted with the old password,
+ * and a new seed file is created with the same mnemonic and encrypted with the new password.
+ * This function temporarily backs up the old seed file until a test-decryption of the new file is
+ * confirmed to contain the same seed as the original seed file, at which point the backup is deleted.
+ * If this operation fails for an unknown reason, the backup file will still exist in the wallet’s data
+ * directory encrypted with the old password.
  * @return
  */
 QJsonObject WalletOwnerApi::changePassword()
@@ -706,6 +753,7 @@ QJsonObject WalletOwnerApi::changePassword()
 
 /**
  * @brief WalletOwnerApi::closeWallet
+ * Close a wallet, removing the master seed from memory.
  * @return
  */
 QJsonObject WalletOwnerApi::closeWallet()
@@ -716,6 +764,7 @@ QJsonObject WalletOwnerApi::closeWallet()
 
 /**
  * @brief WalletOwnerApi::createAccountPath
+ * Creates a new ‘account’, which is a mapping of a user-specified label to a BIP32 path
  * @return
  */
 QJsonObject WalletOwnerApi::createAccountPath()
@@ -724,6 +773,14 @@ QJsonObject WalletOwnerApi::createAccountPath()
     return postEncrypted("create_account_path", args);
 }
 
+/**
+ * @brief WalletOwnerApi::createConfig
+ * Create a grin-wallet.toml configuration file in the top-level directory for the specified chain type.
+ * A custom WalletConfig and/or grin LoggingConfig may optionally be provided, otherwise defaults will be used.
+ * Paths in the configuration file will be updated to reflect the top level directory,
+ * so path-related values in the optional configuration structs will be ignored.
+ * @return
+ */
 QJsonObject WalletOwnerApi::createConfig()
 {
     QJsonObject args;
@@ -732,7 +789,8 @@ QJsonObject WalletOwnerApi::createConfig()
 
 /**
  * @brief WalletOwnerApi::postTx
- * @param finalize
+ * Posts a completed transaction to the listening node for validation and inclusion in a block for mining.
+ * @param
  * @return
  */
 QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
@@ -747,13 +805,23 @@ QJsonObject WalletOwnerApi::postTx(QJsonObject slate, bool fluff)
 
 /**
  * @brief WalletOwnerApi::processInvoiceTx
+ * Processes an invoice tranaction created by another party, essentially a request for payment.
+ * The incoming slate should contain a requested amount, an output created by the invoicer convering the amount,
+ * and part 1 of signature creation completed. This function will add inputs equalling the amount + fees,
+ * as well as perform round 1 and 2 of signature creation.
+ * Callers should note that no prompting of the user will be done by this function it is up to the caller to present
+ * the request for payment to the user and verify that payment should go ahead.
+ * If the send_args InitTxSendArgs, of the args, field is Some, this function will attempt
+ * to send the slate back to the initiator using the slatepack sync send (TOR). If providing this argument,
+ * check the state field of the slate to see if the sync_send was successful (it should be I3 if the sync sent successfully).
+ * This function also stores the final transaction in the user’s wallet files for retrieval via the get_stored_tx function.
  * @return
  */
-QJsonObject WalletOwnerApi::processInvoiceTx(QJsonObject slate, QJsonObject args)
+QJsonObject WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
-    params["slate"] = slate;
+    params["slate"] = slate.toJson();
     params["args"] = args;
 
     QJsonObject response = postEncrypted("process_invoice_tx", params);
@@ -784,19 +852,8 @@ QJsonObject WalletOwnerApi::processInvoiceTx(QJsonObject slate, QJsonObject args
 }
 
 /**
- * @brief WalletOwnerApi::queryTxs
- * @return
- */
-QJsonObject WalletOwnerApi::queryTxs()
-{
-    QJsonObject params;
-    params["token"] = QString(m_openWalletToken.toHex());
-
-    return postEncrypted("query_txs", params);
-}
-
-/**
  * @brief WalletOwnerApi::retrieveOutputs
+ * Returns a list of outputs from the active account in the wallet.
  * @return
  */
 QJsonObject WalletOwnerApi::retrieveOutputs()
@@ -809,6 +866,9 @@ QJsonObject WalletOwnerApi::retrieveOutputs()
 
 /**
  * @brief WalletOwnerApi::retrievePaymentProof
+ * Returns a single, exportable PaymentProof from a completed transaction within the wallet.
+ * The transaction must have been created with a payment proof, and the transaction must be complete in order for a payment proof to be returned.
+ * Either the tx_id or tx_slate_id argument must be provided, or the function will return an error.
  * @return
  */
 QJsonObject WalletOwnerApi::retrievePaymentProof()
@@ -821,19 +881,29 @@ QJsonObject WalletOwnerApi::retrievePaymentProof()
 
 /**
  * @brief WalletOwnerApi::txLockOutputs
+ * Locks the outputs associated with the inputs to the transaction in the given Slate, making them unavailable for use in further transactions.
+ * This function is called by the sender, (or more generally, all parties who have put inputs into the transaction,)
+ * and must be called before the corresponding call to finalize_tx that completes the transaction.
+ * Outputs will generally remain locked until they are removed from the chain, at which point they will become Spent.
+ * It is commonplace for transactions not to complete for various reasons over which a particular wallet has no control.
+ * For this reason, cancel_tx can be used to manually unlock outputs and return them to the Unspent state.
  * @param slate
  * @return
  */
-QJsonObject WalletOwnerApi::txLockOutputs(QJsonObject slate)
+QJsonObject WalletOwnerApi::txLockOutputs(Slate slate)
 {
     QJsonObject args;
     args["token"] = QString(m_openWalletToken.toHex());
-    args["slate"] = slate;
+    args["slate"] = slate.toJson();
     return postEncrypted("tx_lock_outputs", args);
 }
 
 /**
  * @brief WalletOwnerApi::verifyPaymentProof
+ * Finalizes a transaction, after all parties have filled in both rounds of Slate generation. This step adds all participants partial
+ * signatures to create the final signature, resulting in a final transaction that is ready to post to a node.
+ * Note that this function DOES NOT POST the transaction to a node for validation. This is done in separately via the post_tx function.
+ * This function also stores the final transaction in the user’s wallet files for retrieval via the get_stored_tx function.
  * @return
  */
 QJsonObject WalletOwnerApi::verifyPaymentProof()
@@ -867,16 +937,43 @@ QJsonObject WalletOwnerApi::initSecureApi()
 
 /**
  * @brief WalletOwnerApi::accounts
+ * Returns a list of accounts stored in the wallet (i.e. mappings between user-specified labels and BIP32 derivation paths.
  * @return
  */
-QJsonObject WalletOwnerApi::accounts()
+QList<Account> WalletOwnerApi::accounts()
 {
-    QJsonObject args;
-    return postEncrypted("accounts", args);
+    QJsonObject params;
+    QList<Account> accounts;
+
+    params["token"] = QString(m_openWalletToken.toHex());
+
+    QJsonObject rpcJson = postEncrypted("accounts", params);
+
+    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
+        return accounts;
+    }
+
+    QJsonObject resultObj = rpcJson["result"].toObject();
+
+    if (!resultObj.contains("Ok") || !resultObj["Ok"].isArray()) {
+        return accounts;
+    }
+
+    QJsonArray accountsArray = resultObj["Ok"].toArray();
+
+    for (const QJsonValue &val : accountsArray) {
+        if (val.isObject()) {
+            Account account = Account::fromJson(val.toObject());
+            accounts.append(account);
+        }
+    }
+
+    return accounts;
 }
 
 /**
  * @brief WalletOwnerApi::buildOutputs
+ * Builds an output
  * @return
  */
 QJsonObject WalletOwnerApi::buildOutputs()
@@ -887,6 +984,9 @@ QJsonObject WalletOwnerApi::buildOutputs()
 
 /**
  * @brief WalletOwnerApi::openWallet
+ * Opens a wallet, populating the internal keychain with the encrypted seed, and optionally returning a keychain_mask token to the
+ * caller to provide in all future calls. If using a mask, the seed will be stored in-memory XORed against
+ * the keychain_mask, and will not be useable if the mask is not provided.
  * @param name
  * @param password
  */
@@ -916,16 +1016,17 @@ QJsonObject WalletOwnerApi::openWallet(QString name, QString password)
 
 /**
  * @brief WalletOwnerApi::createSlatepackMessage
+ * Create a slatepack from a given slate, optionally encoding the slate with the provided recipient public keys
  * @param slate
  * @param recipients
  * @param senderIndex
  * @return
  */
-QString WalletOwnerApi::createSlatepackMessage(QJsonObject slate, QJsonArray recipients, int senderIndex)
+QString WalletOwnerApi::createSlatepackMessage(Slate slate, QJsonArray recipients, int senderIndex)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
-    params["slate"] = slate;
+    params["slate"] = slate.toJson();
     params["recipients"] = recipients;
     params["sender_index"] = senderIndex;
 
@@ -949,6 +1050,11 @@ QString WalletOwnerApi::createSlatepackMessage(QJsonObject slate, QJsonArray rec
 
 /**
  * @brief WalletOwnerApi::createWallet
+ * Creates a new wallet seed and empty wallet database in the wallet_data directory of the top level directory.
+ * Paths in the configuration file will be updated to reflect the top level directory, so path-related values in
+ * the optional configuration structs will be ignored.
+ * The wallet files must not already exist, and ~The grin-wallet.toml file must
+ * exist in the top level directory (can be created via a call to create_config)
  * @return
  */
 QJsonObject WalletOwnerApi::createWallet()
@@ -959,6 +1065,8 @@ QJsonObject WalletOwnerApi::createWallet()
 
 /**
  * @brief WalletOwnerApi::decodeSlatepackMessage
+ * Decode an armored slatepack, returning a Slatepack object that can be viewed, manipulated, output as json, etc.
+ * The resulting slatepack will be decrypted by this wallet if possible
  * @return
  */
 QJsonObject WalletOwnerApi::decodeSlatepackMessage()
@@ -969,6 +1077,9 @@ QJsonObject WalletOwnerApi::decodeSlatepackMessage()
 
 /**
  * @brief WalletOwnerApi::deleteWallet
+ * Deletes a wallet, removing the config file, seed file and all data files.
+ * Obviously, use with extreme caution and plenty of user warning
+ * Highly recommended that the wallet be explicitly closed first via the close_wallet function.
  * @return
  */
 QJsonObject WalletOwnerApi::deleteWallet()

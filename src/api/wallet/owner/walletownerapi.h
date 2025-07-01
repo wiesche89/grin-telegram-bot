@@ -18,6 +18,9 @@
 #include <openssl/ecdh.h>
 
 #include "walletforeignapi.h"
+#include "rewindhash.h"
+#include "viewwallet.h"
+#include "account.h"
 
 // https://docs.rs/grin_wallet_api/5.3.3/grin_wallet_api/trait.OwnerRpc.html
 class WalletOwnerApi : public QObject
@@ -29,20 +32,20 @@ public:
 
     bool hasConnection() const;
 
-    QJsonObject accounts();
+    QList<Account> accounts();
     QJsonObject buildOutputs();
     QJsonObject cancelTx(QString txSlateId, int id);
     QJsonObject changePassword();
     QJsonObject closeWallet();
     QJsonObject createAccountPath();
     QJsonObject createConfig();
-    QString createSlatepackMessage(QJsonObject slate, QJsonArray recipients, int senderIndex);
+    QString createSlatepackMessage(Slate slate, QJsonArray recipients, int senderIndex);
     QJsonObject createWallet();
     QJsonObject decodeSlatepackMessage();
     QJsonObject deleteWallet();
     QJsonObject finalizeTx(const QJsonObject slate);
     QJsonObject getMnemonic();
-    QJsonObject getRewindHash();
+    RewindHash getRewindHash();
     QString getSlatepackAddress();
     QJsonObject getSlatepackSecretKey();
     QJsonObject getStoredTx(QString slateId, int id);
@@ -51,27 +54,25 @@ public:
     QJsonObject initSecureApi();
     QJsonObject initSendTx(const QJsonObject &args);
     QJsonObject issueInvoiceTx();
+    QJsonObject newApiInstance();
     QJsonObject nodeHeight();
     QJsonObject openWallet(QString name, QString password);
     QJsonObject postTx(QJsonObject slate, bool fluff = false);
-    QJsonObject processInvoiceTx(QJsonObject slate, QJsonObject args);
-    QJsonObject queryTxs();
+    QJsonObject processInvoiceTx(Slate slate, QJsonObject args);
     QJsonObject retrieveOutputs();
     QJsonObject retrievePaymentProof();
     QJsonObject retrieveSummaryInfo(bool refreshFromNode, int minimum_confirmations);
     QJsonArray retrieveTxs();
     QJsonObject scan();
-    QJsonObject scanRewindHash();
+    ViewWallet scanRewindHash(RewindHash rewindHash, int startHeight);
     QJsonObject setActiveAccount();
     QJsonObject setTopLevelDirectory();
     QJsonObject setTorConfig();
     QJsonObject slateFromSlatepackMessage(QString message);
     QJsonObject startUpdater();
     QJsonObject stopUpdater();
-    QJsonObject txLockOutputs(QJsonObject slate);
+    QJsonObject txLockOutputs(Slate slate);
     QJsonObject verifyPaymentProof();
-
-    QJsonObject httpSend(QString amount, QString url, QVariant ttlBlocks = QVariant());
 
 private:
     QJsonObject post(const QString &method, const QJsonObject &params);

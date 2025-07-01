@@ -32,8 +32,8 @@ private:
     QString readFileToString(const QString &filePath);
     bool isAdmin(qlonglong id);
 
-    QString handleSlateS1State(QJsonObject slate, TelegramBotMessage message);
-    QString handleSlateI1State(QJsonObject slate, TelegramBotMessage message);
+    QString handleSlateS1State(Slate slate, TelegramBotMessage message);
+    QString handleSlateI1State(Slate slate, TelegramBotMessage message);
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;
