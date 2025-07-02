@@ -11,7 +11,7 @@ public:
 
     // Getter
     QString features() const;
-    uint8_t feeShift() const;
+    quint64 feeShift() const;
     quint64 fee() const;
     quint64 lockHeight() const;
     QString excess() const;
@@ -19,7 +19,7 @@ public:
 
     // Setter
     void setFeatures(const QString &features);
-    void setFeeShift(uint8_t feeShift);
+    void setFeeShift(quint64 feeShift);
     void setFee(quint64 fee);
     void setLockHeight(quint64 lockHeight);
     void setExcess(const QString &excess);
@@ -31,7 +31,7 @@ public:
 
 private:
     QString m_features;
-    uint8_t m_feeShift;
+    quint64 m_feeShift;
     quint64 m_fee;
     quint64 m_lockHeight;
     QString m_excess;

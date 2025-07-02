@@ -2,6 +2,7 @@
 #define OUTPUTCOMMITMAPPING_H
 
 #include <QJsonObject>
+
 #include "outputdata.h"
 #include "commitment.h"
 

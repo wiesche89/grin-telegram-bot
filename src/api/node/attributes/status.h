@@ -19,7 +19,7 @@ public:
     quint32 getConnections() const;
     Tip getTip() const;
     QString getSyncStatus() const;
-    QJsonValue getSyncInfo() const;  // Option<Value> als QJsonValue
+    QJsonValue getSyncInfo() const;
 
     // Setter
     void setChain(const QString &chain);
@@ -35,13 +35,13 @@ public:
     QJsonObject toJson() const;
 
 private:
-    QString chain;
-    quint32 protocolVersion;
-    QString userAgent;
-    quint32 connections;
-    Tip tip;
-    QString syncStatus;
-    QJsonValue syncInfo;  // kann QJsonValue::Null sein
+    QString m_chain;
+    quint32 m_protocolVersion;
+    QString m_userAgent;
+    quint32 m_connections;
+    Tip m_tip;
+    QString m_syncStatus;
+    QJsonValue m_syncInfo;
 };
 
 #endif // STATUS_H

@@ -1,5 +1,8 @@
 #include "inittxsendargs.h"
 
+/**
+ * @brief InitTxSendArgs::InitTxSendArgs
+ */
 InitTxSendArgs::InitTxSendArgs() :
     m_postTx(false),
     m_fluff(false),
@@ -7,46 +10,82 @@ InitTxSendArgs::InitTxSendArgs() :
 {
 }
 
+/**
+ * @brief InitTxSendArgs::dest
+ * @return
+ */
 QString InitTxSendArgs::dest() const
 {
     return m_dest;
 }
 
+/**
+ * @brief InitTxSendArgs::setDest
+ * @param value
+ */
 void InitTxSendArgs::setDest(const QString &value)
 {
     m_dest = value;
 }
 
+/**
+ * @brief InitTxSendArgs::postTx
+ * @return
+ */
 bool InitTxSendArgs::postTx() const
 {
     return m_postTx;
 }
 
+/**
+ * @brief InitTxSendArgs::setPostTx
+ * @param value
+ */
 void InitTxSendArgs::setPostTx(bool value)
 {
     m_postTx = value;
 }
 
+/**
+ * @brief InitTxSendArgs::fluff
+ * @return
+ */
 bool InitTxSendArgs::fluff() const
 {
     return m_fluff;
 }
 
+/**
+ * @brief InitTxSendArgs::setFluff
+ * @param value
+ */
 void InitTxSendArgs::setFluff(bool value)
 {
     m_fluff = value;
 }
 
+/**
+ * @brief InitTxSendArgs::skipTor
+ * @return
+ */
 bool InitTxSendArgs::skipTor() const
 {
     return m_skipTor;
 }
 
+/**
+ * @brief InitTxSendArgs::setSkipTor
+ * @param value
+ */
 void InitTxSendArgs::setSkipTor(bool value)
 {
     m_skipTor = value;
 }
 
+/**
+ * @brief InitTxSendArgs::toJson
+ * @return
+ */
 QJsonObject InitTxSendArgs::toJson() const
 {
     QJsonObject obj;
@@ -57,6 +96,11 @@ QJsonObject InitTxSendArgs::toJson() const
     return obj;
 }
 
+/**
+ * @brief InitTxSendArgs::fromJson
+ * @param json
+ * @return
+ */
 bool InitTxSendArgs::fromJson(const QJsonObject &json)
 {
     if (json.contains("dest") && json["dest"].isString()) {

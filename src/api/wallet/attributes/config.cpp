@@ -1,49 +1,88 @@
 #include "config.h"
 
+/**
+ * @brief Config::Config
+ */
 Config::Config()
 {
 }
 
+/**
+ * @brief Config::chainType
+ * @return
+ */
 QString Config::chainType() const
 {
     return m_chainType;
 }
 
+/**
+ * @brief Config::setChainType
+ * @param value
+ */
 void Config::setChainType(const QString &value)
 {
     m_chainType = value;
 }
 
+/**
+ * @brief Config::walletConfig
+ * @return
+ */
 WalletConfig Config::walletConfig() const
 {
     return m_walletConfig;
 }
 
+/**
+ * @brief Config::setWalletConfig
+ * @param value
+ */
 void Config::setWalletConfig(const WalletConfig &value)
 {
     m_walletConfig = value;
 }
 
+/**
+ * @brief Config::loggingConfig
+ * @return
+ */
 LoggingConfig Config::loggingConfig() const
 {
     return m_loggingConfig;
 }
 
+/**
+ * @brief Config::setLoggingConfig
+ * @param value
+ */
 void Config::setLoggingConfig(const LoggingConfig &value)
 {
     m_loggingConfig = value;
 }
 
+/**
+ * @brief Config::torConfig
+ * @return
+ */
 TorConfig Config::torConfig() const
 {
     return m_torConfig;
 }
 
+/**
+ * @brief Config::setTorConfig
+ * @param value
+ */
 void Config::setTorConfig(const TorConfig &value)
 {
     m_torConfig = value;
 }
 
+/**
+ * @brief Config::fromJson
+ * @param obj
+ */
 void Config::fromJson(const QJsonObject &obj)
 {
     m_chainType = obj.value("chain_type").toString();
@@ -61,6 +100,10 @@ void Config::fromJson(const QJsonObject &obj)
     }
 }
 
+/**
+ * @brief Config::toJson
+ * @return
+ */
 QJsonObject Config::toJson() const
 {
     QJsonObject obj;

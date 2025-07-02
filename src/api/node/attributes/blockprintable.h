@@ -5,6 +5,7 @@
 #include <QVector>
 #include <QJsonObject>
 #include <QJsonArray>
+
 #include "blockheaderprintable.h"
 #include "outputprintable.h"
 #include "txkernelprintable.h"

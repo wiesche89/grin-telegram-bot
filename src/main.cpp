@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 
     // Start worker, wait x msecs
     QTimer::singleShot(3000, [&]() {
-        qDebug()<<"start worker";
+        qDebug() << "start worker";
         Worker *worker = new Worker();
         if (!worker->init()) {
             QCoreApplication::quit();

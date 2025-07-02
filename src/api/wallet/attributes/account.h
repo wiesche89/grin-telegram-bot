@@ -6,10 +6,6 @@
 
 class Account
 {
-private:
-    QString m_label;
-    QString m_path;
-
 public:
     Account();
     Account(const QString &label, const QString &path);
@@ -25,6 +21,10 @@ public:
     // JSON
     static Account fromJson(const QJsonObject &obj);
     QJsonObject toJson() const;
+
+private:
+    QString m_label;
+    QString m_path;
 };
 
 #endif // ACCOUNT_H

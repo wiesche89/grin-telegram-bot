@@ -14,11 +14,14 @@ Slate::Slate() :
     m_proof(Proof()),
     m_sta(QString()),
     m_ver(QString()),
-    m_off(QString()),
-    m_error(Error())
+    m_off(QString())
 {
 }
 
+/**
+ * @brief Slate::isValid
+ * @return
+ */
 bool Slate::isValid()
 {
     if (m_id.isEmpty()) {
@@ -28,6 +31,11 @@ bool Slate::isValid()
     return true;
 }
 
+/**
+ * @brief Slate::slateStateFromString
+ * @param str
+ * @return
+ */
 SlateState Slate::slateStateFromString(const QString &str)
 {
     if (str == "S1") {
@@ -259,31 +267,37 @@ void Slate::setComs(const QList<Com> &newComs)
     m_coms = newComs;
 }
 
-Error Slate::error() const
-{
-    return m_error;
-}
-
-void Slate::setError(const Error &error)
-{
-    m_error = error;
-}
-
+/**
+ * @brief Slate::off
+ * @return
+ */
 QString Slate::off() const
 {
     return m_off;
 }
 
+/**
+ * @brief Slate::setOff
+ * @param off
+ */
 void Slate::setOff(const QString &off)
 {
     m_off = off;
 }
 
+/**
+ * @brief Slate::proof
+ * @return
+ */
 Proof Slate::proof() const
 {
     return m_proof;
 }
 
+/**
+ * @brief Slate::setProof
+ * @param newProof
+ */
 void Slate::setProof(const Proof &newProof)
 {
     m_proof = newProof;

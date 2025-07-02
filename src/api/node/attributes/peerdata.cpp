@@ -1,5 +1,10 @@
 #include "peerdata.h"
 
+/**
+ * @brief stateToString
+ * @param state
+ * @return
+ */
 static QString stateToString(PeerData::State state)
 {
     switch (state) {
@@ -14,6 +19,11 @@ static QString stateToString(PeerData::State state)
     }
 }
 
+/**
+ * @brief stringToState
+ * @param str
+ * @return
+ */
 static PeerData::State stringToState(const QString &str)
 {
     if (str == "Healthy") {
@@ -28,7 +38,11 @@ static PeerData::State stringToState(const QString &str)
     return PeerData::Healthy; // Default fallback
 }
 
-// Hilfsfunktionen für ReasonForBan Enum <-> QString
+/**
+ * @brief reasonForBanToString
+ * @param reason
+ * @return
+ */
 static QString reasonForBanToString(PeerData::ReasonForBan reason)
 {
     switch (reason) {
@@ -53,6 +67,11 @@ static QString reasonForBanToString(PeerData::ReasonForBan reason)
     }
 }
 
+/**
+ * @brief stringToReasonForBan
+ * @param str
+ * @return
+ */
 static PeerData::ReasonForBan stringToReasonForBan(const QString &str)
 {
     if (str == "None") {
@@ -82,128 +101,196 @@ static PeerData::ReasonForBan stringToReasonForBan(const QString &str)
     return PeerData::None; // Default fallback
 }
 
+/**
+ * @brief PeerData::PeerData
+ */
 PeerData::PeerData() :
-    flags(Healthy),
-    lastBanned(0),
-    banReason(None),
-    lastConnected(0)
+    m_flags(Healthy),
+    m_lastBanned(0),
+    m_banReason(None),
+    m_lastConnected(0)
 {
 }
 
+/**
+ * @brief PeerData::getAddr
+ * @return
+ */
 PeerAddr PeerData::getAddr() const
 {
-    return addr;
+    return m_addr;
 }
 
+/**
+ * @brief PeerData::getCapabilities
+ * @return
+ */
 Capabilities PeerData::getCapabilities() const
 {
-    return capabilities;
+    return m_capabilities;
 }
 
+/**
+ * @brief PeerData::getUserAgent
+ * @return
+ */
 QString PeerData::getUserAgent() const
 {
-    return userAgent;
+    return m_userAgent;
 }
 
+/**
+ * @brief PeerData::getFlags
+ * @return
+ */
 PeerData::State PeerData::getFlags() const
 {
-    return flags;
+    return m_flags;
 }
 
+/**
+ * @brief PeerData::getLastBanned
+ * @return
+ */
 qint64 PeerData::getLastBanned() const
 {
-    return lastBanned;
+    return m_lastBanned;
 }
 
+/**
+ * @brief PeerData::getBanReason
+ * @return
+ */
 PeerData::ReasonForBan PeerData::getBanReason() const
 {
-    return banReason;
+    return m_banReason;
 }
 
+/**
+ * @brief PeerData::getLastConnected
+ * @return
+ */
 qint64 PeerData::getLastConnected() const
 {
-    return lastConnected;
+    return m_lastConnected;
 }
 
+/**
+ * @brief PeerData::setAddr
+ * @param a
+ */
 void PeerData::setAddr(const PeerAddr &a)
 {
-    addr = a;
+    m_addr = a;
 }
 
+/**
+ * @brief PeerData::setCapabilities
+ * @param c
+ */
 void PeerData::setCapabilities(const Capabilities &c)
 {
-    capabilities = c;
+    m_capabilities = c;
 }
 
+/**
+ * @brief PeerData::setUserAgent
+ * @param ua
+ */
 void PeerData::setUserAgent(const QString &ua)
 {
-    userAgent = ua;
+    m_userAgent = ua;
 }
 
+/**
+ * @brief PeerData::setFlags
+ * @param f
+ */
 void PeerData::setFlags(State f)
 {
-    flags = f;
+    m_flags = f;
 }
 
+/**
+ * @brief PeerData::setLastBanned
+ * @param lb
+ */
 void PeerData::setLastBanned(qint64 lb)
 {
-    lastBanned = lb;
+    m_lastBanned = lb;
 }
 
+/**
+ * @brief PeerData::setBanReason
+ * @param r
+ */
 void PeerData::setBanReason(ReasonForBan r)
 {
-    banReason = r;
+    m_banReason = r;
 }
 
+/**
+ * @brief PeerData::setLastConnected
+ * @param lc
+ */
 void PeerData::setLastConnected(qint64 lc)
 {
-    lastConnected = lc;
+    m_lastConnected = lc;
 }
 
+/**
+ * @brief PeerData::fromJson
+ * @param obj
+ * @return
+ */
 PeerData PeerData::fromJson(const QJsonObject &obj)
 {
     PeerData data;
 
     if (obj.contains("addr") && obj["addr"].isObject()) {
-        data.addr = PeerAddr::fromJson(obj["addr"].toObject());
+        data.m_addr = PeerAddr::fromJson(obj["addr"].toObject());
     }
 
     if (obj.contains("capabilities") && obj["capabilities"].isObject()) {
-        data.capabilities = Capabilities::fromJson(obj["capabilities"].toObject());
+        data.m_capabilities = Capabilities::fromJson(obj["capabilities"].toObject());
     }
 
     if (obj.contains("user_agent")) {
-        data.userAgent = obj["user_agent"].toString();
+        data.m_userAgent = obj["user_agent"].toString();
     }
 
     if (obj.contains("flags")) {
-        data.flags = stringToState(obj["flags"].toString());
+        data.m_flags = stringToState(obj["flags"].toString());
     }
 
     if (obj.contains("last_banned")) {
-        data.lastBanned = obj["last_banned"].toVariant().toLongLong();
+        data.m_lastBanned = obj["last_banned"].toVariant().toLongLong();
     }
 
     if (obj.contains("ban_reason")) {
-        data.banReason = stringToReasonForBan(obj["ban_reason"].toString());
+        data.m_banReason = stringToReasonForBan(obj["ban_reason"].toString());
     }
 
     if (obj.contains("last_connected")) {
-        data.lastConnected = obj["last_connected"].toVariant().toLongLong();
+        data.m_lastConnected = obj["last_connected"].toVariant().toLongLong();
     }
 
     return data;
 }
 
+/**
+ * @brief PeerData::toJson
+ * @return
+ */
 QJsonObject PeerData::toJson() const
 {
     QJsonObject obj;
-    obj["addr"] = addr.toJson();
-    obj["capabilities"] = capabilities.toJson();
-    obj["user_agent"] = userAgent;
-    obj["flags"] = stateToString(flags);
-    obj["last_banned"] = QString::number(lastBanned);
-    obj["ban_reason"] = reasonForBanToString(banReason);
-    obj["last_connected"] = QString::number(lastConnected);
+    obj["addr"] = m_addr.toJson();
+    obj["capabilities"] = m_capabilities.toJson();
+    obj["user_agent"] = m_userAgent;
+    obj["flags"] = stateToString(m_flags);
+    obj["last_banned"] = QString::number(m_lastBanned);
+    obj["ban_reason"] = reasonForBanToString(m_banReason);
+    obj["last_connected"] = QString::number(m_lastConnected);
     return obj;
 }

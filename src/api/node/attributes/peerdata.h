@@ -54,13 +54,13 @@ public:
     QJsonObject toJson() const;
 
 private:
-    PeerAddr addr;
-    Capabilities capabilities;
-    QString userAgent;
-    State flags;
-    qint64 lastBanned;
-    ReasonForBan banReason;
-    qint64 lastConnected;
+    PeerAddr m_addr;
+    Capabilities m_capabilities;
+    QString m_userAgent;
+    State m_flags;
+    qint64 m_lastBanned;
+    ReasonForBan m_banReason;
+    qint64 m_lastConnected;
 };
 
 #endif // PEERDATA_H

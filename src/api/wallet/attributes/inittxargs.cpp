@@ -1,5 +1,8 @@
 #include "inittxargs.h"
 
+/**
+ * @brief InitTxArgs::InitTxArgs
+ */
 InitTxArgs::InitTxArgs() :
     m_srcAcctName(""),
     m_amount(0),
@@ -17,140 +20,244 @@ InitTxArgs::InitTxArgs() :
 {
 }
 
-// Getter / Setter
-
+/**
+ * @brief InitTxArgs::srcAcctName
+ * @return
+ */
 QString InitTxArgs::srcAcctName() const
 {
     return m_srcAcctName;
 }
 
+/**
+ * @brief InitTxArgs::setSrcAcctName
+ * @param value
+ */
 void InitTxArgs::setSrcAcctName(const QString &value)
 {
     m_srcAcctName = value;
 }
 
+/**
+ * @brief InitTxArgs::amount
+ * @return
+ */
 quint64 InitTxArgs::amount() const
 {
     return m_amount;
 }
 
+/**
+ * @brief InitTxArgs::setAmount
+ * @param value
+ */
 void InitTxArgs::setAmount(quint64 value)
 {
     m_amount = value;
 }
 
+/**
+ * @brief InitTxArgs::amountIncludesFee
+ * @return
+ */
 bool InitTxArgs::amountIncludesFee() const
 {
     return m_amountIncludesFee;
 }
 
+/**
+ * @brief InitTxArgs::setAmountIncludesFee
+ * @param value
+ */
 void InitTxArgs::setAmountIncludesFee(bool value)
 {
     m_amountIncludesFee = value;
 }
 
+/**
+ * @brief InitTxArgs::minimumConfirmations
+ * @return
+ */
 quint64 InitTxArgs::minimumConfirmations() const
 {
     return m_minimumConfirmations;
 }
 
+/**
+ * @brief InitTxArgs::setMinimumConfirmations
+ * @param value
+ */
 void InitTxArgs::setMinimumConfirmations(quint64 value)
 {
     m_minimumConfirmations = value;
 }
 
+/**
+ * @brief InitTxArgs::maxOutputs
+ * @return
+ */
 quint32 InitTxArgs::maxOutputs() const
 {
     return m_maxOutputs;
 }
 
+/**
+ * @brief InitTxArgs::setMaxOutputs
+ * @param value
+ */
 void InitTxArgs::setMaxOutputs(quint32 value)
 {
     m_maxOutputs = value;
 }
 
+/**
+ * @brief InitTxArgs::numChangeOutputs
+ * @return
+ */
 quint32 InitTxArgs::numChangeOutputs() const
 {
     return m_numChangeOutputs;
 }
 
+/**
+ * @brief InitTxArgs::setNumChangeOutputs
+ * @param value
+ */
 void InitTxArgs::setNumChangeOutputs(quint32 value)
 {
     m_numChangeOutputs = value;
 }
 
+/**
+ * @brief InitTxArgs::selectionStrategyIsUseAll
+ * @return
+ */
 bool InitTxArgs::selectionStrategyIsUseAll() const
 {
     return m_selectionStrategyIsUseAll;
 }
 
+/**
+ * @brief InitTxArgs::setSelectionStrategyIsUseAll
+ * @param value
+ */
 void InitTxArgs::setSelectionStrategyIsUseAll(bool value)
 {
     m_selectionStrategyIsUseAll = value;
 }
 
+/**
+ * @brief InitTxArgs::targetSlateVersion
+ * @return
+ */
 quint16 InitTxArgs::targetSlateVersion() const
 {
     return m_targetSlateVersion;
 }
 
+/**
+ * @brief InitTxArgs::setTargetSlateVersion
+ * @param value
+ */
 void InitTxArgs::setTargetSlateVersion(quint16 value)
 {
     m_targetSlateVersion = value;
 }
 
+/**
+ * @brief InitTxArgs::ttlBlocks
+ * @return
+ */
 quint64 InitTxArgs::ttlBlocks() const
 {
     return m_ttlBlocks;
 }
 
+/**
+ * @brief InitTxArgs::setTtlBlocks
+ * @param value
+ */
 void InitTxArgs::setTtlBlocks(quint64 value)
 {
     m_ttlBlocks = value;
 }
 
+/**
+ * @brief InitTxArgs::paymentProofRecipientAddress
+ * @return
+ */
 QString InitTxArgs::paymentProofRecipientAddress() const
 {
     return m_paymentProofRecipientAddress;
 }
 
+/**
+ * @brief InitTxArgs::setPaymentProofRecipientAddress
+ * @param value
+ */
 void InitTxArgs::setPaymentProofRecipientAddress(const QString &value)
 {
     m_paymentProofRecipientAddress = value;
 }
 
+/**
+ * @brief InitTxArgs::estimateOnly
+ * @return
+ */
 bool InitTxArgs::estimateOnly() const
 {
     return m_estimateOnly;
 }
 
+/**
+ * @brief InitTxArgs::setEstimateOnly
+ * @param value
+ */
 void InitTxArgs::setEstimateOnly(bool value)
 {
     m_estimateOnly = value;
 }
 
+/**
+ * @brief InitTxArgs::lateLock
+ * @return
+ */
 bool InitTxArgs::lateLock() const
 {
     return m_lateLock;
 }
 
+/**
+ * @brief InitTxArgs::setLateLock
+ * @param value
+ */
 void InitTxArgs::setLateLock(bool value)
 {
     m_lateLock = value;
 }
 
+/**
+ * @brief InitTxArgs::sendArgs
+ * @return
+ */
 InitTxSendArgs InitTxArgs::sendArgs() const
 {
     return m_sendArgs;
 }
 
+/**
+ * @brief InitTxArgs::setSendArgs
+ * @param value
+ */
 void InitTxArgs::setSendArgs(const InitTxSendArgs &value)
 {
     m_sendArgs = value;
 }
 
-// JSON
-
+/**
+ * @brief InitTxArgs::toJson
+ * @return
+ */
 QJsonObject InitTxArgs::toJson() const
 {
     QJsonObject obj;
@@ -172,6 +279,11 @@ QJsonObject InitTxArgs::toJson() const
     return obj;
 }
 
+/**
+ * @brief InitTxArgs::fromJson
+ * @param json
+ * @return
+ */
 bool InitTxArgs::fromJson(const QJsonObject &json)
 {
     if (json.contains("src_acct_name") && json["src_acct_name"].isString()) {

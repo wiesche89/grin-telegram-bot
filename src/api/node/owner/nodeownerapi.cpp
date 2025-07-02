@@ -2,6 +2,8 @@
 
 /**
  * @brief NodeOwnerApi::NodeOwnerApi
+ * @param apiUrl
+ * @param apiKey
  */
 NodeOwnerApi::NodeOwnerApi(QString apiUrl, QString apiKey) :
     m_apiUrl(apiUrl),
@@ -12,68 +14,64 @@ NodeOwnerApi::NodeOwnerApi(QString apiUrl, QString apiKey) :
 
 /**
  * @brief NodeOwnerApi::banPeer
+ * Bans a specific peer.
+ * @param peerAddr
  * @return
  */
-bool NodeOwnerApi::banPeer(QString peerAddr)
+Result<bool> NodeOwnerApi::banPeer(QString peerAddr)
 {
     QJsonArray params;
     params.append(QJsonValue(peerAddr));
 
-    QJsonObject rpcJson = post("ban_peer", params);
+    auto res = JsonUtil::extractOkValue(post("ban_peer", params));
+    QJsonValue OkVal;
 
-    // Check if "result" exists and is an object
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return false;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
 
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
     // The "Ok" key must exist — its value can be either null or an object
-    return resultObj.contains("Ok");
+    return OkVal.isNull() || OkVal.isObject();
 }
 
 /**
  * @brief NodeOwnerApi::compactChain
+ * Trigger a compaction of the chain state to regain storage space.
  * @return
  */
-bool NodeOwnerApi::compactChain()
+Result<bool> NodeOwnerApi::compactChain()
 {
     QJsonArray params;
 
-    QJsonObject rpcJson = post("compact_chain", params);
+    auto res = JsonUtil::extractOkValue(post("compact_chain", params));
+    QJsonValue OkVal;
 
-    // Check if "result" exists and is an object
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return false;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
 
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
     // The "Ok" key must exist — its value can be either null or an object
-    return resultObj.contains("Ok");
+    return OkVal.isNull() || OkVal.isObject();
 }
 
 /**
  * @brief NodeOwnerApi::getConnectedPeers
+ * Retrieves a list of all connected peers.
  * @return
  */
-QList<PeerInfoDisplay> NodeOwnerApi::getConnectedPeers()
+Result<QList<PeerInfoDisplay> > NodeOwnerApi::getConnectedPeers()
 {
     QList<PeerInfoDisplay> peers;
     QJsonArray params;
 
-    QJsonObject root = post("get_connected_peers", params);
+    auto res = JsonUtil::extractOkValue(post("get_connected_peers", params));
+    QJsonValue OkVal;
 
-    if (!root.contains("result")) {
-        return peers;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
 
-    QJsonObject result = root["result"].toObject();
-    if (!result.contains("Ok")) {
-        return peers;
-    }
-
-    QJsonArray array = result["Ok"].toArray();
+    QJsonArray array = OkVal.toArray();
     for (const QJsonValue &val : array) {
         if (!val.isObject()) {
             continue;
@@ -89,26 +87,25 @@ QList<PeerInfoDisplay> NodeOwnerApi::getConnectedPeers()
 
 /**
  * @brief NodeOwnerApi::getPeers
+ * Retrieves information about peers. If null is provided, get_peers will list all stored peers.
+ * @param peerAddr
  * @return
  */
-QList<PeerData> NodeOwnerApi::getPeers(QString peerAddr)
+Result<QList<PeerData> > NodeOwnerApi::getPeers(QString peerAddr)
 {
     QList<PeerData> peers;
     QJsonArray params;
 
     params.append(QJsonValue(peerAddr));
 
-    QJsonObject rootObj = post("get_peers", params);
+    auto res = JsonUtil::extractOkValue(post("get_peers", params));
+    QJsonValue OkVal;
 
-    if (!rootObj.contains("result")) {
-        return peers;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
-    QJsonObject resultObj = rootObj["result"].toObject();
 
-    if (!resultObj.contains("Ok")) {
-        return peers;
-    }
-    QJsonArray okArray = resultObj["Ok"].toArray();
+    QJsonArray okArray = OkVal.toArray();
 
     for (const QJsonValue &val : okArray) {
         if (!val.isObject()) {
@@ -125,25 +122,20 @@ QList<PeerData> NodeOwnerApi::getPeers(QString peerAddr)
 
 /**
  * @brief NodeOwnerApi::getStatus
+ * Returns various information about the node, the network and the current sync status.
  * @return
  */
-Status NodeOwnerApi::getStatus()
+Result<Status> NodeOwnerApi::getStatus()
 {
     Status status;
     QJsonArray params;
 
-    QJsonObject obj = post("get_status", params);
+    auto res = JsonUtil::extractOkObject(post("get_status", params));
+    QJsonObject okObj;
 
-    if (!obj.contains("result") || !obj["result"].isObject()) {
-        return status;
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject resultObj = obj["result"].toObject();
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return status;
-    }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     status = Status::fromJson(okObj);
 
@@ -151,43 +143,47 @@ Status NodeOwnerApi::getStatus()
 }
 
 /**
- * @brief NodeOwnerApi::invalidateHeader
- * @return
- */
-QJsonObject NodeOwnerApi::invalidateHeader()
-{
-    QJsonArray params;
-    return post("invalidate_header", params);
-}
-
-/**
- * @brief NodeOwnerApi::resetChainHead
- * @return
- */
-QJsonObject NodeOwnerApi::resetChainHead()
-{
-    QJsonArray params;
-    return post("reset_chain_head", params);
-}
-
-/**
  * @brief NodeOwnerApi::unbanPeer
+ * Unbans a specific peer.
+ * @param peerAddr
  * @return
  */
-QJsonObject NodeOwnerApi::unbanPeer(QString peerAddr)
+Result<bool> NodeOwnerApi::unbanPeer(QString peerAddr)
 {
     QJsonArray params;
-    return post("unban_peer", params);
+    params.append(peerAddr);
+
+    auto res = JsonUtil::extractOkValue(post("unban_peer", params));
+    QJsonValue OkVal;
+
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
+    }
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return OkVal.isNull() || OkVal.isObject();
 }
 
 /**
  * @brief NodeOwnerApi::validateChain
+ * Trigger a validation of the chain state.
+ * @param assumeValidRangeproofsKernels
  * @return
  */
-QJsonObject NodeOwnerApi::validateChain(bool assumeValidRangeproofsKernels)
+Result<bool> NodeOwnerApi::validateChain(bool assumeValidRangeproofsKernels)
 {
     QJsonArray params;
-    return post("validate_chain", params);
+    params.append(QJsonValue(assumeValidRangeproofsKernels));
+
+    auto res = JsonUtil::extractOkValue(post("validate_chain", params));
+    QJsonValue OkVal;
+
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
+    }
+
+    // The "Ok" key must exist — its value can be either null or an object
+    return OkVal.isNull() || OkVal.isObject();
 }
 
 /**

@@ -1,5 +1,8 @@
 #include "nodeheight.h"
 
+/**
+ * @brief NodeHeight::NodeHeight
+ */
 NodeHeight::NodeHeight() :
     m_headerHash(""),
     m_height(0),
@@ -7,36 +10,64 @@ NodeHeight::NodeHeight() :
 {
 }
 
+/**
+ * @brief NodeHeight::headerHash
+ * @return
+ */
 QString NodeHeight::headerHash() const
 {
     return m_headerHash;
 }
 
+/**
+ * @brief NodeHeight::setHeaderHash
+ * @param value
+ */
 void NodeHeight::setHeaderHash(const QString &value)
 {
     m_headerHash = value;
 }
 
+/**
+ * @brief NodeHeight::height
+ * @return
+ */
 quint64 NodeHeight::height() const
 {
     return m_height;
 }
 
+/**
+ * @brief NodeHeight::setHeight
+ * @param value
+ */
 void NodeHeight::setHeight(quint64 value)
 {
     m_height = value;
 }
 
+/**
+ * @brief NodeHeight::updatedFromNode
+ * @return
+ */
 bool NodeHeight::updatedFromNode() const
 {
     return m_updatedFromNode;
 }
 
+/**
+ * @brief NodeHeight::setUpdatedFromNode
+ * @param value
+ */
 void NodeHeight::setUpdatedFromNode(bool value)
 {
     m_updatedFromNode = value;
 }
 
+/**
+ * @brief NodeHeight::toJson
+ * @return
+ */
 QJsonObject NodeHeight::toJson() const
 {
     QJsonObject obj;
@@ -46,6 +77,11 @@ QJsonObject NodeHeight::toJson() const
     return obj;
 }
 
+/**
+ * @brief NodeHeight::fromJson
+ * @param json
+ * @return
+ */
 bool NodeHeight::fromJson(const QJsonObject &json)
 {
     if (json.contains("header_hash") && json["header_hash"].isString()) {

@@ -19,8 +19,8 @@ public:
     QJsonObject toJson() const;
 
 private:
-    bool senderBelongs;
-    bool recipientBelongs;
+    bool m_senderBelongs;
+    bool m_recipientBelongs;
 };
 
 #endif // VERIFYPAYMENTPROOFSTATUS_H

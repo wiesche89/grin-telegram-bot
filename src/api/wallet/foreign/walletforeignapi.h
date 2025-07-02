@@ -13,7 +13,8 @@
 #include "coinbase.h"
 #include "version.h"
 #include "slate.h"
-#include "error.h"
+#include "result.h"
+#include "jsonutil.h"
 
 // https://docs.rs/grin_wallet_api/5.3.3/grin_wallet_api/trait.ForeignRpc.html#tymethod.receive_tx
 class WalletForeignApi : public QObject
@@ -22,10 +23,10 @@ class WalletForeignApi : public QObject
 public:
     WalletForeignApi(QString apiUrl);
 
-    Coinbase buildCoinbase(int fees, int height, QString keyId);
-    Version checkVersion();
-    Slate finalizeTx(Slate slate);
-    Slate receiveTx(Slate slate, QString destAcctName, QString dest);
+    Result<Coinbase> buildCoinbase(int fees, int height, QString keyId);
+    Result<Version> checkVersion();
+    Result<Slate> finalizeTx(Slate slate);
+    Result<Slate> receiveTx(Slate slate, QString destAcctName, QString dest);
 
 private:
     QJsonObject post(const QString &method, const QJsonObject &params);

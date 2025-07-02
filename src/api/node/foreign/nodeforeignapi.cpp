@@ -10,118 +10,139 @@ NodeForeignApi::NodeForeignApi(QString apiUrl, QString apiKey) :
 
 /**
  * @brief NodeForeignApi::getBlock
+ * Gets block details given either a height, a hash or an unspent output commitment.
+ * Only one parameter is required. If multiple parameters are provided only the first one in the list is used.
+ * @param height
+ * @param hash
+ * @param commit
  * @return
  */
-BlockPrintable NodeForeignApi::getBlock(int height, QString hash, QString commit)
+Result<BlockPrintable> NodeForeignApi::getBlock(int height, QString hash, QString commit)
 {
-    BlockPrintable block;
-
     QJsonArray params;
     params.append(height == 0 ? QJsonValue::Null : QJsonValue(height));
     params.append(QJsonValue(hash));
     params.append(commit.isEmpty() ? QJsonValue::Null : QJsonValue(commit));
 
-    QJsonObject rootObj = post("get_block", params);
+    auto res = JsonUtil::extractOkObject(post("get_block", params));
+    QJsonObject okObj;
 
-    if (rootObj.contains("result") && rootObj["result"].isObject()) {
-        QJsonObject resultObj = rootObj["result"].toObject();
-        if (resultObj.contains("Ok") && resultObj["Ok"].isObject()) {
-            QJsonObject okObj = resultObj["Ok"].toObject();
-
-            block.fromJson(okObj);
-        }
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
+
+    BlockPrintable block;
+    block.fromJson(okObj);
+
     return block;
 }
 
 /**
  * @brief NodeForeignApi::getBlocks
+ * @param startHeight
+ * @param endHeight
+ * @param max
+ * @param includeProof
  * @return
  */
-BlockListing NodeForeignApi::getBlocks(int startHeight, int endHeight, int max, bool includeProof)
+Result<BlockListing> NodeForeignApi::getBlocks(int startHeight, int endHeight, int max, bool includeProof)
 {
-    BlockListing listing;
     QJsonArray params;
     params.append(QJsonValue(startHeight));
     params.append(QJsonValue(endHeight));
     params.append(QJsonValue(max));
     params.append(QJsonValue(includeProof));
 
-    QJsonObject rootObj = post("get_blocks", params);
+    auto res = JsonUtil::extractOkObject(post("get_blocks", params));
+    QJsonObject okObj;
 
-    if (rootObj.contains("result")) {
-        QJsonObject resultObj = rootObj["result"].toObject();
-        if (resultObj.contains("Ok")) {
-            QJsonObject okObj = resultObj["Ok"].toObject();
-
-            listing.fromJson(okObj);
-        }
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
+
+    BlockListing listing;
+    listing.fromJson(okObj);
 
     return listing;
 }
 
 /**
  * @brief NodeForeignApi::getHeader
+ * Gets block header given either a height, a hash or an unspent output commitment. Only one parameter is required.
+ * If multiple parameters are provided only the first one in the list is used.
+ * @param height
+ * @param hash
+ * @param commit
  * @return
  */
-BlockHeaderPrintable NodeForeignApi::getHeader(int height, QString hash, QString commit)
+Result<BlockHeaderPrintable> NodeForeignApi::getHeader(int height, QString hash, QString commit)
 {
     QJsonArray params;
     params.append(height == 0 ? QJsonValue::Null : QJsonValue(height));
     params.append(QJsonValue(hash));
     params.append(commit.isEmpty() ? QJsonValue::Null : QJsonValue(commit));
 
-    QJsonObject rootObj = post("get_header", params);
+    auto res = JsonUtil::extractOkObject(post("get_header", params));
+    QJsonObject okObj;
 
-    // Pfad: rootObj -> "result" -> "Ok" -> Objekt
-    QJsonObject resultObj = rootObj.value("result").toObject();
-    QJsonValue okVal = resultObj.value("Ok");
-    if (!okVal.isObject()) {
-        return BlockHeaderPrintable();
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
 
-    QJsonObject blockHeaderJson = okVal.toObject();
-
     BlockHeaderPrintable blockHeader;
-    blockHeader.fromJson(blockHeaderJson);
+    blockHeader.fromJson(okObj);
 
     return blockHeader;
 }
 
 /**
  * @brief NodeForeignApi::getKernel
+ * Returns a LocatedTxKernel based on the kernel excess.
+ * The min_height and max_height parameters are both optional.
+ * If not supplied, min_height will be set to 0 and max_height will be set to the head of the chain.
+ * The method will start at the block height max_height and traverse the kernel MMR backwards,
+ * until either the kernel is found or min_height is reached.
+ * @param excess
+ * @param minHeight
+ * @param maxHeight
  * @return
  */
-LocatedTxKernel NodeForeignApi::getKernel(QString excess, int minHeight, int maxHeight)
+Result<LocatedTxKernel> NodeForeignApi::getKernel(QString excess, int minHeight, int maxHeight)
 {
-    LocatedTxKernel locatedTxKernel;
     QJsonArray params;
     params.append(QJsonValue(excess));
     params.append(QJsonValue(minHeight));
     params.append(QJsonValue(maxHeight));
 
-    QJsonObject obj = post("get_kernel", params);
+    auto res = JsonUtil::extractOkObject(post("get_kernel", params));
+    QJsonObject okObj;
 
-    if (obj.contains("result")) {
-        QJsonObject resultObj = obj["result"].toObject();
-        if (resultObj.contains("Ok")) {
-            QJsonObject okObj = resultObj["Ok"].toObject();
-            locatedTxKernel.fromJson(okObj);
-        }
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
+
+    LocatedTxKernel locatedTxKernel;
+    locatedTxKernel.fromJson(okObj);
 
     return locatedTxKernel;
 }
 
 /**
  * @brief NodeForeignApi::getOutputs
+ * Retrieves details about specifics outputs.
+ * Supports retrieval of multiple outputs in a single request.
+ * Support retrieval by both commitment string and block height.
+ * Last field are for whether or not the response will include rangeproof and merkle proof.
+ * @param commits
+ * @param startHeight
+ * @param endHeight
+ * @param includeProof
+ * @param includeMerkleProof
  * @return
  */
-QList<OutputPrintable> NodeForeignApi::getOutputs(QJsonArray commits, int startHeight, int endHeight, bool includeProof,
-                                                  bool includeMerkleProof)
+Result<QList<OutputPrintable> > NodeForeignApi::getOutputs(QJsonArray commits, int startHeight, int endHeight, bool includeProof,
+                                                           bool includeMerkleProof)
 {
-    QList<OutputPrintable> list;
     QJsonArray params;
     params.append(commits);
     params.append(QJsonValue(startHeight));
@@ -129,20 +150,15 @@ QList<OutputPrintable> NodeForeignApi::getOutputs(QJsonArray commits, int startH
     params.append(QJsonValue(includeProof));
     params.append(QJsonValue(includeMerkleProof));
 
-    QJsonObject root = post("get_outputs", params);
+    auto res = JsonUtil::extractOkValue(post("get_outputs", params));
+    QJsonValue OkVal;
 
-    if (!root.contains("result") || !root.value("result").isObject()) {
-        return list;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
 
-    QJsonObject resultObj = root.value("result").toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj.value("Ok").isArray()) {
-        return list;
-    }
-
-    QJsonArray okArray = resultObj.value("Ok").toArray();
-
+    QJsonArray okArray = OkVal.toArray();
+    QList<OutputPrintable> list;
     for (const QJsonValue &val : okArray) {
         if (!val.isObject()) {
             continue;
@@ -158,138 +174,117 @@ QList<OutputPrintable> NodeForeignApi::getOutputs(QJsonArray commits, int startH
 
 /**
  * @brief NodeForeignApi::getPmmrIndices
+ * Retrieves the PMMR indices based on the provided block height(s).
+ * @param startHeight
+ * @param endHeight
  * @return
  */
-OutputListing NodeForeignApi::getPmmrIndices(int startHeight, int endHeight)
+Result<OutputListing> NodeForeignApi::getPmmrIndices(int startHeight, int endHeight)
 {
-    OutputListing listing;
     QJsonArray params;
     params.append(QJsonValue(startHeight));
     params.append(QJsonValue(endHeight));
 
-    QJsonObject rootJson = post("get_pmmr_indices", params);
+    auto res = JsonUtil::extractOkObject(post("get_pmmr_indices", params));
+    QJsonObject okObj;
 
-    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
-        return listing;
-    }
-    QJsonObject resultObj = rootJson["result"].toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return listing;
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
 
-    QJsonObject okObj = resultObj["Ok"].toObject();
-
-    listing = OutputListing::fromJson(okObj);
-
-    return listing;
+    return OutputListing::fromJson(okObj);
 }
 
 /**
  * @brief NodeForeignApi::getPoolSize
+ * Returns the number of transactions in the transaction pool.
  * @return
  */
-int NodeForeignApi::getPoolSize()
+Result<int> NodeForeignApi::getPoolSize()
 {
     QJsonArray params;
-    QJsonObject rootJson = post("get_pool_size", params);
 
-    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
-        return -1;
-    }
-    QJsonObject resultObj = rootJson["result"].toObject();
+    auto res = JsonUtil::extractOkValue(post("get_pool_size", params));
+    QJsonValue okVal;
 
-    if (!resultObj.contains("Ok")) {
-        return -1;
+    if (!res.unwrapOrLog(okVal)) {
+        return res.error();
     }
 
-    // "Ok"
-    QJsonValue okVal = resultObj["Ok"];
     if (okVal.isDouble()) {
         return okVal.toInt();
     }
 
-    return -1;
+    return Error(ErrorType::Unknown, QString("error map get_pool_size ok value!"));
 }
 
 /**
  * @brief NodeForeignApi::getStempoolSize
+ * Returns the number of transactions in the stem transaction pool.
  * @return
  */
-int NodeForeignApi::getStempoolSize()
+Result<int> NodeForeignApi::getStempoolSize()
 {
     QJsonArray params;
-    QJsonObject rootJson = post("get_stempool_size", params);
 
-    if (!rootJson.contains("result") || !rootJson["result"].isObject()) {
-        return -1;
-    }
-    QJsonObject resultObj = rootJson["result"].toObject();
+    auto res = JsonUtil::extractOkValue(post("get_stempool_size", params));
+    QJsonValue okVal;
 
-    if (!resultObj.contains("Ok")) {
-        return -1;
+    if (!res.unwrapOrLog(okVal)) {
+        return res.error();
     }
 
-    // "Ok"
-    QJsonValue okVal = resultObj["Ok"];
     if (okVal.isDouble()) {
         return okVal.toInt();
     }
 
-    return -1;
+    return Error(ErrorType::Unknown, QString("error map get_stempool_size ok value!"));
 }
 
 /**
  * @brief NodeForeignApi::getTip
+ * Returns details about the state of the current fork tip.
  * @return
  */
-Tip NodeForeignApi::getTip()
+Result<Tip> NodeForeignApi::getTip()
 {
     QJsonArray params;
-    QJsonObject root = post("get_tip", params);
 
-    if (!root.contains("result") || !root["result"].isObject()) {
-        qWarning() << "Kein result-Objekt";
-        return Tip();
+    auto res = JsonUtil::extractOkObject(post("get_tip", params));
+    QJsonObject okObj;
+
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
 
-    QJsonObject result = root["result"].toObject();
-    if (!result.contains("Ok") || !result["Ok"].isObject()) {
-        qWarning() << "Kein Ok-Objekt in result";
-        return Tip();
-    }
-
-    QJsonObject ok = result["Ok"].toObject();
-
-    return Tip::fromJson(ok);
+    return Tip::fromJson(okObj);
 }
 
 /**
  * @brief NodeForeignApi::getUnconfirmedTransactions
+ * Returns the unconfirmed transactions in the transaction pool.
+ * Will not return transactions in the stempool.
  * @return
  */
-QList<PoolEntry> NodeForeignApi::getUnconfirmedTransactions()
+Result<QList<PoolEntry> > NodeForeignApi::getUnconfirmedTransactions()
 {
-    QList<PoolEntry> entries;
     QJsonArray params;
 
-    QJsonObject root = post("get_unconfirmed_transactions", params);
+    auto res = JsonUtil::extractOkValue(post("get_unconfirmed_transactions", params));
+    QJsonValue OkVal;
 
-    if (root.contains("result") && root["result"].isObject()) {
-        QJsonObject resultObj = root["result"].toObject();
-        if (resultObj.contains("Ok")) {
-            QJsonValue okValue = resultObj["Ok"];
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
+    }
 
-            QJsonArray arr = okValue.toArray();
-            for (const QJsonValue &v : arr) {
-                if (!v.isObject()) {
-                    continue;
-                }
-                PoolEntry entry = PoolEntry::fromJson(v.toObject());
-                entries.append(entry);
-            }
-            return entries;
+    QList<PoolEntry> entries;
+    QJsonArray arr = OkVal.toArray();
+    for (const QJsonValue &v : arr) {
+        if (!v.isObject()) {
+            continue;
         }
+        PoolEntry entry = PoolEntry::fromJson(v.toObject());
+        entries.append(entry);
     }
 
     return entries;
@@ -297,75 +292,77 @@ QList<PoolEntry> NodeForeignApi::getUnconfirmedTransactions()
 
 /**
  * @brief NodeForeignApi::getUnspentOutputs
+ * UTXO traversal. Retrieves last utxos since a start index until a max.
+ * Last boolean is optional to whether or not return the rangeproof.
+ * @param startHeight
+ * @param endHeight
+ * @param max
+ * @param includeProof
  * @return
  */
-BlockListing NodeForeignApi::getUnspentOutputs(int startHeight, int endHeight, int max, bool includeProof)
+Result<BlockListing> NodeForeignApi::getUnspentOutputs(int startHeight, int endHeight, int max, bool includeProof)
 {
-    BlockListing listing;
     QJsonArray params;
     params.append(QJsonValue(startHeight));
     params.append(QJsonValue(endHeight));
     params.append(QJsonValue(max));
     params.append(QJsonValue(includeProof));
 
-    QJsonObject rootObj = post("get_unspent_outputs", params);
+    auto res = JsonUtil::extractOkObject(post("get_unspent_outputs", params));
+    QJsonObject okObj;
 
-    if (rootObj.contains("result")) {
-        QJsonObject resultObj = rootObj["result"].toObject();
-        if (resultObj.contains("Ok")) {
-            QJsonObject okObj = resultObj["Ok"].toObject();
-
-            listing.fromJson(okObj);
-        }
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
+
+    BlockListing listing;
+    listing.fromJson(okObj);
 
     return listing;
 }
 
 /**
  * @brief NodeForeignApi::getVersion
+ * Returns the node version and block header version (used by grin-wallet).
  * @return
  */
-NodeVersion NodeForeignApi::getVersion()
+Result<NodeVersion> NodeForeignApi::getVersion()
 {
     QJsonArray params;
 
-    QJsonObject rootObj = post("get_version", params);
-    if (!rootObj.contains("result") || !rootObj["result"].isObject()) {
-        return NodeVersion();
-    }
+    auto res = JsonUtil::extractOkObject(post("get_version", params));
+    QJsonObject okObj;
 
-    QJsonObject resultObj = rootObj["result"].toObject();
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return NodeVersion();
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     return NodeVersion::fromJson(okObj);
 }
 
 /**
  * @brief NodeForeignApi::pushTransaction
+ * Push new transaction to our local transaction pool.
+ * Optional fluff boolean to bypass Dandelion relay (false by default).
+ * @param tx
+ * @param fluff
  * @return
  */
-bool NodeForeignApi::pushTransaction(Transaction tx, bool fluff)
+Result<bool> NodeForeignApi::pushTransaction(Transaction tx, bool fluff)
 {
     QJsonArray params;
     params.append(tx.toJson());
     params.append(QJsonValue(fluff));
 
-    QJsonObject rpcJson = post("push_transaction", params);
+    auto res = JsonUtil::extractOkValue(post("push_transaction", params));
+    QJsonValue OkVal;
 
-    // Check if "result" exists and is an object
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return false;
+    if (!res.unwrapOrLog(OkVal)) {
+        return res.error();
     }
 
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
     // The "Ok" key must exist — its value can be either null or an object
-    return resultObj.contains("Ok");
+    return OkVal.isNull() || OkVal.isObject();
 }
 
 /**
@@ -420,7 +417,7 @@ QJsonObject NodeForeignApi::post(const QString &method, const QJsonArray &params
         return jsonDoc.object();
     } else {
         // print error
-        qDebug() << "Error: " << reply->errorString();
+        qDebug() << "Error " << Q_FUNC_INFO << " : " << reply->errorString();
     }
     reply->deleteLater();
 

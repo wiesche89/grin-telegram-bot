@@ -70,7 +70,7 @@ public:
     qint64 revertedAfterSeconds() const;
     void setRevertedAfterSeconds(qint64 revertedAfterSeconds);
 
-    // JSON-Methoden
+    // JSON
     void fromJson(const QJsonObject &json);
     QJsonObject toJson() const;
 

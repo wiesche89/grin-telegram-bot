@@ -1,50 +1,90 @@
 #include "viewwallet.h"
 
+/**
+ * @brief ViewWallet::ViewWallet
+ */
 ViewWallet::ViewWallet() : m_lastPmmrIndex(0),
     m_totalBalance(0)
 {
 }
 
+/**
+ * @brief ViewWallet::lastPmmrIndex
+ * @return
+ */
 int ViewWallet::lastPmmrIndex() const
 {
     return m_lastPmmrIndex;
 }
 
+/**
+ * @brief ViewWallet::setLastPmmrIndex
+ * @param index
+ */
 void ViewWallet::setLastPmmrIndex(int index)
 {
     m_lastPmmrIndex = index;
 }
 
+/**
+ * @brief ViewWallet::entries
+ * @return
+ */
 QVector<ViewWalletEntry> ViewWallet::entries() const
 {
     return m_entries;
 }
 
+/**
+ * @brief ViewWallet::setEntries
+ * @param entries
+ */
 void ViewWallet::setEntries(const QVector<ViewWalletEntry> &entries)
 {
     m_entries = entries;
 }
 
+/**
+ * @brief ViewWallet::rewindHash
+ * @return
+ */
 QString ViewWallet::rewindHash() const
 {
     return m_rewindHash;
 }
 
+/**
+ * @brief ViewWallet::setRewindHash
+ * @param hash
+ */
 void ViewWallet::setRewindHash(const QString &hash)
 {
     m_rewindHash = hash;
 }
 
+/**
+ * @brief ViewWallet::totalBalance
+ * @return
+ */
 qint64 ViewWallet::totalBalance() const
 {
     return m_totalBalance;
 }
 
+/**
+ * @brief ViewWallet::setTotalBalance
+ * @param balance
+ */
 void ViewWallet::setTotalBalance(qint64 balance)
 {
     m_totalBalance = balance;
 }
 
+/**
+ * @brief ViewWallet::fromJson
+ * @param obj
+ * @return
+ */
 ViewWallet ViewWallet::fromJson(const QJsonObject &obj)
 {
     ViewWallet wallet;

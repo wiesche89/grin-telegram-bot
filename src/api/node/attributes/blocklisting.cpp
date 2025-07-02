@@ -1,30 +1,53 @@
 #include "blocklisting.h"
 
+/**
+ * @brief BlockListing::BlockListing
+ */
 BlockListing::BlockListing() :
     m_lastRetrievedHeight(0)
 {
 }
 
+/**
+ * @brief BlockListing::lastRetrievedHeight
+ * @return
+ */
 quint64 BlockListing::lastRetrievedHeight() const
 {
     return m_lastRetrievedHeight;
 }
 
+/**
+ * @brief BlockListing::blocks
+ * @return
+ */
 QVector<BlockPrintable> BlockListing::blocks() const
 {
     return m_blocks;
 }
 
+/**
+ * @brief BlockListing::setLastRetrievedHeight
+ * @param height
+ */
 void BlockListing::setLastRetrievedHeight(quint64 height)
 {
     m_lastRetrievedHeight = height;
 }
 
+/**
+ * @brief BlockListing::setBlocks
+ * @param blocks
+ */
 void BlockListing::setBlocks(const QVector<BlockPrintable> &blocks)
 {
     m_blocks = blocks;
 }
 
+/**
+ * @brief BlockListing::fromJson
+ * @param json
+ */
 void BlockListing::fromJson(const QJsonObject &json)
 {
     if (json.contains("last_retrieved_height") && json["last_retrieved_height"].isDouble()) {
@@ -44,6 +67,10 @@ void BlockListing::fromJson(const QJsonObject &json)
     }
 }
 
+/**
+ * @brief BlockListing::toJson
+ * @return
+ */
 QJsonObject BlockListing::toJson() const
 {
     QJsonObject json;

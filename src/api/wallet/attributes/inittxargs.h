@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QJsonObject>
+
 #include "inittxsendargs.h"
 
 class InitTxArgs
@@ -10,7 +11,6 @@ class InitTxArgs
 public:
     InitTxArgs();
 
-    // Getter / Setter
     QString srcAcctName() const;
     void setSrcAcctName(const QString &value);
 

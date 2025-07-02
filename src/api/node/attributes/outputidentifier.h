@@ -3,8 +3,9 @@
 
 #include <QObject>
 #include <QJsonObject>
+
 #include "commitment.h"
-#include "OutputFeatures.h"
+#include "outputfeatures.h"
 
 class OutputIdentifier
 {

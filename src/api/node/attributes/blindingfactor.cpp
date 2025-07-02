@@ -1,24 +1,43 @@
 #include "blindingfactor.h"
 
+/**
+ * @brief BlindingFactor::BlindingFactor
+ */
 BlindingFactor::BlindingFactor()
 {
 }
 
+/**
+ * @brief BlindingFactor::BlindingFactor
+ * @param data
+ */
 BlindingFactor::BlindingFactor(const QByteArray &data) :
     m_data(data)
 {
 }
 
+/**
+ * @brief BlindingFactor::data
+ * @return
+ */
 QByteArray BlindingFactor::data() const
 {
     return m_data;
 }
 
+/**
+ * @brief BlindingFactor::setData
+ * @param data
+ */
 void BlindingFactor::setData(const QByteArray &data)
 {
     m_data = data;
 }
 
+/**
+ * @brief BlindingFactor::toJson
+ * @return
+ */
 QJsonObject BlindingFactor::toJson() const
 {
     QJsonObject obj;
@@ -26,6 +45,11 @@ QJsonObject BlindingFactor::toJson() const
     return obj;
 }
 
+/**
+ * @brief BlindingFactor::fromJson
+ * @param json
+ * @return
+ */
 BlindingFactor BlindingFactor::fromJson(const QJsonObject &json)
 {
     BlindingFactor factor;

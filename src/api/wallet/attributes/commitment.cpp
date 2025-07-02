@@ -1,13 +1,17 @@
-#include "Commitment.h"
-#include <QJsonValue>
-#include <QJsonDocument>
-#include <QDebug>
+#include "commitment.h"
 
+/**
+ * @brief Commitment::Commitment
+ */
 Commitment::Commitment() :
     m_data(33, 0)   // 33 Bytes
 {
 }
 
+/**
+ * @brief Commitment::Commitment
+ * @param data
+ */
 Commitment::Commitment(const QByteArray &data)
 {
     if (data.size() == 33) {
@@ -17,11 +21,19 @@ Commitment::Commitment(const QByteArray &data)
     }
 }
 
+/**
+ * @brief Commitment::data
+ * @return
+ */
 QByteArray Commitment::data() const
 {
     return m_data;
 }
 
+/**
+ * @brief Commitment::setData
+ * @param data
+ */
 void Commitment::setData(const QByteArray &data)
 {
     if (data.size() == 33) {
@@ -29,7 +41,11 @@ void Commitment::setData(const QByteArray &data)
     }
 }
 
-// JSON: Base64 "commitment"
+/**
+ * @brief Commitment::fromJson
+ * Base64
+ * @param json
+ */
 void Commitment::fromJson(const QJsonObject &json)
 {
     if (json.contains("commitment") && json["commitment"].isString()) {
@@ -37,7 +53,7 @@ void Commitment::fromJson(const QJsonObject &json)
         if (decoded.size() == 33) {
             m_data = decoded;
         } else {
-            // Fallback oder Fehlerbehandlung
+            // Fallback/Error
             m_data = QByteArray(33, 0);
         }
     } else {
@@ -45,7 +61,11 @@ void Commitment::fromJson(const QJsonObject &json)
     }
 }
 
-// JSON erzeugen mit Base64-kodiertem Feld "commitment"
+/**
+ * @brief Commitment::toJson
+ * Base64
+ * @return
+ */
 QJsonObject Commitment::toJson() const
 {
     QJsonObject json;

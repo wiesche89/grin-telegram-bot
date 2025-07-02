@@ -12,108 +12,190 @@ BlockHeaderPrintable::BlockHeaderPrintable() :
 {
 }
 
-// Getter / Setter Implementierungen
-
+/**
+ * @brief BlockHeaderPrintable::hash
+ * @return
+ */
 QString BlockHeaderPrintable::hash() const
 {
     return m_hash;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setHash
+ * @param hash
+ */
 void BlockHeaderPrintable::setHash(const QString &hash)
 {
     m_hash = hash;
 }
 
+/**
+ * @brief BlockHeaderPrintable::version
+ * @return
+ */
 quint16 BlockHeaderPrintable::version() const
 {
     return m_version;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setVersion
+ * @param version
+ */
 void BlockHeaderPrintable::setVersion(quint16 version)
 {
     m_version = version;
 }
 
+/**
+ * @brief BlockHeaderPrintable::height
+ * @return
+ */
 quint64 BlockHeaderPrintable::height() const
 {
     return m_height;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setHeight
+ * @param height
+ */
 void BlockHeaderPrintable::setHeight(quint64 height)
 {
     m_height = height;
 }
 
+/**
+ * @brief BlockHeaderPrintable::previous
+ * @return
+ */
 QString BlockHeaderPrintable::previous() const
 {
     return m_previous;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setPrevious
+ * @param previous
+ */
 void BlockHeaderPrintable::setPrevious(const QString &previous)
 {
     m_previous = previous;
 }
 
+/**
+ * @brief BlockHeaderPrintable::prevRoot
+ * @return
+ */
 QString BlockHeaderPrintable::prevRoot() const
 {
     return m_prevRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setPrevRoot
+ * @param prevRoot
+ */
 void BlockHeaderPrintable::setPrevRoot(const QString &prevRoot)
 {
     m_prevRoot = prevRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::timestamp
+ * @return
+ */
 QString BlockHeaderPrintable::timestamp() const
 {
     return m_timestamp;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setTimestamp
+ * @param timestamp
+ */
 void BlockHeaderPrintable::setTimestamp(const QString &timestamp)
 {
     m_timestamp = timestamp;
 }
 
+/**
+ * @brief BlockHeaderPrintable::outputRoot
+ * @return
+ */
 QString BlockHeaderPrintable::outputRoot() const
 {
     return m_outputRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setOutputRoot
+ * @param outputRoot
+ */
 void BlockHeaderPrintable::setOutputRoot(const QString &outputRoot)
 {
     m_outputRoot = outputRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::outputMmrSize
+ * @return
+ */
 quint64 BlockHeaderPrintable::outputMmrSize() const
 {
     return m_outputMmrSize;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setOutputMmrSize
+ * @param size
+ */
 void BlockHeaderPrintable::setOutputMmrSize(quint64 size)
 {
     m_outputMmrSize = size;
 }
 
+/**
+ * @brief BlockHeaderPrintable::rangeProofRoot
+ * @return
+ */
 QString BlockHeaderPrintable::rangeProofRoot() const
 {
     return m_rangeProofRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setRangeProofRoot
+ * @param root
+ */
 void BlockHeaderPrintable::setRangeProofRoot(const QString &root)
 {
     m_rangeProofRoot = root;
 }
 
+/**
+ * @brief BlockHeaderPrintable::kernelRoot
+ * @return
+ */
 QString BlockHeaderPrintable::kernelRoot() const
 {
     return m_kernelRoot;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setKernelRoot
+ * @param root
+ */
 void BlockHeaderPrintable::setKernelRoot(const QString &root)
 {
     m_kernelRoot = root;
 }
 
+/**
+ * @brief BlockHeaderPrintable::kernelMmrSize
+ * @return
+ */
 quint64 BlockHeaderPrintable::kernelMmrSize() const
 {
     return m_kernelMmrSize;
@@ -124,67 +206,118 @@ void BlockHeaderPrintable::setKernelMmrSize(quint64 size)
     m_kernelMmrSize = size;
 }
 
+/**
+ * @brief BlockHeaderPrintable::nonce
+ * @return
+ */
 quint64 BlockHeaderPrintable::nonce() const
 {
     return m_nonce;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setNonce
+ * @param nonce
+ */
 void BlockHeaderPrintable::setNonce(quint64 nonce)
 {
     m_nonce = nonce;
 }
 
+/**
+ * @brief BlockHeaderPrintable::edgeBits
+ * @return
+ */
 quint8 BlockHeaderPrintable::edgeBits() const
 {
     return m_edgeBits;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setEdgeBits
+ * @param bits
+ */
 void BlockHeaderPrintable::setEdgeBits(quint8 bits)
 {
     m_edgeBits = bits;
 }
 
+/**
+ * @brief BlockHeaderPrintable::cuckooSolution
+ * @return
+ */
 QVector<quint64> BlockHeaderPrintable::cuckooSolution() const
 {
     return m_cuckooSolution;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setCuckooSolution
+ * @param solution
+ */
 void BlockHeaderPrintable::setCuckooSolution(const QVector<quint64> &solution)
 {
     m_cuckooSolution = solution;
 }
 
+/**
+ * @brief BlockHeaderPrintable::totalDifficulty
+ * @return
+ */
 quint64 BlockHeaderPrintable::totalDifficulty() const
 {
     return m_totalDifficulty;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setTotalDifficulty
+ * @param difficulty
+ */
 void BlockHeaderPrintable::setTotalDifficulty(quint64 difficulty)
 {
     m_totalDifficulty = difficulty;
 }
 
+/**
+ * @brief BlockHeaderPrintable::secondaryScaling
+ * @return
+ */
 quint32 BlockHeaderPrintable::secondaryScaling() const
 {
     return m_secondaryScaling;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setSecondaryScaling
+ * @param scaling
+ */
 void BlockHeaderPrintable::setSecondaryScaling(quint32 scaling)
 {
     m_secondaryScaling = scaling;
 }
 
+/**
+ * @brief BlockHeaderPrintable::totalKernelOffset
+ * @return
+ */
 QString BlockHeaderPrintable::totalKernelOffset() const
 {
     return m_totalKernelOffset;
 }
 
+/**
+ * @brief BlockHeaderPrintable::setTotalKernelOffset
+ * @param offset
+ */
 void BlockHeaderPrintable::setTotalKernelOffset(const QString &offset)
 {
     m_totalKernelOffset = offset;
 }
 
-// JSON deserialization
+/**
+ * @brief BlockHeaderPrintable::fromJson
+ * @param json
+ */
 void BlockHeaderPrintable::fromJson(const QJsonObject &json)
 {
     m_hash = json.value("hash").toString();
@@ -214,7 +347,10 @@ void BlockHeaderPrintable::fromJson(const QJsonObject &json)
     m_totalKernelOffset = json.value("total_kernel_offset").toString();
 }
 
-// JSON serialization
+/**
+ * @brief BlockHeaderPrintable::toJson
+ * @return
+ */
 QJsonObject BlockHeaderPrintable::toJson() const
 {
     QJsonObject json;

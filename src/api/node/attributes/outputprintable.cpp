@@ -1,5 +1,8 @@
 #include "outputprintable.h"
 
+/**
+ * @brief OutputPrintable::OutputPrintable
+ */
 OutputPrintable::OutputPrintable() :
     m_outputType(OutputType::OutputTypeUnknown),
     m_spent(false),
@@ -8,89 +11,156 @@ OutputPrintable::OutputPrintable() :
 {
 }
 
+/**
+ * @brief OutputPrintable::outputType
+ * @return
+ */
 OutputType OutputPrintable::outputType() const
 {
     return m_outputType;
 }
 
+/**
+ * @brief OutputPrintable::setOutputType
+ * @param type
+ */
 void OutputPrintable::setOutputType(OutputType type)
 {
     m_outputType = type;
 }
 
+/**
+ * @brief OutputPrintable::commit
+ * @return
+ */
 Commitment OutputPrintable::commit() const
 {
     return m_commit;
 }
 
+/**
+ * @brief OutputPrintable::setCommit
+ * @param commit
+ */
 void OutputPrintable::setCommit(const Commitment &commit)
 {
     m_commit = commit;
 }
 
+/**
+ * @brief OutputPrintable::spent
+ * @return
+ */
 bool OutputPrintable::spent() const
 {
     return m_spent;
 }
 
+/**
+ * @brief OutputPrintable::setSpent
+ * @param spent
+ */
 void OutputPrintable::setSpent(bool spent)
 {
     m_spent = spent;
 }
 
+/**
+ * @brief OutputPrintable::proof
+ * @return
+ */
 QString OutputPrintable::proof() const
 {
     return m_proof;
 }
 
+/**
+ * @brief OutputPrintable::setProof
+ * @param proof
+ */
 void OutputPrintable::setProof(const QString &proof)
 {
     m_proof = proof;
 }
 
+/**
+ * @brief OutputPrintable::proofHash
+ * @return
+ */
 QString OutputPrintable::proofHash() const
 {
     return m_proofHash;
 }
 
+/**
+ * @brief OutputPrintable::setProofHash
+ * @param hash
+ */
 void OutputPrintable::setProofHash(const QString &hash)
 {
     m_proofHash = hash;
 }
 
+/**
+ * @brief OutputPrintable::blockHeight
+ * @return
+ */
 QVariant OutputPrintable::blockHeight() const
 {
     return m_blockHeight;
 }
 
+/**
+ * @brief OutputPrintable::setBlockHeight
+ * @param height
+ */
 void OutputPrintable::setBlockHeight(const QVariant &height)
 {
     m_blockHeight = height;
 }
 
+/**
+ * @brief OutputPrintable::merkleProof
+ * @return
+ */
 MerkleProof OutputPrintable::merkleProof() const
 {
     return m_merkleProof;
 }
 
+/**
+ * @brief OutputPrintable::setMerkleProof
+ * @param proof
+ */
 void OutputPrintable::setMerkleProof(const MerkleProof &proof)
 {
     m_merkleProof = proof;
 }
 
+/**
+ * @brief OutputPrintable::mmrIndex
+ * @return
+ */
 quint64 OutputPrintable::mmrIndex() const
 {
     return m_mmrIndex;
 }
 
+/**
+ * @brief OutputPrintable::setMmrIndex
+ * @param index
+ */
 void OutputPrintable::setMmrIndex(quint64 index)
 {
     m_mmrIndex = index;
 }
 
+/**
+ * @brief OutputPrintable::fromJson
+ * @param json
+ */
 void OutputPrintable::fromJson(const QJsonObject &json)
 {
-    // output_type als String -> Enum konvertieren (hier Beispiel)
     QString typeStr = json.value("output_type").toString();
     if (typeStr == "Coinbase") {
         m_outputType = OutputType::OutputTypeCoinbase;
@@ -126,11 +196,14 @@ void OutputPrintable::fromJson(const QJsonObject &json)
     m_mmrIndex = json.value("mmr_index").toVariant().toULongLong();
 }
 
+/**
+ * @brief OutputPrintable::toJson
+ * @return
+ */
 QJsonObject OutputPrintable::toJson() const
 {
     QJsonObject json;
 
-    // Enum zu String konvertieren (hier Beispiel)
     switch (m_outputType) {
     case OutputType::OutputTypeCoinbase:
         json["output_type"] = "Coinbase";

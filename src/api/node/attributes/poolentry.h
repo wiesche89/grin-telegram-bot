@@ -4,8 +4,9 @@
 #include <QString>
 #include <QDateTime>
 #include <QJsonObject>
-#include "TxSource.h"
-#include "Transaction.h"
+
+#include "txsource.h"
+#include "transaction.h"
 
 class PoolEntry
 {

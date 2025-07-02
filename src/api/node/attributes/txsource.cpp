@@ -1,5 +1,10 @@
 #include "txsource.h"
 
+/**
+ * @brief txSourceToString
+ * @param src
+ * @return
+ */
 QString txSourceToString(TxSource src)
 {
     switch (src) {
@@ -17,6 +22,11 @@ QString txSourceToString(TxSource src)
     return {};
 }
 
+/**
+ * @brief txSourceFromString
+ * @param str
+ * @return
+ */
 TxSource txSourceFromString(const QString &str)
 {
     if (str == "PushApi") {

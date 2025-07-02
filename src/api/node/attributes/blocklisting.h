@@ -4,6 +4,7 @@
 #include <QVector>
 #include <QJsonObject>
 #include <QJsonArray>
+
 #include "blockprintable.h"
 
 class BlockListing
@@ -19,7 +20,7 @@ public:
     void setLastRetrievedHeight(quint64 height);
     void setBlocks(const QVector<BlockPrintable> &blocks);
 
-    // JSON-Parsing und -Serialisierung
+    // JSON-Parsing
     void fromJson(const QJsonObject &json);
     QJsonObject toJson() const;
 

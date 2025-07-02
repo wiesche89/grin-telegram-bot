@@ -1,35 +1,57 @@
 #include "nodeversion.h"
 
-// Constructor
-NodeVersion::NodeVersion(const QString &nodeVersion, uint16_t blockHeaderVersion) :
+/**
+ * @brief NodeVersion::NodeVersion
+ * @param nodeVersion
+ * @param blockHeaderVersion
+ */
+NodeVersion::NodeVersion(const QString &nodeVersion, quint64 blockHeaderVersion) :
     m_nodeVersion(nodeVersion),
     m_blockHeaderVersion(blockHeaderVersion)
 {
 }
 
-// Getter implementations
+/**
+ * @brief NodeVersion::nodeVersion
+ * @return
+ */
 QString NodeVersion::nodeVersion() const
 {
     return m_nodeVersion;
 }
 
-uint16_t NodeVersion::blockHeaderVersion() const
+/**
+ * @brief NodeVersion::blockHeaderVersion
+ * @return
+ */
+quint64 NodeVersion::blockHeaderVersion() const
 {
     return m_blockHeaderVersion;
 }
 
-// Setter implementations
+/**
+ * @brief NodeVersion::setNodeVersion
+ * @param nodeVersion
+ */
 void NodeVersion::setNodeVersion(const QString &nodeVersion)
 {
     m_nodeVersion = nodeVersion;
 }
 
-void NodeVersion::setBlockHeaderVersion(uint16_t blockHeaderVersion)
+/**
+ * @brief NodeVersion::setBlockHeaderVersion
+ * @param blockHeaderVersion
+ */
+void NodeVersion::setBlockHeaderVersion(quint64 blockHeaderVersion)
 {
     m_blockHeaderVersion = blockHeaderVersion;
 }
 
-// JSON deserialization
+/**
+ * @brief NodeVersion::fromJson
+ * @param obj
+ * @return
+ */
 NodeVersion NodeVersion::fromJson(const QJsonObject &obj)
 {
     NodeVersion v;
@@ -42,7 +64,10 @@ NodeVersion NodeVersion::fromJson(const QJsonObject &obj)
     return v;
 }
 
-// JSON serialization
+/**
+ * @brief NodeVersion::toJson
+ * @return
+ */
 QJsonObject NodeVersion::toJson() const
 {
     QJsonObject obj;

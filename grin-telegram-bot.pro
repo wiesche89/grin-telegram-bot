@@ -19,6 +19,7 @@ INCLUDEPATH += \
   src/worker \
   src/util \
   src/api \
+  src/api/common/attributes \
   src/api/node \
   src/api/wallet \
   src/api/node/foreign \
@@ -46,6 +47,7 @@ INCLUDEPATH += \
 
 # .cpp
 SOURCES += \
+  src/api/common/attributes/error.cpp \
   src/api/node/attributes/blindingfactor.cpp \
   src/api/node/attributes/blockheaderprintable.cpp \
   src/api/node/attributes/blocklisting.cpp \
@@ -109,6 +111,7 @@ SOURCES += \
   src/telegrambot/modules/httpserver/httpserver.cpp \
   src/telegrambot/modules/sslserver/sslserver.cpp \
   src/telegrambot/telegrambot.cpp \
+  src/util/jsonutil.cpp \
   src/worker/worker.cpp \
   src/api/wallet/foreign/walletforeignapi.cpp \
   src/api/wallet/owner/walletownerapi.cpp \
@@ -116,11 +119,12 @@ SOURCES += \
   src/database/databasemanager.cpp \
   src/database/attributes/donate.cpp \
   src/database/attributes/faucet.cpp \
-  src/api/wallet/attributes/error.cpp \
-    src/util/debugutils.cpp
+  src/util/debugutils.cpp
 
 # .h
 HEADERS += \
+  src/api/common/attributes/error.h \
+  src/api/common/attributes/result.h \
   src/api/node/attributes/blindingfactor.h \
   src/api/node/attributes/blockheaderprintable.h \
   src/api/node/attributes/blocklisting.h \
@@ -189,6 +193,7 @@ HEADERS += \
   src/telegrambot/telegrambot.h \
   src/telegrambot/telegramdatainterface.h \
   src/telegrambot/telegramdatastructs.h \
+  src/util/jsonutil.h \
   src/worker/worker.h \
   3rdParty/secp256k1/include/secp256k1.h \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \
@@ -198,8 +203,7 @@ HEADERS += \
   src/database/databasemanager.h \
   src/database/attributes/donate.h \
   src/database/attributes/faucet.h \
-  src/api/wallet/attributes/error.h \
-    src/util/debugutils.h
+  src/util/debugutils.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1

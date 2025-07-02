@@ -2,36 +2,35 @@
 #define TIP_H
 
 #include <QString>
-#include <cstdint>
 #include <QJsonObject>
 
 class Tip
 {
 public:
     Tip();
-    Tip(uint64_t height, const QString &lastBlockPushed, const QString &prevBlockToLast, uint64_t totalDifficulty);
+    Tip(quint64 height, const QString &lastBlockPushed, const QString &prevBlockToLast, quint64 totalDifficulty);
 
     // Getter
-    uint64_t height() const;
+    quint64 height() const;
     QString lastBlockPushed() const;
     QString prevBlockToLast() const;
-    uint64_t totalDifficulty() const;
+    quint64 totalDifficulty() const;
 
     // Setter
-    void setHeight(uint64_t height);
+    void setHeight(quint64 height);
     void setLastBlockPushed(const QString &lastBlockPushed);
     void setPrevBlockToLast(const QString &prevBlockToLast);
-    void setTotalDifficulty(uint64_t totalDifficulty);
+    void setTotalDifficulty(quint64 totalDifficulty);
 
     // JSON
     static Tip fromJson(const QJsonObject &json);
     QJsonObject toJson() const;
 
 private:
-    uint64_t m_height;
+    quint64 m_height;
     QString m_lastBlockPushed;
     QString m_prevBlockToLast;
-    uint64_t m_totalDifficulty;
+    quint64 m_totalDifficulty;
 };
 
 #endif // TIP_H

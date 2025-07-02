@@ -1,6 +1,8 @@
 #include "txkernel.h"
-#include <QJsonObject>
 
+/**
+ * @brief TxKernel::TxKernel
+ */
 TxKernel::TxKernel() :
     m_features(""),
     m_excess(""),
@@ -8,36 +10,64 @@ TxKernel::TxKernel() :
 {
 }
 
+/**
+ * @brief TxKernel::features
+ * @return
+ */
 QString TxKernel::features() const
 {
     return m_features;
 }
 
+/**
+ * @brief TxKernel::excess
+ * @return
+ */
 QString TxKernel::excess() const
 {
     return m_excess;
 }
 
+/**
+ * @brief TxKernel::excessSig
+ * @return
+ */
 QString TxKernel::excessSig() const
 {
     return m_excessSig;
 }
 
+/**
+ * @brief TxKernel::setFeatures
+ * @param features
+ */
 void TxKernel::setFeatures(const QString &features)
 {
     m_features = features;
 }
 
+/**
+ * @brief TxKernel::setExcess
+ * @param excess
+ */
 void TxKernel::setExcess(const QString &excess)
 {
     m_excess = excess;
 }
 
+/**
+ * @brief TxKernel::setExcessSig
+ * @param excessSig
+ */
 void TxKernel::setExcessSig(const QString &excessSig)
 {
     m_excessSig = excessSig;
 }
 
+/**
+ * @brief TxKernel::fromJson
+ * @param json
+ */
 void TxKernel::fromJson(const QJsonObject &json)
 {
     if (json.contains("features") && json["features"].isString()) {
@@ -53,6 +83,10 @@ void TxKernel::fromJson(const QJsonObject &json)
     }
 }
 
+/**
+ * @brief TxKernel::toJson
+ * @return
+ */
 QJsonObject TxKernel::toJson() const
 {
     QJsonObject json;

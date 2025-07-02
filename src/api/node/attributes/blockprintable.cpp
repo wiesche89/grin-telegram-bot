@@ -1,5 +1,8 @@
 #include "blockprintable.h"
 
+/**
+ * @brief BlockPrintable::BlockPrintable
+ */
 BlockPrintable::BlockPrintable() :
     m_header(),
     m_inputs(),
@@ -8,49 +11,82 @@ BlockPrintable::BlockPrintable() :
 {
 }
 
-// Getter Implementierung
+/**
+ * @brief BlockPrintable::header
+ * @return
+ */
 BlockHeaderPrintable BlockPrintable::header() const
 {
     return m_header;
 }
 
+/**
+ * @brief BlockPrintable::inputs
+ * @return
+ */
 QVector<QString> BlockPrintable::inputs() const
 {
     return m_inputs;
 }
 
+/**
+ * @brief BlockPrintable::outputs
+ * @return
+ */
 QVector<OutputPrintable> BlockPrintable::outputs() const
 {
     return m_outputs;
 }
 
+/**
+ * @brief BlockPrintable::kernels
+ * @return
+ */
 QVector<TxKernelPrintable> BlockPrintable::kernels() const
 {
     return m_kernels;
 }
 
-// Setter Implementierung
+/**
+ * @brief BlockPrintable::setHeader
+ * @param header
+ */
 void BlockPrintable::setHeader(const BlockHeaderPrintable &header)
 {
     m_header = header;
 }
 
+/**
+ * @brief BlockPrintable::setInputs
+ * @param inputs
+ */
 void BlockPrintable::setInputs(const QVector<QString> &inputs)
 {
     m_inputs = inputs;
 }
 
+/**
+ * @brief BlockPrintable::setOutputs
+ * @param outputs
+ */
 void BlockPrintable::setOutputs(const QVector<OutputPrintable> &outputs)
 {
     m_outputs = outputs;
 }
 
+/**
+ * @brief BlockPrintable::setKernels
+ * @param kernels
+ */
 void BlockPrintable::setKernels(const QVector<TxKernelPrintable> &kernels)
 {
     m_kernels = kernels;
 }
 
-// JSON parsing
+/**
+ * @brief BlockPrintable::fromJson
+ * @param json
+ */
 void BlockPrintable::fromJson(const QJsonObject &json)
 {
     if (json.contains("header") && json["header"].isObject()) {
@@ -90,7 +126,10 @@ void BlockPrintable::fromJson(const QJsonObject &json)
     }
 }
 
-// JSON serialization
+/**
+ * @brief BlockPrintable::toJson
+ * @return
+ */
 QJsonObject BlockPrintable::toJson() const
 {
     QJsonObject json;

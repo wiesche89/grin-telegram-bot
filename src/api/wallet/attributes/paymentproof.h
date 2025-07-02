@@ -3,7 +3,8 @@
 
 #include <QString>
 #include <QJsonObject>
-#include "Commitment.h"
+
+#include "commitment.h"
 
 class PaymentProof
 {

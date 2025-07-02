@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <QJsonObject>
+
 #include "transactionbody.h"
 #include "blindingfactor.h"
 

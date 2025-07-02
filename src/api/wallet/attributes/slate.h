@@ -57,9 +57,6 @@ public:
     QList<Com> coms() const;
     void setComs(const QList<Com> &newComs);
 
-    Error error() const;
-    void setError(const Error &error);
-
     QString off() const;
     void setOff(const QString &off);
 
@@ -77,7 +74,6 @@ private:
     QString m_sta;
     QString m_ver;
     QString m_off;
-    Error m_error;
 };
 
 #endif // SLATE_H

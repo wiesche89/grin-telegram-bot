@@ -23,7 +23,7 @@ public:
 
 private:
     quint64 m_mmrSize;
-    QVector<QString> m_path;  // Hash als hex string
+    QVector<QString> m_path;
 };
 
 #endif // MERKLEPROOF_H

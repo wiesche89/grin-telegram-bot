@@ -2,9 +2,9 @@
 #define OUTPUTLISTING_H
 
 #include <QList>
-#include <cstdint>
 #include <QJsonObject>
 #include <QJsonArray>
+
 #include "outputprintable.h"
 
 class OutputListing
@@ -12,11 +12,11 @@ class OutputListing
 public:
     OutputListing();
 
-    uint64_t highestIndex() const;
-    void setHighestIndex(uint64_t index);
+    quint64 highestIndex() const;
+    void setHighestIndex(quint64 index);
 
-    uint64_t lastRetrievedIndex() const;
-    void setLastRetrievedIndex(uint64_t index);
+    quint64 lastRetrievedIndex() const;
+    void setLastRetrievedIndex(quint64 index);
 
     const QList<OutputPrintable> &outputs() const;
     void setOutputs(const QList<OutputPrintable> &outputs);
@@ -27,8 +27,8 @@ public:
     QJsonObject toJson() const;
 
 private:
-    uint64_t m_highestIndex;
-    uint64_t m_lastRetrievedIndex;
+    quint64 m_highestIndex;
+    quint64 m_lastRetrievedIndex;
     QList<OutputPrintable> m_outputs;
 };
 

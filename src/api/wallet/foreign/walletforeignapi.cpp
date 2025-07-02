@@ -3,8 +3,6 @@
 /**
  * @brief WalletForeignApi::WalletForeignApi
  * @param apiUrl
- * @param user
- * @param password
  */
 WalletForeignApi::WalletForeignApi(QString apiUrl) :
     m_apiUrl(apiUrl),
@@ -15,93 +13,97 @@ WalletForeignApi::WalletForeignApi(QString apiUrl) :
 
 /**
  * @brief WalletForeignApi::buildCoinbase
+ * Builds a new unconfirmed coinbase output in the wallet, generally for inclusion in a
+ * potential new block’s coinbase output during mining.
+ * All potential coinbase outputs are created as ‘Unconfirmed’ with the coinbase flag set.
+ * If a potential coinbase output is found on the chain after a wallet update, it status is
+ * set to Unsent and a Transaction Log Entry will be created. Note the output will be
+ * unspendable until the coinbase maturity period has expired.
+ * @param fees
+ * @param height
+ * @param keyId
  * @return
  */
-Coinbase WalletForeignApi::buildCoinbase(int fees, int height, QString keyId)
+Result<Coinbase> WalletForeignApi::buildCoinbase(int fees, int height, QString keyId)
 {
     QJsonObject params;
     params["fees"] = fees;
     params["height"] = height;
-    params["keyId"] = QJsonValue::Null;
+    params["key_id"] = keyId.isEmpty() ? QJsonValue::Null : QJsonValue(keyId);
 
-    QJsonObject rpcJson = post("build_coinbase", params);
+    auto res = JsonUtil::extractOkObject(post("build_coinbase", params));
+    QJsonObject okObj;
 
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return Coinbase();
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return Coinbase();
-    }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     return Coinbase::fromJson(okObj);
 }
 
 /**
  * @brief WalletForeignApi::checkVersion
+ * Return the version capabilities of the running ForeignApi Node
  * @return
  */
-Version WalletForeignApi::checkVersion()
+Result<Version> WalletForeignApi::checkVersion()
 {
     QJsonObject params;
 
-    QJsonObject rpcJson = post("check_version", params);
+    auto res = JsonUtil::extractOkObject(post("check_version", params));
+    QJsonObject okObj;
 
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return Version();
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return Version();
-    }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     return Version::fromJson(okObj);
 }
 
 /**
  * @brief WalletForeignApi::finalizeTx
+ * Finalizes a (standard or invoice) transaction initiated by this wallet’s Owner api. This step assumes
+ * the paying party has completed round 1 and 2 of slate creation, and added their partial signatures.
+ * This wallet will verify and add their partial sig, then create the finalized transaction, ready to post to a node.
+ * This function posts to the node if the post_automatically argument is sent to true. Posting can be
+ * done in separately via the post_tx function. This function also stores the final transaction in
+ * the user’s wallet files for retrieval via the get_stored_tx function.
+ * @param slate
  * @return
  */
-Slate WalletForeignApi::finalizeTx(Slate slate)
+Result<Slate> WalletForeignApi::finalizeTx(Slate slate)
 {
     QJsonObject params;
     QJsonArray paramsArray;
     paramsArray.append(slate.toJson());
     params["params"] = paramsArray;
 
-    QJsonObject rpcJson = post("finalize_tx", params);
+    auto res = JsonUtil::extractOkObject(post("finalize_tx", params));
+    QJsonObject okObj;
 
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        return Slate();
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-        return Slate();
-    }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     return Slate::fromJson(okObj);
 }
 
 /**
  * @brief WalletForeignApi::receiveTx
+ * Recieve a tranaction created by another party, returning the modified Slate object, modified with the recipient’s
+ * output for the transaction amount, and public signature data. This slate can then be sent back to the sender to
+ * finalize the transaction via the Owner API’s finalize_tx method.
+ * This function creates a single output for the full amount, set to a status of ‘Awaiting finalization’.
+ * It will remain in this state until the wallet finds the corresponding output on the chain, at which point it
+ * will become ‘Unspent’. The slate will be updated with the results of Signing round 1 and 2, adding the recipient’s
+ * public nonce, public excess value, and partial signature to the slate.
+ * Also creates a corresponding Transaction Log Entry in the wallet’s transaction log.
  * @param slate
  * @param destAcctName
- * @param rAddr
+ * @param dest
  * @return
  */
-Slate WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QString dest)
+Result<Slate> WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QString dest)
 {
     Q_UNUSED(destAcctName);
     Q_UNUSED(dest);
@@ -111,32 +113,12 @@ Slate WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QString des
     params["dest_acct_name"] = QJsonValue::Null;
     params["dest"] = QJsonValue::Null;
 
-    QJsonObject rpcJson = post("receive_tx", params);
+    auto res = JsonUtil::extractOkObject(post("receive_tx", params));
+    QJsonObject okObj;
 
-    if (!rpcJson.contains("result") || !rpcJson["result"].isObject()) {
-        Error err;
-        Slate slate;
-
-        err.setMessage("Unknown error: "+ QJsonDocument(rpcJson).toJson(QJsonDocument::Compact));
-        slate.setError(err);
-
-        return slate;
+    if (!res.unwrapOrLog(okObj)) {
+        return res.error();
     }
-
-    QJsonObject resultObj = rpcJson["result"].toObject();
-
-    if (!resultObj.contains("Ok") || !resultObj["Ok"].isObject()) {
-
-        Error err;
-        Slate slate;
-
-        err.parseFromJson(resultObj);
-        slate.setError(err);
-
-        return slate;
-    }
-
-    QJsonObject okObj = resultObj["Ok"].toObject();
 
     return Slate::fromJson(okObj);
 }

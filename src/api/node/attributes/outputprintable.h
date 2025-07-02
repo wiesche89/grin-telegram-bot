@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QVariant>
+
 #include "commitment.h"
 #include "merkleproof.h"
 

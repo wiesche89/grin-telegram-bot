@@ -132,9 +132,17 @@ void Worker::onMessage(TelegramBotUpdate update)
     // 2. Bot replies with slatepack address.
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/address")) {
+        QString str;
+        {
+            Result<QString> res = m_walletOwnerApi->getSlatepackAddress(0);
+            if (!res.unwrapOrLog(str)) {
+                str = QString("Error message: %1").arg(res.errorMessage());
+            }
+        }
+
         m_bot->sendMessage(id,
                            "Hi " + message.from.firstName + ",\nhere is the Slatepack address:\n\n"
-                           + m_walletOwnerApi->getSlatepackAddress(0),
+                           + str,
                            0,
                            TelegramBot::NoFlag,
                            TelegramKeyboardRequest(),
@@ -180,17 +188,19 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
-        Slate slate = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
-        if (!slate.isValid()) {
-            qWarning() << "slate error";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "error to decrypt Slatepack!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            return;
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            if (!res.unwrapOrLog(slate)) {
+                m_bot->sendMessage(id,
+                                   "Hi " + message.from.firstName + ",\n"
+                                   + QString("Error message: %1").arg(res.errorMessage()),
+                                   0,
+                                   TelegramBot::NoFlag,
+                                   TelegramKeyboardRequest(),
+                                   nullptr);
+                return;
+            }
         }
 
         switch (Slate::slateStateFromString(slate.sta())) {
@@ -433,18 +443,24 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminamount
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminamount")) {
-            WalletInfo walletInfo = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
-
             QString info;
-            info.append("amountAwaitingConfirmation: " + QString::number(walletInfo.amountAwaitingConfirmation()) + "\n");
-            info.append("amountAwaitingFinalization: " + QString::number(walletInfo.amountAwaitingFinalization()) + "\n");
-            info.append("amountCurrentlySpendable: " + QString::number(walletInfo.amountCurrentlySpendable()) + "\n");
-            info.append("amountImmature: " + QString::number(walletInfo.amountImmature()) + "\n");
-            info.append("amountLocked: " + QString::number(walletInfo.amountLocked()) + "\n");
-            info.append("amountReverted: " + QString::number(walletInfo.amountReverted()) + "\n");
-            info.append("lastConfirmedHeight: " + QString::number(walletInfo.lastConfirmedHeight()) + "\n");
-            info.append("minimumConfirmations: " + QString::number(walletInfo.minimumConfirmations()) + "\n");
-            info.append("total: " + QString::number(walletInfo.total()) + "\n");
+            WalletInfo walletInfo;
+            {
+                Result<WalletInfo> res = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
+                if (!res.unwrapOrLog(walletInfo)) {
+                    info = QString("Error message: %1").arg(res.errorMessage());
+                } else {
+                    info.append("amountAwaitingConfirmation: " + QString::number(walletInfo.amountAwaitingConfirmation()) + "\n");
+                    info.append("amountAwaitingFinalization: " + QString::number(walletInfo.amountAwaitingFinalization()) + "\n");
+                    info.append("amountCurrentlySpendable: " + QString::number(walletInfo.amountCurrentlySpendable()) + "\n");
+                    info.append("amountImmature: " + QString::number(walletInfo.amountImmature()) + "\n");
+                    info.append("amountLocked: " + QString::number(walletInfo.amountLocked()) + "\n");
+                    info.append("amountReverted: " + QString::number(walletInfo.amountReverted()) + "\n");
+                    info.append("lastConfirmedHeight: " + QString::number(walletInfo.lastConfirmedHeight()) + "\n");
+                    info.append("minimumConfirmations: " + QString::number(walletInfo.minimumConfirmations()) + "\n");
+                    info.append("total: " + QString::number(walletInfo.total()) + "\n");
+                }
+            }
 
             m_bot->sendMessage(id,
                                "Hi " + message.from.firstName + ",\n" + info,
@@ -508,20 +524,35 @@ bool Worker::isAdmin(qlonglong id)
  */
 QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
 {
-    qDebug()<<"donate "<<message.from.firstName<<" :"<<slate.amt();
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Debugging
+    ///---------------------------------------------------------------------------------------------------------------------------
+    qDebug() << "donate " << message.from.firstName << " :" << slate.amt();
 
-    Slate slate2 = m_walletForeignApi->receiveTx(slate, "", "");
-
-    if (slate2.error().isValid()) {
-        return slate2.error().message();
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling receiveTx
+    ///---------------------------------------------------------------------------------------------------------------------------
+    Slate slate2;
+    {
+        Result<Slate> res = m_walletForeignApi->receiveTx(slate, "", "");
+        if (!res.unwrapOrLog(slate2)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        }
+    }
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling createSlatepackMessage
+    ///---------------------------------------------------------------------------------------------------------------------------
+    QString slatepack;
+    {
+        Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+        if (!res.unwrapOrLog(slatepack)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        }
     }
 
-    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
-
-    if (slatepack.isEmpty()) {
-        return "error, can't create slatepack!";
-    }
-
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling insert donate in db
+    ///---------------------------------------------------------------------------------------------------------------------------
     Donate donate;
     donate.setUserId(QString::number(message.from.id));
     donate.setUsername(message.from.firstName);
@@ -539,9 +570,14 @@ QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
  */
 QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
 {
-    qDebug()<<"faucet "<<message.from.firstName<<" :"<<slate.amt();
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Debugging
+    ///---------------------------------------------------------------------------------------------------------------------------
+    qDebug() << "faucet " << message.from.firstName << " :" << slate.amt();
 
-    // check
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Check functions
+    ///---------------------------------------------------------------------------------------------------------------------------
     if (slate.amt().toLongLong() > 2000000000) {
         return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
     }
@@ -552,6 +588,9 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
         return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
     }
 
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling processInvoiceTx
+    ///---------------------------------------------------------------------------------------------------------------------------
     QJsonObject txData;
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
@@ -563,13 +602,41 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     txData["payment_proof_recipient_address"] = QJsonValue::Null;
     txData["send_args"] = QJsonValue::Null;
 
-    Slate slate2 = m_walletOwnerApi->processInvoiceTx(slate, txData);
+    Slate slate2;
+    {
+        Result<Slate> res = m_walletOwnerApi->processInvoiceTx(slate, txData);
+        if (!res.unwrapOrLog(slate2)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        }
+    }
 
-    // do something with slate
-    QString slatepack = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling processInvoiceTx
+    ///---------------------------------------------------------------------------------------------------------------------------
+    QString slatepack;
+    {
+        Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+        if (!res.unwrapOrLog(slatepack)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        }
+    }
 
-    qDebug() <<"txLockOutputs: "<< m_walletOwnerApi->txLockOutputs(slate);
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling txLockOutputs
+    ///---------------------------------------------------------------------------------------------------------------------------
+    bool lockOutputs = false;
+    {
+        Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
+        if (!res.unwrapOrLog(lockOutputs)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        } else {
+            qDebug() << "txLockOutputs: " << lockOutputs;
+        }
+    }
 
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling insert faucet in db
+    ///---------------------------------------------------------------------------------------------------------------------------
     Faucet f;
     f.setUserId(QString::number(message.from.id));
     f.setUsername(message.from.firstName);
@@ -585,12 +652,14 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
  */
 void Worker::cleanupRetrieveTxs()
 {
-    qDebug() << QDateTime::currentDateTime().toString() << "  cleanupRetrieveTxs";
-
     QList<TxLogEntry> txList;
-    bool log = true;
-
-    txList = m_walletOwnerApi->retrieveTxs(true, 0, "");
+    {
+        Result<QList<TxLogEntry> > res = m_walletOwnerApi->retrieveTxs(true, 0, "");
+        if (!res.unwrapOrLog(txList)) {
+            qDebug() << QString("Error message: %1").arg(res.errorMessage());
+            return;
+        }
+    }
 
     for (int i = 0; i < txList.length(); i++) {
         // broken transactions
@@ -602,7 +671,15 @@ void Worker::cleanupRetrieveTxs()
                 qInfo().noquote() << debugJsonString(txList[i]);
 
                 // Cancel the old transaction
-                qDebug() << m_walletOwnerApi->cancelTx("", txList[i].id());
+                bool cancelTx = false;
+                {
+                    Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
+                    if (!res.unwrapOrLog(cancelTx)) {
+                        qDebug() << QString("Error message: %1").arg(res.errorMessage());
+                    } else {
+                        qDebug() << "cancelTx = " << cancelTx;
+                    }
+                }
             }
         }
     }

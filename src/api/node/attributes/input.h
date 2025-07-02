@@ -12,7 +12,6 @@ class Input
 public:
     Input();
     Input(OutputFeatures::Feature features, Commitment commit);
-    ~Input();
 
     OutputFeatures::Feature features() const;
     void setFeatures(OutputFeatures::Feature features);

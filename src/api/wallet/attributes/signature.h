@@ -4,9 +4,6 @@
 #include <QString>
 #include <QJsonObject>
 
-/**
- * @brief The Signature class
- */
 class Signature
 {
 public:

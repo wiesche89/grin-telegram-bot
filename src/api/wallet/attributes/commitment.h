@@ -3,6 +3,9 @@
 
 #include <QByteArray>
 #include <QJsonObject>
+#include <QJsonValue>
+#include <QJsonDocument>
+#include <QDebug>
 
 class Commitment
 {
@@ -17,7 +20,7 @@ public:
     QJsonObject toJson() const;
 
 private:
-    QByteArray m_data;  // immer 33 Bytes
+    QByteArray m_data;  // 33 Bytes
 };
 
 #endif // COMMITMENT_H
