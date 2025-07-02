@@ -185,6 +185,31 @@ void Worker::onMessage(TelegramBotUpdate update)
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
+    // document
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if(update->message->document.fileName.endsWith("S1.slatepack"))
+    {
+
+
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        TelegramBotFile file = m_bot->getFile(update->message->document.fileId);
+        qDebug()<<"link: "<<file.link;
+        qDebug()<<"fileId: "<<file.fileId;
+        qDebug()<<"filePath: "<<file.filePath;
+
+        QString link = "https://api.telegram.org/file/bot"+m_settings->value("bot/token").toString()+"/"+file.filePath;
+
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        qDebug()<<slatepack;
+
+    }
+
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
@@ -318,6 +343,60 @@ void Worker::onMessage(TelegramBotUpdate update)
                            + "3) Bot send repsonse Slatepack" + "\n"
                            + "4) Finalize" + "\n"
                            + "\n",
+                           0,
+                           TelegramBot::NoFlag,
+                           TelegramKeyboardRequest(),
+                           nullptr);
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command sendfile
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.text.contains("/sendfile")) {
+
+        qDebug()<<"sendfile";
+        QByteArray data = "Hallo";
+
+        m_bot->sendDocument("example.S2",id, QVariant(data), "", 0, TelegramBot::NoFlag, TelegramKeyboardRequest(), nullptr);
+        return;
+    }
+
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command faucet
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.text.contains("/scanrewindhash")) {
+
+        QString msg;
+        RewindHash rewindHash;
+        {
+            Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
+            if (!res.unwrapOrLog(rewindHash)) {
+                msg = QString("Error message: %1").arg(res.errorMessage());
+            }
+            else
+            {
+                ViewWallet viewWallet;
+                {
+                    Result<ViewWallet> res = m_walletOwnerApi->scanRewindHash(rewindHash,3387426);
+                    if (!res.unwrapOrLog(viewWallet)) {
+                        msg = QString("Error message: %1").arg(res.errorMessage());
+                    }
+                    else
+                    {
+                        qDebug()<< debugJsonString(viewWallet);
+                    }
+                }
+            }
+        }
+
+
+        m_bot->sendMessage(id,
+                           "Hi "
+                           + message.from.firstName
+                           + "\n"+
+                           msg,
                            0,
                            TelegramBot::NoFlag,
                            TelegramKeyboardRequest(),
@@ -683,4 +762,32 @@ void Worker::cleanupRetrieveTxs()
             }
         }
     }
+}
+
+/**
+ * @brief Worker::downloadFileToQString
+ * @param url
+ * @return
+ */
+QString Worker::downloadFileToQString(const QUrl &url) {
+    QNetworkAccessManager manager;
+    QNetworkRequest request(url);
+
+    QNetworkReply *reply = manager.get(request);
+
+    // Event Loop, um synchron zu warten bis der Download fertig ist
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QString result;
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray bytes = reply->readAll();
+        result = QString::fromUtf8(bytes);
+    } else {
+        qWarning() << "Download Fehler:" << reply->errorString();
+    }
+
+    reply->deleteLater();
+    return result;
 }

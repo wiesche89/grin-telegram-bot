@@ -139,7 +139,7 @@ public:
     void sendAudio(QVariant chatId, QVariant audio, QString caption = QString(), QString performer = QString(),
                    QString title = QString(), int duration = -1, int replyToMessageId = 0, TelegramFlags flags = TelegramFlags::NoFlag,
                    TelegramKeyboardRequest keyboard = TelegramKeyboardRequest(), TelegramBotMessage *response = 0);
-    void sendDocument(QVariant chatId, QVariant document,
+    void sendDocument(QString filename, QVariant chatId, QVariant document,
                       QString caption = QString(), int replyToMessageId = 0, TelegramFlags flags = TelegramFlags::NoFlag,
                       TelegramKeyboardRequest keyboard = TelegramKeyboardRequest(), TelegramBotMessage *response = 0);
     void sendSticker(QVariant chatId, QVariant sticker, int replyToMessageId = 0, TelegramFlags flags = TelegramFlags::NoFlag,
@@ -206,7 +206,7 @@ private:
     QHttpMultiPart *createUploadFile(QString name, QString fileName, QByteArray &content, bool detectMimeType = false,
                                      QHttpMultiPart *multiPart = 0);
     void hanldeReplyMarkup(QUrlQuery &params, TelegramFlags flags, TelegramKeyboardRequest &keyboard);
-    QHttpMultiPart *handleFile(QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart = 0);
+    QHttpMultiPart *handleFile(QString filename, QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart = 0);
 
     // global data
     QNetworkAccessManager aManager;

@@ -143,3 +143,31 @@ ViewWallet ViewWallet::fromJson(const QJsonObject &obj)
 
     return wallet;
 }
+
+/**
+ * @brief ViewWallet::toJson
+ * @return
+ */
+QJsonObject ViewWallet::toJson() const
+{
+    QJsonObject obj;
+    obj["last_pmmr_index"] = m_lastPmmrIndex;
+    obj["rewind_hash"] = m_rewindHash;
+    obj["total_balance"] = static_cast<double>(m_totalBalance);  // QJson doesn't support qint64 directly
+
+    QJsonArray outputArray;
+    for (const ViewWalletEntry &entry : m_entries) {
+        QJsonObject entryObj;
+        entryObj["commit"] = entry.commit();
+        entryObj["height"] = entry.height();
+        entryObj["is_coinbase"] = entry.isCoinbase();
+        entryObj["lock_height"] = entry.lockHeight();
+        entryObj["mmr_index"] = entry.mmrIndex();
+        entryObj["value"] = static_cast<double>(entry.value());
+
+        outputArray.append(entryObj);
+    }
+    obj["output_result"] = outputArray;
+
+    return obj;
+}

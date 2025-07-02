@@ -26,6 +26,7 @@ public:
     void setTotalBalance(qint64 balance);
 
     static ViewWallet fromJson(const QJsonObject &obj);
+    QJsonObject toJson() const;
 
 private:
     int m_lastPmmrIndex;

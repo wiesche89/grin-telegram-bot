@@ -4,6 +4,7 @@
 #include <QSettings>
 #include <QDir>
 #include <QCoreApplication>
+#include <QTemporaryFile>
 
 #include "telegrambot.h"
 #include "databasemanager.h"
@@ -35,6 +36,7 @@ private:
 
     QString handleSlateS1State(Slate slate, TelegramBotMessage message);
     QString handleSlateI1State(Slate slate, TelegramBotMessage message);
+    QString downloadFileToQString(const QUrl &url);
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;
@@ -43,7 +45,6 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
     QSettings *m_settings;
-
 };
 
 #endif // WORKER_H

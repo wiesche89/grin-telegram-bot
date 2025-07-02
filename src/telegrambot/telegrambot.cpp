@@ -517,7 +517,7 @@ void TelegramBot::sendPhoto(QVariant chatId, QVariant photo, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("photo", photo, params);
+    QHttpMultiPart *multiPart = this->handleFile("photo","photo", photo, params);
 
     // call api
     this->callApiTemplate("sendPhoto", params, response, multiPart);
@@ -565,7 +565,7 @@ void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QS
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("audio", audio, params);
+    QHttpMultiPart *multiPart = this->handleFile("audio","audio", audio, params);
 
     // call api
     this->callApiTemplate("sendAudio", params, response, multiPart);
@@ -581,7 +581,7 @@ void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QS
  * @param keyboard
  * @param response
  */
-void TelegramBot::sendDocument(QVariant chatId, QVariant document, QString caption, int replyToMessageId, TelegramFlags flags,
+void TelegramBot::sendDocument(QString filename,QVariant chatId, QVariant document, QString caption, int replyToMessageId, TelegramFlags flags,
                                TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
     //qDebug()<<Q_FUNC_INFO <<" ";
@@ -601,7 +601,7 @@ void TelegramBot::sendDocument(QVariant chatId, QVariant document, QString capti
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("document", document, params);
+    QHttpMultiPart *multiPart = this->handleFile(filename,"document", document, params);
 
     // call api
     this->callApiTemplate("sendDocument", params, response, multiPart);
@@ -633,7 +633,7 @@ void TelegramBot::sendSticker(QVariant chatId, QVariant sticker, int replyToMess
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("sticker", sticker, params);
+    QHttpMultiPart *multiPart = this->handleFile("sticker","sticker", sticker, params);
 
     // call api
     this->callApiTemplate("sendSticker", params, response, multiPart);
@@ -681,7 +681,7 @@ void TelegramBot::sendVideo(QVariant chatId, QVariant video, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("video", video, params);
+    QHttpMultiPart *multiPart = this->handleFile("video","video", video, params);
 
     // call api
     this->callApiTemplate("sendVideo", params, response, multiPart);
@@ -721,7 +721,7 @@ void TelegramBot::sendVoice(QVariant chatId, QVariant voice, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("voice", voice, params);
+    QHttpMultiPart *multiPart = this->handleFile("voice","voice", voice, params);
 
     // call api
     this->callApiTemplate("sendVoice", params, response, multiPart);
@@ -761,7 +761,7 @@ void TelegramBot::sendVideoNote(QVariant chatId, QVariant videoNote, int length,
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("video_note", videoNote, params);
+    QHttpMultiPart *multiPart = this->handleFile("video_note","video_note", videoNote, params);
 
     // call api
     this->callApiTemplate("sendVideoNote", params, response, multiPart);
@@ -1432,13 +1432,13 @@ void TelegramBot::hanldeReplyMarkup(QUrlQuery &params, TelegramFlags flags, Tele
  * @param multiPart
  * @return
  */
-QHttpMultiPart *TelegramBot::handleFile(QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart)
+QHttpMultiPart *TelegramBot::handleFile(QString filename,QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart)
 {
     //qDebug()<<Q_FUNC_INFO <<" ";
     // handle content
     if (file.type() == QVariant::ByteArray) {
         QByteArray content = file.value<QByteArray>();
-        multiPart = this->createUploadFile(fieldName, fieldName, content, true, multiPart);
+        multiPart = this->createUploadFile(fieldName, filename, content, true, multiPart);
     }
     // handle url
     else if (file.type() == QVariant::String) {
