@@ -186,11 +186,9 @@ void Worker::onMessage(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // get Slate from Slatepack
         // --------------------------------------------------------------------------------------------------------------------------------------
-        slatepack = slatepack.simplified();
-
         Slate slate;
         {
-            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
             if (!res.unwrapOrLog(slate)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
                 return;
@@ -221,6 +219,8 @@ void Worker::onMessage(TelegramBotUpdate update)
             return;
         }
 
+        sendUserMessage(message,"the following message contains your Slatepack file!");
+
         m_bot->sendDocument(filename + ".S2.slatepack",
                             id,
                             QVariant(msg.toUtf8()),
@@ -229,6 +229,8 @@ void Worker::onMessage(TelegramBotUpdate update)
                             TelegramBot::NoFlag,
                             TelegramKeyboardRequest(),
                             nullptr);
+
+
         return;
     }
 
@@ -254,11 +256,10 @@ void Worker::onMessage(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // get Slate from Slatepack
         // --------------------------------------------------------------------------------------------------------------------------------------
-        slatepack = slatepack.simplified();
-
+        qDebug()<<slatepack;
         Slate slate;
         {
-            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
             if (!res.unwrapOrLog(slate)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
                 return;
@@ -288,6 +289,8 @@ void Worker::onMessage(TelegramBotUpdate update)
             sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath));
             return;
         }
+
+        sendUserMessage(message,"the following message contains your Slatepack file!");
 
         m_bot->sendDocument(filename + ".I2.slatepack",
                             id,

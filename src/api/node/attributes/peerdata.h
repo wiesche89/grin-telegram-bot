@@ -5,8 +5,8 @@
 #include <QJsonObject>
 #include <QVariant>
 
-#include "PeerAddr.h"
-#include "Capabilities.h"
+#include "peeraddr.h"
+#include "capabilities.h"
 
 class PeerData
 {
