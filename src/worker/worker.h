@@ -34,9 +34,10 @@ private:
     QString readFileToString(const QString &filePath);
     bool isAdmin(qlonglong id);
 
-    QString handleSlateS1State(Slate slate, TelegramBotMessage message);
-    QString handleSlateI1State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateS1State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateI1State(Slate slate, TelegramBotMessage message);
     QString downloadFileToQString(const QUrl &url);
+    void sendUserMessage(TelegramBotMessage message, QString content);
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;

@@ -101,6 +101,8 @@ void Worker::onMessage(TelegramBotUpdate update)
     address - get slatepack address
     donate - dm slatepack address
     faucet - use faucet
+    rewindhast - get rewindhash
+    scanrewindhash - scan current rewindhash
     adminenabledisabledeposits - enable/disable deposits
     adminenabledisablewithdrawals - enable/disable withdrawals
     adminupdateresponsemessage - update bot response messages templates
@@ -114,14 +116,7 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command start
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/start")) {
-        m_bot->sendMessage(id,
-                           "Hi " + message.from.firstName + ",\n"
-                           + readFileToString(QCoreApplication::applicationDirPath() + "/etc/messages/start.txt"),
-                           0,
-                           TelegramBot::NoFlag,
-                           TelegramKeyboardRequest(),
-                           nullptr);
-
+        sendUserMessage(message, readFileToString(QCoreApplication::applicationDirPath() + "/etc/messages/start.txt"));
         return;
     }
 
@@ -140,14 +135,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
         }
 
-        m_bot->sendMessage(id,
-                           "Hi " + message.from.firstName + ",\nhere is the Slatepack address:\n\n"
-                           + str,
-                           0,
-                           TelegramBot::NoFlag,
-                           TelegramKeyboardRequest(),
-                           nullptr);
-
+        sendUserMessage(message, QString(str));
         return;
     }
 
@@ -157,57 +145,160 @@ void Worker::onMessage(TelegramBotUpdate update)
     if (message.text.contains("/donate")) {
         // enable
         if (m_settings->value("admin/enableDisableDeposits").toInt() == 1) {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName
-                               + ",\nnice that you want to make a donation." + "\n"
-                               + "### Deposit protocol" + "\n"
-                               + "1) User runs '/donate' to get manual" + "\n"
-                               + "2) Send a Slatepack to donate GRIN" + "\n"
-                               + "3) Bot send repsonse Slatepack" + "\n"
-                               + "4) Finalize" + "\n"
-                               + "\n",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
+            QString msg
+                = "nice that you want to make a donation.\n"
+                  "### Deposit protocol\n"
+                  "1) User runs '/donate' to get manual\n"
+                  "2) Send a Slatepack to donate GRIN\n"
+                  "3) Bot sends response Slatepack\n"
+                  "4) Finalize\n"
+                  "\n";
+
+            sendUserMessage(message, msg);
         }
         // disable
         else {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\ndonate function currently disable!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
+            sendUserMessage(message, "donate function currently disable!");
         }
 
         return;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    // document
+    // S1 File
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if(update->message->document.fileName.endsWith("S1.slatepack"))
-    {
-
-
+    if (message.document.fileName.endsWith("S1.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
         // TelegramBotFile - This object represents a file ready to be downloaded.
         // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
         // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
         // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
-        TelegramBotFile file = m_bot->getFile(update->message->document.fileId);
-        qDebug()<<"link: "<<file.link;
-        qDebug()<<"fileId: "<<file.fileId;
-        qDebug()<<"filePath: "<<file.filePath;
-
-        QString link = "https://api.telegram.org/file/bot"+m_settings->value("bot/token").toString()+"/"+file.filePath;
-
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
         QString slatepack = downloadFileToQString(QUrl(link));
 
-        qDebug()<<slatepack;
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath));
+            return;
+        }
 
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        slatepack = slatepack.simplified();
+
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get S2 Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateS1State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // send file S2
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString path = file.filePath; // e.g., "documents/1234-5678.S1.slatepack"
+        QString baseName = QFileInfo(path).baseName(); // "1234-5678.S1"
+        QString filename = baseName.section('.', 0, 0); // "1234-5678"
+
+        if (filename.isEmpty()) {
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath));
+            return;
+        }
+
+        m_bot->sendDocument(filename + ".S2.slatepack",
+                            id,
+                            QVariant(msg.toUtf8()),
+                            "",
+                            0,
+                            TelegramBot::NoFlag,
+                            TelegramKeyboardRequest(),
+                            nullptr);
+        return;
     }
 
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // I1 File
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.document.fileName.endsWith("I1.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath));
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        slatepack = slatepack.simplified();
+
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get S2 Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateI1State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // send file S2
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString path = file.filePath; // e.g., "documents/1234-5678.I1.slatepack"
+        QString baseName = QFileInfo(path).baseName(); // "1234-5678.I1"
+        QString filename = baseName.section('.', 0, 0); // "1234-5678"
+
+        if (filename.isEmpty()) {
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath));
+            return;
+        }
+
+        m_bot->sendDocument(filename + ".I2.slatepack",
+                            id,
+                            QVariant(msg.toUtf8()),
+                            "",
+                            0,
+                            TelegramBot::NoFlag,
+                            TelegramKeyboardRequest(),
+                            nullptr);
+        return;
+    }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command Slatepack
@@ -215,118 +306,67 @@ void Worker::onMessage(TelegramBotUpdate update)
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
         Slate slate;
         {
-            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.trimmed());
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.simplified().trimmed());
             if (!res.unwrapOrLog(slate)) {
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\n"
-                                   + QString("Error message: %1").arg(res.errorMessage()),
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
                 return;
             }
         }
 
-        switch (Slate::slateStateFromString(slate.sta())) {
-        case SlateState::S1:
-            // S1 - Standard: Sender hat Slate mit Inputs, Change, Nonce, Excess erstellt
+        SlateState state = Slate::slateStateFromString(slate.sta());
+
+        if (state == SlateState::S1) {
+            // S1 - Standard: Sender created Slate with Inputs, Change, Nonce, Excess
             qDebug() << "Slate state: S1 (Standard Sender Init)";
 
-            m_bot->sendMessage(id,
-                               handleSlateS1State(slate, message),
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            break;
-
-        case SlateState::S2:
-            // S2 - Standard: Empfänger hat Outputs, Nonce, PartialSig beigefügt
+            QString msg;
+            {
+                Result<QString> res = handleSlateS1State(slate, message);
+                if (!res.unwrapOrLog(msg)) {
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                    return;
+                }
+                sendUserMessage(message, msg);
+            }
+        } else if (state == SlateState::S2) {
+            // S2 - Standard: Receiver added Outputs, Nonce, PartialSig
             qDebug() << "Slate state: S2 (Standard Recipient Response)";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
-            break;
-
-        case SlateState::S3:
-            // S3 - Standard: Slate vollständig, bereit zum Posten
+            sendUserMessage(message, "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)");
+        } else if (state == SlateState::S3) {
+            // S3 - Standard: Slate complete, ready to post
             qDebug() << "Slate state: S3 (Standard Finalized)";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "function currently not implemented!\nSlate state: S3 (Standard Finalized)",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            break;
-
-        case SlateState::I1:
-            // I1 - Invoice: Payee (Zahlungsempfänger) beginnt Transaktion
+            sendUserMessage(message, "function currently not implemented!\nSlate state: S3 (Standard Finalized)");
+        } else if (state == SlateState::I1) {
+            // I1 - Invoice: Payee initiates transaction
             qDebug() << "Slate state: I1 (Invoice Payee Init)";
 
-            // enable
             if (m_settings->value("admin/enableDisableWithdrawals").toInt() == 1) {
-                m_bot->sendMessage(id,
-                                   handleSlateI1State(slate, message),
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
+                QString msg;
+                {
+                    Result<QString> res = handleSlateI1State(slate, message);
+                    if (!res.unwrapOrLog(msg)) {
+                        sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                        return;
+                    }
+                    sendUserMessage(message, msg);
+                }
+            } else {
+                sendUserMessage(message, "faucet function currently disabled!");
             }
-            // disable
-            else {
-                m_bot->sendMessage(id,
-                                   "Hi " + message.from.firstName + ",\nfaucet function currently disable!",
-                                   0,
-                                   TelegramBot::NoFlag,
-                                   TelegramKeyboardRequest(),
-                                   nullptr);
-            }
-
-            break;
-
-        case SlateState::I2:
-            // I2 - Invoice: Payer hat Inputs, Change und Signature beigefügt
+        } else if (state == SlateState::I2) {
+            // I2 - Invoice: Payer added Inputs, Change and Signature
             qDebug() << "Slate state: I2 (Invoice Payer Response)";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            break;
-
-        case SlateState::I3:
-            // I3 - Invoice: Slate vollständig, bereit zum Posten
+            sendUserMessage(message, "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)");
+        } else if (state == SlateState::I3) {
+            // I3 - Invoice: Slate complete, ready to post
             qDebug() << "Slate state: I3 (Invoice Finalized)";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "function currently not implemented!\nSlate state: I3 (Invoice Finalized)",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            break;
-
-        case SlateState::Unknown:
-        default:
+            sendUserMessage(message, "function currently not implemented!\nSlate state: I3 (Invoice Finalized)");
+        } else {
+            // Unknown or unsupported Slate state
             qWarning() << "Unknown Slate-State!";
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n"
-                               + "function currently not implemented!\nUnknown Slate-State!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-            break;
+            sendUserMessage(message, "function currently not implemented!\nUnknown Slate-State!");
         }
+
         return;
     }
 
@@ -334,73 +374,63 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command faucet
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/faucet")) {
-        m_bot->sendMessage(id,
-                           "Hi " + message.from.firstName
-                           + ",\nsend a Slatepack to get GRIN." + "\n"
-                           + "### Withdrawal protocol" + "\n"
-                           + "1) User runs '/faucet' to get manual" + "\n"
-                           + "2) Send a Slatepack to receive GRIN" + "\n"
-                           + "3) Bot send repsonse Slatepack" + "\n"
-                           + "4) Finalize" + "\n"
-                           + "\n",
-                           0,
-                           TelegramBot::NoFlag,
-                           TelegramKeyboardRequest(),
-                           nullptr);
+        QString instructions = "send a Slatepack to get GRIN.\n"
+                               "### Withdrawal protocol\n"
+                               "1) User runs '/faucet' to get manual\n"
+                               "2) Send a Slatepack to receive GRIN\n"
+                               "3) Bot send repsonse Slatepack\n"
+                               "4) Finalize\n\n";
+        sendUserMessage(message, instructions);
         return;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    // command sendfile
-    // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/sendfile")) {
-
-        qDebug()<<"sendfile";
-        QByteArray data = "Hallo";
-
-        m_bot->sendDocument("example.S2",id, QVariant(data), "", 0, TelegramBot::NoFlag, TelegramKeyboardRequest(), nullptr);
-        return;
-    }
-
-
-    // ------------------------------------------------------------------------------------------------------------------------------------------
-    // command faucet
+    // command scanrewindhash
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/scanrewindhash")) {
-
-        QString msg;
         RewindHash rewindHash;
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
             if (!res.unwrapOrLog(rewindHash)) {
-                msg = QString("Error message: %1").arg(res.errorMessage());
-            }
-            else
-            {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+            } else {
                 ViewWallet viewWallet;
                 {
-                    Result<ViewWallet> res = m_walletOwnerApi->scanRewindHash(rewindHash,3387426);
+                    QString msg;
+                    Result<ViewWallet> res = m_walletOwnerApi->scanRewindHash(rewindHash, 1);
                     if (!res.unwrapOrLog(viewWallet)) {
                         msg = QString("Error message: %1").arg(res.errorMessage());
-                    }
-                    else
-                    {
-                        qDebug()<< debugJsonString(viewWallet);
+                    } else {
+                        msg = debugJsonString(viewWallet);
+                        m_bot->sendDocument("ScanRewindHash.json",
+                                            id,
+                                            QVariant(msg.toUtf8()),
+                                            "",
+                                            0,
+                                            TelegramBot::NoFlag,
+                                            TelegramKeyboardRequest(),
+                                            nullptr);
                     }
                 }
             }
         }
+        return;
+    }
 
-
-        m_bot->sendMessage(id,
-                           "Hi "
-                           + message.from.firstName
-                           + "\n"+
-                           msg,
-                           0,
-                           TelegramBot::NoFlag,
-                           TelegramKeyboardRequest(),
-                           nullptr);
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command rewindhash
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.text.contains("/rewindhash")) {
+        RewindHash rewindHash;
+        {
+            Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
+            if (!res.unwrapOrLog(rewindHash)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                return;
+            } else {
+                sendUserMessage(message, rewindHash.rewindHash());
+            }
+        }
         return;
     }
 
@@ -424,14 +454,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
 
             m_settings->setValue("admin/enableDisableDeposits", currentState);
-
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n" + txt,
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, txt);
             return;
         }
 
@@ -451,14 +474,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
 
             m_settings->setValue("admin/enableDisableWithdrawals", currentState);
-
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n" + txt,
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, txt);
             return;
         }
 
@@ -466,13 +482,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminupdateresponsemessage
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminupdateresponsemessage")) {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\nfunction currently not implemented!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, "function currently not implemented!");
             return;
         }
 
@@ -480,13 +490,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminrequirednumberofresponse
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminrequirednumberofresponse")) {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\nfunction currently not implemented!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, "function currently not implemented!");
             return;
         }
 
@@ -494,13 +498,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminprofilrequirementswithdrawl
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminprofilrequirementswithdrawl")) {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\nfunction currently not implemented!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, "function currently not implemented!");
             return;
         }
 
@@ -508,13 +506,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminapprovedwithdrawalamount
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminapprovedwithdrawalamount")) {
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\nfunction currently not implemented!",
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, "function currently not implemented!");
             return;
         }
 
@@ -541,13 +533,7 @@ void Worker::onMessage(TelegramBotUpdate update)
                 }
             }
 
-            m_bot->sendMessage(id,
-                               "Hi " + message.from.firstName + ",\n" + info,
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
-
+            sendUserMessage(message, info);
             return;
         }
     }
@@ -601,7 +587,7 @@ bool Worker::isAdmin(qlonglong id)
  * @param slate
  * @return
  */
-QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
+Result<QString> Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
 {
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Debugging
@@ -615,7 +601,7 @@ QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
     {
         Result<Slate> res = m_walletForeignApi->receiveTx(slate, "", "");
         if (!res.unwrapOrLog(slate2)) {
-            return QString("Error message: %1").arg(res.errorMessage());
+            return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
     ///---------------------------------------------------------------------------------------------------------------------------
@@ -625,7 +611,7 @@ QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
         if (!res.unwrapOrLog(slatepack)) {
-            return QString("Error message: %1").arg(res.errorMessage());
+            return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
 
@@ -647,7 +633,7 @@ QString Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
  * @param slate
  * @return
  */
-QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
+Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
 {
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Debugging
@@ -657,14 +643,11 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Check functions
     ///---------------------------------------------------------------------------------------------------------------------------
-    if (slate.amt().toLongLong() > 2000000000) {
-        return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
-    }
-
     QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
 
-    if (amountToday.toLongLong() >= 2000000000) {
-        return QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user.");
+    if (amountToday.toLongLong() >= 2000000000 || slate.amt().toLongLong() > 2000000000) {
+        return Error(ErrorType::Unknown,
+                     QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user."));
     }
 
     ///---------------------------------------------------------------------------------------------------------------------------
@@ -685,7 +668,7 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     {
         Result<Slate> res = m_walletOwnerApi->processInvoiceTx(slate, txData);
         if (!res.unwrapOrLog(slate2)) {
-            return QString("Error message: %1").arg(res.errorMessage());
+            return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
 
@@ -696,7 +679,7 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
         if (!res.unwrapOrLog(slatepack)) {
-            return QString("Error message: %1").arg(res.errorMessage());
+            return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
 
@@ -707,7 +690,7 @@ QString Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
     {
         Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
         if (!res.unwrapOrLog(lockOutputs)) {
-            return QString("Error message: %1").arg(res.errorMessage());
+            return Error(ErrorType::Unknown, res.errorMessage());
         } else {
             qDebug() << "txLockOutputs: " << lockOutputs;
         }
@@ -769,7 +752,8 @@ void Worker::cleanupRetrieveTxs()
  * @param url
  * @return
  */
-QString Worker::downloadFileToQString(const QUrl &url) {
+QString Worker::downloadFileToQString(const QUrl &url)
+{
     QNetworkAccessManager manager;
     QNetworkRequest request(url);
 
@@ -790,4 +774,22 @@ QString Worker::downloadFileToQString(const QUrl &url) {
 
     reply->deleteLater();
     return result;
+}
+
+/**
+ * @brief Worker::sendUserMessage
+ * @param message
+ * @param content
+ */
+void Worker::sendUserMessage(TelegramBotMessage message, QString content)
+{
+    m_bot->sendMessage(message.chat.id,
+                       "Hi "
+                       + message.from.firstName
+                       + ",\n"
+                       + content,
+                       0,
+                       TelegramBot::NoFlag,
+                       TelegramKeyboardRequest(),
+                       nullptr);
 }
