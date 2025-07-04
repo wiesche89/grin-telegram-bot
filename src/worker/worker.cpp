@@ -666,8 +666,6 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
             return QString("Error message: %1").arg(res.errorMessage());
         }
     }
-
-
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling processInvoiceTx
     ///---------------------------------------------------------------------------------------------------------------------------
@@ -679,11 +677,18 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
     txData["minimum_confirmations"] = 10;
+    txData["selection_strategy_is_use_all"] = true;
+
+
+    //default
+    txData["amount_includes_fee"] = QJsonValue::Null;
     txData["max_outputs"] = 500;
     txData["num_change_outputs"] = 1;
-    txData["selection_strategy_is_use_all"] = false;
     txData["target_slate_version"] = QJsonValue::Null;
+    txData["ttl_blocks"] = QJsonValue::Null;
+    txData["estimate_only"] = false;
     txData["payment_proof_recipient_address"] = QJsonValue::Null;
+    txData["late_lock"] = false;
     txData["send_args"] = QJsonValue::Null;
 
     ///---------------------------------------------------------------------------------------------------------------------------
