@@ -223,7 +223,7 @@ void Worker::onMessage(TelegramBotUpdate update)
 
         m_bot->sendDocument(filename + ".S2.slatepack",
                             id,
-                            QVariant(msg.toUtf8()),
+                            QVariant(msg.toUtf8()+"\n"),
                             "",
                             0,
                             TelegramBot::NoFlag,
@@ -295,7 +295,7 @@ void Worker::onMessage(TelegramBotUpdate update)
 
         m_bot->sendDocument(filename + ".I2.slatepack",
                             id,
-                            QVariant(msg.toUtf8()),
+                            QVariant(msg.toUtf8()+"\n"),
                             "",
                             0,
                             TelegramBot::NoFlag,
