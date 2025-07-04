@@ -51,10 +51,12 @@ RUN git clone https://github.com/wiesche89/grin-telegram-bot.git
 
 # IMPORTANT: Copy configuration folder from the deploy directory
 COPY etc /opt/grin-telegram-bot/etc
+COPY .wallet /opt/grin-telegram-bot/.wallet/
 COPY qt.conf /opt/grin-telegram-bot/qt.conf
 COPY qtlogging.ini /opt/grin-telegram-bot/qtlogging.ini
 COPY .grin /root/.grin/
 COPY start.sh /opt/grin-telegram-bot/start.sh
+RUN chmod +x /opt/grin-telegram-bot/start.sh
 
 # Change working directory to project root
 WORKDIR /opt/grin-telegram-bot

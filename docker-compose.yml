@@ -15,7 +15,6 @@ services:
       - "13415:13415"
     volumes:
       - grin-wallet-data:/opt/grin-telegram-bot/wallet
-      - ./wallet/password.txt:/opt/grin-telegram-bot/wallet/password.txt:ro  # read-only mount
     networks:
       - grin-network
 
