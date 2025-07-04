@@ -257,7 +257,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // get Slate from Slatepack
         // --------------------------------------------------------------------------------------------------------------------------------------
         qDebug()<<slatepack;
-        slatepack = slatepack.replace("\n","");
+        //slatepack = slatepack.replace("\n","");
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
