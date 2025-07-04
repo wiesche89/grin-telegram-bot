@@ -64,7 +64,7 @@ public:
     Result<bool> createWallet(QString name, QString mnemonic, int mnemonicLength, QString password);
     Result<Slatepack> decodeSlatepackMessage(QJsonArray secretIndicesArray, QString message);
     Result<bool> deleteWallet(QString name);
-    Result<Slate> finalizeTx(const QJsonObject slate);
+    Result<Slate> finalizeTx(const Slate slate);
     Result<QString> getMnemonic(QString name, QString password);
     Result<RewindHash> getRewindHash();
     Result<QString> getSlatepackAddress(int derivationIndex);

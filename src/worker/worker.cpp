@@ -101,7 +101,7 @@ void Worker::onMessage(TelegramBotUpdate update)
     address - get slatepack address
     donate - dm slatepack address
     faucet - use faucet
-    rewindhast - get rewindhash
+    rewindhash - get rewindhash
     scanrewindhash - scan current rewindhash
     adminenabledisabledeposits - enable/disable deposits
     adminenabledisablewithdrawals - enable/disable withdrawals
@@ -273,6 +273,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateI1State(slate, message);
+
             if (!res.unwrapOrLog(msg)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
                 return;
@@ -310,7 +311,7 @@ void Worker::onMessage(TelegramBotUpdate update)
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
         Slate slate;
         {
-            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text.simplified().trimmed());
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
             if (!res.unwrapOrLog(slate)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
                 return;
@@ -654,9 +655,26 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
                      QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user."));
     }
 
+
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// sync wallet
+    ///---------------------------------------------------------------------------------------------------------------------------
+    WalletInfo walletInfo;
+    {
+        Result<WalletInfo> res = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
+        if (!res.unwrapOrLog(walletInfo)) {
+            return QString("Error message: %1").arg(res.errorMessage());
+        }
+    }
+
+
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling processInvoiceTx
     ///---------------------------------------------------------------------------------------------------------------------------
+
+    qDebug()<<"Slate 1";
+    qDebug().noquote()<<debugJsonString(slate);
+
     QJsonObject txData;
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
@@ -668,6 +686,9 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
     txData["payment_proof_recipient_address"] = QJsonValue::Null;
     txData["send_args"] = QJsonValue::Null;
 
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling processInvoiceTx
+    ///---------------------------------------------------------------------------------------------------------------------------
     Slate slate2;
     {
         Result<Slate> res = m_walletOwnerApi->processInvoiceTx(slate, txData);
@@ -675,9 +696,24 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
+    qDebug()<<"Slate 2";
+    qDebug().noquote()<<debugJsonString(slate2);
 
     ///---------------------------------------------------------------------------------------------------------------------------
-    /// Handling processInvoiceTx
+    /// Handling txLockOutputs
+    ///---------------------------------------------------------------------------------------------------------------------------
+    bool lockOutputs = false;
+    {
+        Result<bool> res = m_walletOwnerApi->txLockOutputs(slate2);
+        if (!res.unwrapOrLog(lockOutputs)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        } else {
+            qDebug() << "txLockOutputs: " << lockOutputs;
+        }
+    }
+
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling createSlatepackMessages
     ///---------------------------------------------------------------------------------------------------------------------------
     QString slatepack;
     {
@@ -687,18 +723,6 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
         }
     }
 
-    ///---------------------------------------------------------------------------------------------------------------------------
-    /// Handling txLockOutputs
-    ///---------------------------------------------------------------------------------------------------------------------------
-    bool lockOutputs = false;
-    {
-        Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
-        if (!res.unwrapOrLog(lockOutputs)) {
-            return Error(ErrorType::Unknown, res.errorMessage());
-        } else {
-            qDebug() << "txLockOutputs: " << lockOutputs;
-        }
-    }
 
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling insert faucet in db

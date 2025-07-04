@@ -490,11 +490,11 @@ Result<NodeHeight> WalletOwnerApi::nodeHeight()
  * @param slate
  * @return
  */
-Result<Slate> WalletOwnerApi::finalizeTx(const QJsonObject slate)
+Result<Slate> WalletOwnerApi::finalizeTx(const Slate slate)
 {
     QJsonObject params;
     params["token"] = QString(m_openWalletToken.toHex());
-    params["slate"] = slate;
+    params["slate"] = slate.toJson();
 
     auto res = JsonUtil::extractOkObject(postEncrypted("finalize_tx", params));
     QJsonObject okObj;
@@ -929,6 +929,9 @@ Result<Slate> WalletOwnerApi::slateFromSlatepackMessage(QString message, QJsonAr
         return res.error();
     }
 
+    qDebug()<<Q_FUNC_INFO;
+    qDebug()<<okObj;
+
     return Slate::fromJson(okObj);
 }
 
@@ -1167,6 +1170,8 @@ Result<Slate> WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
     if (!res.unwrapOrLog(okObj)) {
         return res.error();
     }
+    qDebug()<<Q_FUNC_INFO;
+    qDebug()<<okObj;
 
     return Slate::fromJson(okObj);
 }
