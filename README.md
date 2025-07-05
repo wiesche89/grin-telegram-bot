@@ -61,3 +61,82 @@ For security reasons, Owner API settings would need to be provided via a config 
 Workflow
 ![grin-telegram-bot](https://github.com/user-attachments/assets/19f69736-02e3-4aec-8cc0-8e3f1f2c3222)
 
+
+
+
+# Grin Telegram Bot - Build Instructions
+
+## Linux
+
+### 1. Clone the Bot Repository
+
+```bash
+git clone https://github.com/wiesche89/grin-telegram-bot.git
+```
+
+---
+
+### 2. Prepare Required Files
+
+Currently the bot doesnt create a wallet.
+Copy the following directory structure and files **into the project root**:
+
+```
+.grin/
+└── main/
+    ├── grin-wallet.toml
+    ├── .foreing_api_secret
+    ├── .owner_api_secret
+    └── wallet_data/
+
+.wallet/
+└── password.txt
+
+etc/
+├── database/
+│   └── database.db
+├── messages/
+│   └── start.txt
+└── settings.ini
+```
+
+---
+
+### 3. Install Docker
+
+If you don't have Docker installed:
+
+```bash
+sudo snap install docker
+```
+
+---
+
+### 4. Navigate to the Bot Repository
+
+```bash
+cd grin-telegram-bot/
+```
+
+---
+
+### 5. Build Using Docker Compose
+
+```bash
+sudo docker-compose build
+```
+
+### 6. Run Using Docker Compose
+```bash
+sudo docker-compose up -d
+```
+
+### 7. Get Container id
+```bash
+sudo docker container ls
+```
+
+### 8. Go into Docker logs (first 3 letter)
+```bash
+sudo docker logs -f <container id>
+```

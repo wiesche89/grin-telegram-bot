@@ -847,9 +847,10 @@ bool Worker::scanWallet()
         Result<bool> res = m_walletOwnerApi->scan(1,true);
         if (!res.unwrapOrLog(scan)) {
             qDebug() << res.errorMessage();
-            return false;
+            scan = false;
         } else {
-            return true;
+            scan = true;
+            qDebug() << "scan: "<<scan;
         }
     }
     return scan;
