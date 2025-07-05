@@ -66,7 +66,43 @@ Workflow
 
 # Grin Telegram Bot - Build Instructions
 
-## Linux
+## Windows
+
+###Develop
+
+### 1. Instal Qt 
+install Qt 5.9.2
+includes mingw_32
+
+### 2. Check Enviroments
+Currently the bot doesnt create a wallet.
+Copy the following directory structure and files **into the project root**:
+
+```
+.grin/
+└── main/
+    ├── grin-wallet.toml
+    ├── .foreing_api_secret
+    ├── .owner_api_secret
+    └── wallet_data/
+
+.wallet/
+└── password.txt
+
+etc/
+├── database/
+│   └── database.db
+├── messages/
+│   └── start.txt
+└── settings.ini
+```
+
+Settings.ini are not to setup
+
+### 2. Build
+Use Qt Creator to build bot from sources
+
+### Build and Deploy (Linux/Windows)
 
 ### 1. Clone the Bot Repository
 
@@ -106,10 +142,13 @@ etc/
 
 If you don't have Docker installed:
 
+#### Linux
 ```bash
 sudo snap install docker
 ```
 
+#### Windows
+Install Docker Desktop
 ---
 
 ### 4. Navigate to the Bot Repository
