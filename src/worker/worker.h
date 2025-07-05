@@ -37,7 +37,8 @@ private:
     Result<QString> handleSlateS1State(Slate slate, TelegramBotMessage message);
     Result<QString> handleSlateI1State(Slate slate, TelegramBotMessage message);
     QString downloadFileToQString(const QUrl &url);
-    void sendUserMessage(TelegramBotMessage message, QString content);
+    void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
+    bool scanWallet();
 
     DatabaseManager *m_dbManager;
     TelegramBot *m_bot;

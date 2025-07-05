@@ -45,18 +45,11 @@ bool Worker::init()
     m_walletOwnerApi->initSecureApi();
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
-    bool scan = false;
+    //scan whole wallet
+    if(!scanWallet())
     {
-        Result<bool> res = m_walletOwnerApi->scan(1,true);
-        if (!res.unwrapOrLog(scan)) {
-            qDebug() << res.errorMessage();
-        } else {
-            qDebug() << "scan: " << scan;
-        }
+        success = false;
     }
-
-
-    // qDebug()<<m_walletOwnerApi->setTorConfig();
 
     // Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
@@ -127,7 +120,7 @@ void Worker::onMessage(TelegramBotUpdate update)
     // command start
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/start")) {
-        sendUserMessage(message, readFileToString(QCoreApplication::applicationDirPath() + "/etc/messages/start.txt"));
+        sendUserMessage(message, readFileToString(QCoreApplication::applicationDirPath() + "/etc/messages/start.txt"),false);
         return;
     }
 
@@ -146,7 +139,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
         }
 
-        sendUserMessage(message, QString(str));
+        sendUserMessage(message, QString(str),false);
         return;
     }
 
@@ -160,16 +153,16 @@ void Worker::onMessage(TelegramBotUpdate update)
                 = "nice that you want to make a donation.\n"
                   "### Deposit protocol\n"
                   "1) User runs '/donate' to get manual\n"
-                  "2) Send a Slatepack to donate GRIN\n"
-                  "3) Bot sends response Slatepack\n"
+                  "2) Send a Slatepack to donate GRIN (file or plain)\n"
+                  "3) Bot sends response Slatepack (file or plain)\n"
                   "4) Finalize\n"
                   "\n";
 
-            sendUserMessage(message, msg);
+            sendUserMessage(message, msg,false);
         }
         // disable
         else {
-            sendUserMessage(message, "donate function currently disable!");
+            sendUserMessage(message, "donate function currently disable!",false);
         }
 
         return;
@@ -190,7 +183,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString slatepack = downloadFileToQString(QUrl(link));
 
         if (slatepack.isEmpty()) {
-            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath));
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath),false);
             return;
         }
 
@@ -201,7 +194,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
             if (!res.unwrapOrLog(slate)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             }
         }
@@ -213,7 +206,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         {
             Result<QString> res = handleSlateS1State(slate, message);
             if (!res.unwrapOrLog(msg)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             }
         }
@@ -226,11 +219,11 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString filename = baseName.section('.', 0, 0); // "1234-5678"
 
         if (filename.isEmpty()) {
-            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath));
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath),false);
             return;
         }
 
-        sendUserMessage(message,"the following message contains your Slatepack file!");
+        sendUserMessage(message,"the following message contains your Slatepack file!",false);
 
         m_bot->sendDocument(filename + ".S2.slatepack",
                             id,
@@ -260,20 +253,18 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString slatepack = downloadFileToQString(QUrl(link));
 
         if (slatepack.isEmpty()) {
-            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath));
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath),false);
             return;
         }
 
         // --------------------------------------------------------------------------------------------------------------------------------------
         // get Slate from Slatepack
         // --------------------------------------------------------------------------------------------------------------------------------------
-        qDebug()<<slatepack;
-        //slatepack = slatepack.replace("\n","");
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
             if (!res.unwrapOrLog(slate)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             }
         }
@@ -286,7 +277,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             Result<QString> res = handleSlateI1State(slate, message);
 
             if (!res.unwrapOrLog(msg)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             }
         }
@@ -299,11 +290,11 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString filename = baseName.section('.', 0, 0); // "1234-5678"
 
         if (filename.isEmpty()) {
-            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath));
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath),false);
             return;
         }
 
-        sendUserMessage(message,"the following message contains your Slatepack file!");
+        sendUserMessage(message,"the following message contains your Slatepack file!",false);
 
         m_bot->sendDocument(filename + ".I2.slatepack",
                             id,
@@ -324,7 +315,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
             if (!res.unwrapOrLog(slate)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             }
         }
@@ -339,19 +330,20 @@ void Worker::onMessage(TelegramBotUpdate update)
             {
                 Result<QString> res = handleSlateS1State(slate, message);
                 if (!res.unwrapOrLog(msg)) {
-                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                     return;
                 }
-                sendUserMessage(message, msg);
+                sendUserMessage(message, "here is your slatepack", false);
+                sendUserMessage(message, msg, true);
             }
         } else if (state == SlateState::S2) {
             // S2 - Standard: Receiver added Outputs, Nonce, PartialSig
             qDebug() << "Slate state: S2 (Standard Recipient Response)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)");
+            sendUserMessage(message, "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)",false);
         } else if (state == SlateState::S3) {
             // S3 - Standard: Slate complete, ready to post
             qDebug() << "Slate state: S3 (Standard Finalized)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: S3 (Standard Finalized)");
+            sendUserMessage(message, "function currently not implemented!\nSlate state: S3 (Standard Finalized)",false);
         } else if (state == SlateState::I1) {
             // I1 - Invoice: Payee initiates transaction
             qDebug() << "Slate state: I1 (Invoice Payee Init)";
@@ -361,26 +353,27 @@ void Worker::onMessage(TelegramBotUpdate update)
                 {
                     Result<QString> res = handleSlateI1State(slate, message);
                     if (!res.unwrapOrLog(msg)) {
-                        sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                        sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                         return;
                     }
-                    sendUserMessage(message, msg);
+                    sendUserMessage(message, "here is your slatepack", false);
+                    sendUserMessage(message, msg, true);
                 }
             } else {
-                sendUserMessage(message, "faucet function currently disabled!");
+                sendUserMessage(message, "faucet function currently disabled!",false);
             }
         } else if (state == SlateState::I2) {
             // I2 - Invoice: Payer added Inputs, Change and Signature
             qDebug() << "Slate state: I2 (Invoice Payer Response)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)");
+            sendUserMessage(message, "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)",false);
         } else if (state == SlateState::I3) {
             // I3 - Invoice: Slate complete, ready to post
             qDebug() << "Slate state: I3 (Invoice Finalized)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: I3 (Invoice Finalized)");
+            sendUserMessage(message, "function currently not implemented!\nSlate state: I3 (Invoice Finalized)",false);
         } else {
             // Unknown or unsupported Slate state
             qWarning() << "Unknown Slate-State!";
-            sendUserMessage(message, "function currently not implemented!\nUnknown Slate-State!");
+            sendUserMessage(message, "function currently not implemented!\nUnknown Slate-State!",false);
         }
 
         return;
@@ -393,10 +386,10 @@ void Worker::onMessage(TelegramBotUpdate update)
         QString instructions = "send a Slatepack to get GRIN.\n"
                                "### Withdrawal protocol\n"
                                "1) User runs '/faucet' to get manual\n"
-                               "2) Send a Slatepack to receive GRIN\n"
-                               "3) Bot send repsonse Slatepack\n"
+                               "2) Send a Slatepack to receive GRIN (file or plain)\n"
+                               "3) Bot send repsonse Slatepack (file or plain)\n"
                                "4) Finalize\n\n";
-        sendUserMessage(message, instructions);
+        sendUserMessage(message, instructions,false);
         return;
     }
 
@@ -408,7 +401,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
             if (!res.unwrapOrLog(rewindHash)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
             } else {
                 ViewWallet viewWallet;
                 {
@@ -441,10 +434,10 @@ void Worker::onMessage(TelegramBotUpdate update)
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
             if (!res.unwrapOrLog(rewindHash)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()));
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()),false);
                 return;
             } else {
-                sendUserMessage(message, rewindHash.rewindHash());
+                sendUserMessage(message, rewindHash.rewindHash(),false);
             }
         }
         return;
@@ -470,7 +463,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
 
             m_settings->setValue("admin/enableDisableDeposits", currentState);
-            sendUserMessage(message, txt);
+            sendUserMessage(message, txt,false);
             return;
         }
 
@@ -490,7 +483,7 @@ void Worker::onMessage(TelegramBotUpdate update)
             }
 
             m_settings->setValue("admin/enableDisableWithdrawals", currentState);
-            sendUserMessage(message, txt);
+            sendUserMessage(message, txt,false);
             return;
         }
 
@@ -498,7 +491,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminupdateresponsemessage
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminupdateresponsemessage")) {
-            sendUserMessage(message, "function currently not implemented!");
+            sendUserMessage(message, "function currently not implemented!",false);
             return;
         }
 
@@ -506,7 +499,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminrequirednumberofresponse
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminrequirednumberofresponse")) {
-            sendUserMessage(message, "function currently not implemented!");
+            sendUserMessage(message, "function currently not implemented!",false);
             return;
         }
 
@@ -514,7 +507,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminprofilrequirementswithdrawl
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminprofilrequirementswithdrawl")) {
-            sendUserMessage(message, "function currently not implemented!");
+            sendUserMessage(message, "function currently not implemented!",false);
             return;
         }
 
@@ -522,7 +515,7 @@ void Worker::onMessage(TelegramBotUpdate update)
         // command adminapprovedwithdrawalamount
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminapprovedwithdrawalamount")) {
-            sendUserMessage(message, "function currently not implemented!");
+            sendUserMessage(message, "function currently not implemented!",false);
             return;
         }
 
@@ -549,7 +542,7 @@ void Worker::onMessage(TelegramBotUpdate update)
                 }
             }
 
-            sendUserMessage(message, info);
+            sendUserMessage(message, info,false);
             return;
         }
     }
@@ -678,18 +671,13 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
         }
     }
     ///---------------------------------------------------------------------------------------------------------------------------
-    /// Handling processInvoiceTx
+    /// create args
     ///---------------------------------------------------------------------------------------------------------------------------
-
-    qDebug()<<"Slate 1";
-    qDebug().noquote()<<debugJsonString(slate);
-
     QJsonObject txData;
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
     txData["minimum_confirmations"] = 10;
     txData["selection_strategy_is_use_all"] = true;
-
 
     //default
     txData["amount_includes_fee"] = QJsonValue::Null;
@@ -712,8 +700,6 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
-    qDebug()<<"Slate 2";
-    qDebug().noquote()<<debugJsonString(slate2);
 
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling txLockOutputs
@@ -825,15 +811,46 @@ QString Worker::downloadFileToQString(const QUrl &url)
  * @param message
  * @param content
  */
-void Worker::sendUserMessage(TelegramBotMessage message, QString content)
+void Worker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
 {
+    QString msg;
+    if(plain)
+    {
+        msg = content;
+    }
+    else
+    {
+        msg =   QString("Hi "
+                + message.from.firstName
+                + ",\n"
+                + content);
+    }
+
+
     m_bot->sendMessage(message.chat.id,
-                       "Hi "
-                       + message.from.firstName
-                       + ",\n"
-                       + content,
+                       msg,
                        0,
                        TelegramBot::NoFlag,
                        TelegramKeyboardRequest(),
                        nullptr);
+}
+
+
+/**
+ * @brief Worker::scanWallet
+ * @return
+ */
+bool Worker::scanWallet()
+{
+    bool scan = false;
+    {
+        Result<bool> res = m_walletOwnerApi->scan(1,true);
+        if (!res.unwrapOrLog(scan)) {
+            qDebug() << res.errorMessage();
+            return false;
+        } else {
+            return true;
+        }
+    }
+    return scan;
 }

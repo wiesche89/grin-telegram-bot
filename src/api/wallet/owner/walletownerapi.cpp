@@ -1170,8 +1170,6 @@ Result<Slate> WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
     if (!res.unwrapOrLog(okObj)) {
         return res.error();
     }
-    qDebug()<<Q_FUNC_INFO;
-    qDebug()<<okObj;
 
     return Slate::fromJson(okObj);
 }
