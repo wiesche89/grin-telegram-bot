@@ -45,6 +45,17 @@ bool Worker::init()
     m_walletOwnerApi->initSecureApi();
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
+    bool scan = false;
+    {
+        Result<bool> res = m_walletOwnerApi->scan(1,true);
+        if (!res.unwrapOrLog(scan)) {
+            qDebug() << res.errorMessage();
+        } else {
+            qDebug() << "scan: " << scan;
+        }
+    }
+
+
     // qDebug()<<m_walletOwnerApi->setTorConfig();
 
     // Wallet Foreign Api Instance

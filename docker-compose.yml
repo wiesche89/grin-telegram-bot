@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   grin-telegram-bot:
     build:
@@ -12,7 +10,8 @@ services:
       RUST_BACKTRACE: "1"
       GRIN_CHAIN_TYPE: "Mainnet"
     ports:
-      - "13415:13415"
+      - "3415:3415"
+      - "3420:3420"
     volumes:
       - grin-wallet-data:/opt/grin-telegram-bot/wallet
     networks:

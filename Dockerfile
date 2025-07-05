@@ -46,6 +46,8 @@ RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     make install && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/secp256k1.conf && ldconfig
 
+ENV CACHEBUST=1
+
 # Clone grin-telegram-bot repository
 RUN git clone https://github.com/wiesche89/grin-telegram-bot.git
 
