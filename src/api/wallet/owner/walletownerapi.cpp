@@ -1055,7 +1055,8 @@ Result<bool> WalletOwnerApi::closeWallet(QString name)
         return res.error();
     }
 
-    // todo: delete token?
+    // clear wallet token
+    m_openWalletToken.clear();
 
     // The "Ok" key must exist — its value can be either null or an object
     return OkVal.isNull() || OkVal.isObject();

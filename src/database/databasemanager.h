@@ -10,7 +10,6 @@
 #include <QSqlQuery>
 #include <QDateTime>
 
-
 #include "faucet.h"
 #include "donate.h"
 
@@ -27,17 +26,20 @@ public:
     QSqlDatabase getDatabase() const;
 
     // Donate CRUD
-    bool insertDonate(const Donate& donate);
-    Donate* getDonateById(int id);
-    bool updateDonate(const Donate& donate);
+    bool insertDonate(const Donate &donate);
+    Donate getDonateById(int id);
+    bool updateDonate(const Donate &donate);
     bool deleteDonate(int id);
+    QList<Donate> getAllDonate();
 
     // Faucet CRUD
-    bool insertFaucet(const Faucet& faucet);
+    bool insertFaucet(const Faucet &faucet);
     Faucet getFaucetById(int id);
-    bool updateFaucet(const Faucet& faucet);
+    bool updateFaucet(const Faucet &faucet);
     bool deleteFaucet(int id);
-    QString getFaucetAmountForToday(const QString& userId);
+    QString getFaucetAmountForToday(const QString &userId);
+    QList<Faucet> getAllFaucetAmountForToday();
+    QList<Faucet> getAllFaucet();
 
 private:
     QSqlDatabase db;

@@ -76,10 +76,9 @@ bool DatabaseManager::insertDonate(const Donate &donate)
 
     query.exec();
 
-    if(query.lastError().isValid())
-    {
-        qDebug()<<query.lastQuery();
-        qDebug()<<query.lastError().text();
+    if (query.lastError().isValid()) {
+        qDebug() << query.lastQuery();
+        qDebug() << query.lastError().text();
         return false;
     }
 
@@ -91,19 +90,40 @@ bool DatabaseManager::insertDonate(const Donate &donate)
  * @param id
  * @return
  */
-Donate *DatabaseManager::getDonateById(int id)
+Donate DatabaseManager::getDonateById(int id)
 {
     QSqlQuery query;
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM DONATE WHERE Id = ?");
     query.addBindValue(id);
     if (query.exec() && query.next()) {
-        return new Donate(query.value(0).toInt(),
+        Donate d = Donate(query.value(0).toInt(),
                           query.value(1).toString(),
                           query.value(2).toString(),
                           query.value(3).toString(),
                           query.value(4).toString());
+
+        return d;
     }
-    return nullptr;
+    return Donate();
+}
+
+QList<Donate> DatabaseManager::getAllDonate()
+{
+    QList<Donate> list;
+    QSqlQuery query;
+
+    query.exec("SELECT Id, UserId, Username, Amount, Date FROM DONATE");
+
+    while (query.next()) {
+        Donate d = Donate(query.value(0).toInt(),
+                          query.value(1).toString(),
+                          query.value(2).toString(),
+                          query.value(3).toString(),
+                          query.value(4).toString());
+
+        list.append(d);
+    }
+    return list;
 }
 
 /**
@@ -152,10 +172,9 @@ bool DatabaseManager::insertFaucet(const Faucet &faucet)
     query.addBindValue(faucet.date());
     query.exec();
 
-    if(query.lastError().isValid())
-    {
-        qDebug()<<query.lastQuery();
-        qDebug()<<query.lastError().text();
+    if (query.lastError().isValid()) {
+        qDebug() << query.lastQuery();
+        qDebug() << query.lastError().text();
         return false;
     }
 
@@ -238,4 +257,53 @@ QString DatabaseManager::getFaucetAmountForToday(const QString &userId)
     }
 
     return "0";
+}
+
+/**
+ * @brief DatabaseManager::getAllFaucetAmountForToday
+ * @return
+ */
+QList<Faucet> DatabaseManager::getAllFaucetAmountForToday()
+{
+    QList<Faucet> list;
+    QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
+
+    QSqlQuery query;
+    query.prepare(R"(SELECT Id, UserId, Username, Amount, Date FROM FAUCET WHERE Date = ?)");
+    query.addBindValue(today);
+    query.exec();
+
+    while (query.next())
+    {
+        Faucet f = Faucet(query.value(0).toInt(),
+                          query.value(1).toString(),
+                          query.value(2).toString(),
+                          query.value(3).toString(),
+                          query.value(4).toString());
+
+        list.append(f);
+    }
+
+    return list;
+}
+
+QList<Faucet> DatabaseManager::getAllFaucet()
+{
+    QList<Faucet> list;
+
+    QSqlQuery query;
+    query.exec(R"(SELECT Id, UserId, Username, Amount, Date FROM FAUCET)");
+
+    while (query.next())
+    {
+        Faucet f = Faucet(query.value(0).toInt(),
+                          query.value(1).toString(),
+                          query.value(2).toString(),
+                          query.value(3).toString(),
+                          query.value(4).toString());
+
+        list.append(f);
+    }
+
+    return list;
 }
