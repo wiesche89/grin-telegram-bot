@@ -73,7 +73,17 @@ bool DatabaseManager::insertDonate(const Donate &donate)
     query.addBindValue(donate.username());
     query.addBindValue(donate.amount());
     query.addBindValue(donate.date());
-    return query.exec();
+
+    query.exec();
+
+    if(query.lastError().isValid())
+    {
+        qDebug()<<query.lastQuery();
+        qDebug()<<query.lastError().text();
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -140,7 +150,16 @@ bool DatabaseManager::insertFaucet(const Faucet &faucet)
     query.addBindValue(faucet.username());
     query.addBindValue(faucet.amount());
     query.addBindValue(faucet.date());
-    return query.exec();
+    query.exec();
+
+    if(query.lastError().isValid())
+    {
+        qDebug()<<query.lastQuery();
+        qDebug()<<query.lastError().text();
+        return false;
+    }
+
+    return true;
 }
 
 /**

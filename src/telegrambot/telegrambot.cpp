@@ -584,7 +584,13 @@ void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QS
 void TelegramBot::sendDocument(QString filename,QVariant chatId, QVariant document, QString caption, int replyToMessageId, TelegramFlags flags,
                                TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    qDebug()<<Q_FUNC_INFO <<" ";
+    qDebug()<<filename;
+    qDebug()<<chatId;
+    qDebug()<<document;
+    qDebug()<<caption;
+    qDebug()<<replyToMessageId;
+
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (!caption.isNull()) {

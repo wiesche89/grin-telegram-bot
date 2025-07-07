@@ -929,9 +929,6 @@ Result<Slate> WalletOwnerApi::slateFromSlatepackMessage(QString message, QJsonAr
         return res.error();
     }
 
-    qDebug()<<Q_FUNC_INFO;
-    qDebug()<<okObj;
-
     return Slate::fromJson(okObj);
 }
 

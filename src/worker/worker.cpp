@@ -12,6 +12,7 @@ Worker::Worker() :
     m_walletForeignApi(nullptr),
     m_settings(nullptr)
 {
+    qDebug()<<"Settingspath: "<<QCoreApplication::applicationDirPath() + "/etc/settings.ini";
     m_settings = new QSettings(QCoreApplication::applicationDirPath() + "/etc/settings.ini", QSettings::IniFormat);
 }
 
@@ -56,6 +57,7 @@ bool Worker::init()
 
     // DB Instance
     m_dbManager = new DatabaseManager();
+    qDebug()<<""<<QCoreApplication::applicationDirPath() + "/etc/database/database.db";
     if (m_dbManager->connectToDatabase(QCoreApplication::applicationDirPath() + "/etc/database/database.db")) {
         // Database connection
         qDebug() << "db connection success!";
@@ -545,6 +547,18 @@ void Worker::onMessage(TelegramBotUpdate update)
             sendUserMessage(message, info,false);
             return;
         }
+
+
+        if (message.text.contains("/adminfaucet")) {
+            //todo include
+            return;
+        }
+
+        if (message.text.contains("/admindonate")) {
+            //todo include
+            return;
+        }
+
     }
 }
 
@@ -632,7 +646,7 @@ Result<QString> Worker::handleSlateS1State(Slate slate, TelegramBotMessage messa
     donate.setUsername(message.from.firstName);
     donate.setAmount(slate.amt());
     donate.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
-    m_dbManager->insertDonate(donate);
+    qDebug()<<"insert donate: "<<m_dbManager->insertDonate(donate);
 
     return slatepack;
 }
@@ -706,7 +720,7 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
     ///---------------------------------------------------------------------------------------------------------------------------
     bool lockOutputs = false;
     {
-        Result<bool> res = m_walletOwnerApi->txLockOutputs(slate2);
+        Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
         if (!res.unwrapOrLog(lockOutputs)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         } else {
@@ -729,12 +743,12 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling insert faucet in db
     ///---------------------------------------------------------------------------------------------------------------------------
-    Faucet f;
+    Faucet f;    
     f.setUserId(QString::number(message.from.id));
     f.setUsername(message.from.firstName);
     f.setAmount(slate.amt());
     f.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
-    m_dbManager->insertFaucet(f);
+    qDebug()<<"insert faucet: "<<m_dbManager->insertFaucet(f);
 
     return slatepack;
 }
