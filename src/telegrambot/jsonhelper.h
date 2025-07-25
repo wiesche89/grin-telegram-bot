@@ -46,17 +46,26 @@ public:
 
     static bool jsonPathGetArray(QJsonValue data, QString path, QList<T> &target, bool showWarnings = true)
     {
-        QJsonValue value
-            = showWarnings ? JsonHelper::jsonPathGet(data, path).toJsonValue() : JsonHelper::jsonPathGetSilent(data, path).toJsonValue();
+        QJsonValue value = showWarnings
+                               ? JsonHelper::jsonPathGet(data, path).toJsonValue()
+                               : JsonHelper::jsonPathGetSilent(data, path).toJsonValue();
+
         if (value.isArray()) {
             QJsonArray jArray = value.toArray();
-            for (auto itr = jArray.begin(); itr != jArray.end(); itr++) {
-                JsonHelper::jsonPathGet(*itr, QString::number(itr.i), *target.insert(target.end(), T{}), showWarnings);
+            int idx = 0;
+            for (auto itr = jArray.begin(); itr != jArray.end(); ++itr, ++idx) {
+                JsonHelper::jsonPathGet(*itr,
+                                        QString::number(idx),
+                                        *target.insert(target.end(), T{}),
+                                        showWarnings);
             }
         } else if (value.isObject()) {
             QJsonObject jObject = value.toObject();
-            for (auto itr = jObject.begin(); itr != jObject.end(); itr++) {
-                JsonHelper::jsonPathGet(*itr, itr.key(), *target.insert(target.end(), T{}), showWarnings);
+            for (auto itr = jObject.begin(); itr != jObject.end(); ++itr) {
+                JsonHelper::jsonPathGet(*itr,
+                                        itr.key(),
+                                        *target.insert(target.end(), T{}),
+                                        showWarnings);
             }
         } else {
             return false;
@@ -64,25 +73,38 @@ public:
         return true;
     }
 
-    static bool jsonPathGetArrayArray(QJsonValue data, QString path, QList<QList<T> > &target, bool showWarnings = true)
+
+    static bool jsonPathGetArrayArray(QJsonValue data, QString path, QList<QList<T>> &target, bool showWarnings = true)
     {
-        QJsonValue value
-            = showWarnings ? JsonHelper::jsonPathGet(data, path).toJsonValue() : JsonHelper::jsonPathGetSilent(data, path).toJsonValue();
+        QJsonValue value = showWarnings
+                               ? JsonHelper::jsonPathGet(data, path).toJsonValue()
+                               : JsonHelper::jsonPathGetSilent(data, path).toJsonValue();
+
         if (value.isArray()) {
             QJsonArray jArray = value.toArray();
-            for (auto itr = jArray.begin(); itr != jArray.end(); itr++) {
-                JsonHelperT::jsonPathGetArray(*itr, QString::number(itr.i), *target.insert(target.end(), QList<T>()), showWarnings);
+            int idx = 0;
+            for (auto itr = jArray.begin(); itr != jArray.end(); ++itr, ++idx) {
+                JsonHelperT::jsonPathGetArray(
+                    *itr,
+                    QString::number(idx),
+                    *target.insert(target.end(), QList<T>()),
+                    showWarnings);
             }
         } else if (value.isObject()) {
             QJsonObject jObject = value.toObject();
-            for (auto itr = jObject.begin(); itr != jObject.end(); itr++) {
-                JsonHelperT::jsonPathGetArray(*itr, itr.key(), *target.insert(target.end(), QList<T>()), showWarnings);
+            for (auto itr = jObject.begin(); itr != jObject.end(); ++itr) {
+                JsonHelperT::jsonPathGetArray(
+                    *itr,
+                    itr.key(),
+                    *target.insert(target.end(), QList<T>()),
+                    showWarnings);
             }
         } else {
             return false;
         }
         return true;
     }
+
 
     static inline QVariant jsonPathGet(QJsonValue data, QString path)
     {

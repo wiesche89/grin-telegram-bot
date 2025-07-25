@@ -208,10 +208,12 @@ HEADERS += \
 # secp256k1
 unix:LIBS += -lsecp256k1
 win32:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
+win64:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
 INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
 
 # openssl
 unix:LIBS += -lcrypto
 win32:LIBS += -L$$PWD/3rdParty/openssl/lib -llibcrypto
+win64:LIBS += -L$$PWD/3rdParty/openssl/lib -llibcrypto
 
 DEFINES += OPENSSL_NO_DEPRECATED_3_0
