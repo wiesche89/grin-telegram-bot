@@ -41,6 +41,14 @@ int main(int argc, char *argv[])
         faucet - use faucet
         rewindhash - get rewindhash
         scanrewindhash - scan current rewindhash
+
+        Tradeogre commands
+        price - TO price USDT and BTC
+        orderbook - TO orderbook
+        chart - TO chart 4h BTC and USDT
+        history - TO last x trades BTC and USDT
+
+        Admin commands
         adminenabledisabledeposits - enable/disable deposits
         adminenabledisablewithdrawals - enable/disable withdrawals
         adminupdateresponsemessage - update bot response messages templates
@@ -50,30 +58,32 @@ int main(int argc, char *argv[])
         adminamount - get account amounts
 
         Tipping commands
+        tip - Tipping Grins to other user
+        blackjack - Start BlackJack game with other user
 
         Tradeogre commands
         */
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-        /**
+
         GgcWorker *ggcWorker = new GgcWorker(bot,settings);
         if (!ggcWorker->init()) {
             qDebug()<<"GGC Worker init failed!";
             QCoreApplication::quit();
         }
-        **/
+
 
         TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
-        if (!tradeOgreWorker->init("","")) {
+        if (!tradeOgreWorker->init()) {
             qDebug()<<"Tradeogre Worker init failed!";
             QCoreApplication::quit();
         }
 
-        TippingWorker *tippingWorker = new TippingWorker(bot,settings);
-        if (!tippingWorker->init()) {
-            qDebug()<<"Tipping Worker init failed!";
-            QCoreApplication::quit();
-        }
+        // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        // if (!tippingWorker->init()) {
+        //     qDebug()<<"Tipping Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
 
 
         bot->startMessagePulling();

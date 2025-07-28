@@ -10,25 +10,34 @@ void TradeOgrePublicApi::getMarkets() {
 }
 
 void TradeOgrePublicApi::getOrderBook(const QString &market) {
-    m_nam.get(QNetworkRequest(QUrl("https://tradeogre.com/api/v1/orders/" + market)));
+    QNetworkRequest req(QUrl("https://tradeogre.com/api/v1/orders/" + market));
+    QNetworkReply *reply = m_nam.get(req);
+    reply->setProperty("market", market);
 }
 
 void TradeOgrePublicApi::getTicker(const QString &market) {
-    m_nam.get(QNetworkRequest(QUrl("https://tradeogre.com/api/v1/ticker/" + market)));
+    QNetworkRequest req(QUrl("https://tradeogre.com/api/v1/ticker/" + market));
+    QNetworkReply *reply = m_nam.get(req);
+    reply->setProperty("market", market);
 }
 
 void TradeOgrePublicApi::getTradeHistory(const QString &market) {
-    m_nam.get(QNetworkRequest(QUrl("https://tradeogre.com/api/v1/history/" + market)));
+    QNetworkRequest req(QUrl("https://tradeogre.com/api/v1/history/" + market));
+    QNetworkReply *reply = m_nam.get(req);
+    reply->setProperty("market", market);
 }
 
 void TradeOgrePublicApi::getChart(const QString &interval, const QString &market, qint64 timestamp) {
     QString url = QString("https://tradeogre.com/api/v1/chart/%1/%2/%3").arg(interval, market).arg(timestamp);
-    m_nam.get(QNetworkRequest(QUrl(url)));
+    QNetworkReply *reply = m_nam.get(QNetworkRequest(QUrl(url)));
+    reply->setProperty("market", market);
 }
 
 void TradeOgrePublicApi::onReplyFinished(QNetworkReply *reply) {
     const QUrl url = reply->url();
     const QByteArray data = reply->readAll();
+    QString market = reply->property("market").toString();  // Falls gesetzt
+
     if (reply->error() != QNetworkReply::NoError) {
         emit requestError(url.toString(), reply->errorString());
         reply->deleteLater();
@@ -43,16 +52,20 @@ void TradeOgrePublicApi::onReplyFinished(QNetworkReply *reply) {
         return;
     }
 
-    if (url.path().contains("/markets")) {
+    const QString path = url.path();
+
+    if (path.contains("/markets")) {
         emit marketsReceived(doc.array());
-    } else if (url.path().contains("/orders/")) {
-        emit orderBookReceived(doc.object());
-    } else if (url.path().contains("/ticker/")) {
-        emit tickerReceived(doc.object());
-    } else if (url.path().contains("/history/")) {
-        emit tradeHistoryReceived(doc.array());
-    } else if (url.path().contains("/chart/")) {
-        emit chartDataReceived(doc.array());
+    } else if (path.contains("/orders/")) {
+        emit orderBookReceived(market, doc.object());
+    } else if (path.contains("/ticker/")) {
+        emit tickerReceived(market, doc.object());
+    } else if (path.contains("/history/")) {
+        emit tradeHistoryReceived(market, doc.array());
+    } else if (path.contains("/chart/")) {
+        emit chartDataReceived(market, doc.array());
     }
+
     reply->deleteLater();
 }
+

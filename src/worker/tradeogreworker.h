@@ -8,12 +8,10 @@
 #include <QImage>
 #include <QPainter>
 #include <QStandardPaths>
+#include <QMap>
 
 #include "telegrambot.h"
 #include "tradeogrepublicapi.h"
-#include "tradeogreprivateapi.h"
-#include "tradeogrewebsocketapi.h"
-
 
 class TradeOgreWorker : public QObject
 {
@@ -21,7 +19,7 @@ class TradeOgreWorker : public QObject
 
 public:
     TradeOgreWorker(TelegramBot *bot, QSettings *settings);
-    bool init(const QString &pubKey, const QString &privKey);
+    bool init();
 
 private slots:
     void onMessage(TelegramBotUpdate update);
@@ -34,8 +32,6 @@ private:
     QSettings *m_settings;
 
     TradeOgrePublicApi *m_publicApi;
-    TradeOgrePrivateApi *m_privateApi;
-    TradeOgreWebSocketApi *m_wsApi;
 };
 
 #endif // TRADEOGREWORKER_H

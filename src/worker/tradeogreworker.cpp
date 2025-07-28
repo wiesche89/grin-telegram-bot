@@ -8,19 +8,11 @@
 TradeOgreWorker::TradeOgreWorker(TelegramBot *bot, QSettings *settings) :
     m_bot(bot),
     m_settings(settings),
-    m_publicApi(nullptr),
-    m_privateApi(nullptr),
-    m_wsApi(nullptr)
+    m_publicApi(nullptr)
 {
 }
 
-/**
- * @brief TradeOgreWorker::init
- * @param pubKey
- * @param privKey
- * @return
- */
-bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
+bool TradeOgreWorker::init()
 {
     // Public API
     if (!m_publicApi) {
@@ -29,35 +21,6 @@ bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
             qWarning() << "[PublicAPI]" << ep << err;
         });
     }
-
-    // Private API
-    if (!m_privateApi) {
-        m_privateApi = new TradeOgrePrivateApi(pubKey, privKey, this);
-        connect(m_privateApi, &TradeOgrePrivateApi::requestError, this, [](const QString &ep, const QString &err) {
-            qWarning() << "[PrivateAPI]" << ep << err;
-        });
-    }
-
-    // WebSocket API
-    if (!m_wsApi) {
-        m_wsApi = new TradeOgreWebSocketApi(this);
-        connect(m_wsApi, &TradeOgreWebSocketApi::errorOccurred, this, [](const QString &err) {
-            qWarning() << "[WebSocketAPI]" << err;
-        });
-        connect(m_wsApi, &TradeOgreWebSocketApi::connected, this, []() {
-            qDebug() << "[WebSocketAPI] Connected";
-        });
-        connect(m_wsApi, &TradeOgreWebSocketApi::orderBookUpdate, this, [](const QJsonObject &obj) {
-            qDebug() << "[WS OrderBook]" << obj;
-        });
-        connect(m_wsApi, &TradeOgreWebSocketApi::tradeUpdate, this, [](const QJsonObject &obj) {
-            qDebug() << "[WS Trade]" << obj;
-        });
-
-        m_wsApi->connectSocket();
-    }
-
-    qDebug() << "TradeOgreManager initialized";
 
     // Set Slot to bot message
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
@@ -71,133 +34,286 @@ bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
  */
 void TradeOgreWorker::onMessage(TelegramBotUpdate update)
 {
-    if (update->type != TelegramBotMessageType::Message) {
-        return;
-    }
-
+    if (update->type != TelegramBotMessageType::Message) return;
     TelegramBotMessage &message = *update->message;
 
-    // -------- /ticker --------
-    if (message.text.startsWith("/priceusdt")) {
+    //--------- /price-------------
+    if (message.text.startsWith("/price")) {
+        struct TickerStore {
+            bool usdtDone = false;
+            bool btcDone = false;
+            QJsonObject usdt;
+            QJsonObject btc;
+        };
+
+        TickerStore* store = new TickerStore();
+        QMetaObject::Connection* conn = new QMetaObject::Connection;
+
+        *conn = connect(m_publicApi, &TradeOgrePublicApi::tickerReceived, this,
+                        [this, message, store, conn](const QString &market, const QJsonObject &ticker) mutable {
+                            if (market == "GRIN-USDT") {
+                                store->usdt = ticker;
+                                store->usdtDone = true;
+                            } else if (market == "GRIN-BTC") {
+                                store->btc = ticker;
+                                store->btcDone = true;
+                            }
+
+                            if (store->usdtDone && store->btcDone) {
+                                disconnect(*conn);
+                                delete conn;
+
+                                auto pct = [](double current, double ref) -> QString {
+                                    if (ref == 0.0) return "n/a";
+                                    double diff = ((current - ref) / ref) * 100.0;
+                                    return QString("%1%2%").arg(diff >= 0 ? "+" : "").arg(QString::number(diff, 'f', 2));
+                                };
+
+                                auto toText = [&](const QString &market, const QJsonObject &ticker) -> QStringList {
+                                    double price = ticker.value("price").toString().toDouble();
+                                    double initialPrice = ticker.value("initialprice").toString().toDouble();
+                                    double high = ticker.value("high").toString().toDouble();
+                                    double low = ticker.value("low").toString().toDouble();
+                                    double volume = ticker.value("volume").toString().toDouble();
+                                    double bid = ticker.value("bid").toString().toDouble();
+                                    double ask = ticker.value("ask").toString().toDouble();
+
+                                    return {
+                                        QString("[%1]").arg(market),
+                                        QString("Price:   %1   (%2)").arg(QString::number(price, 'f', 8), -12).arg(pct(price, initialPrice)),
+                                        QString("High:    %1   (%2)").arg(QString::number(high, 'f', 8), -12).arg(pct(high, initialPrice)),
+                                        QString("Low:     %1   (%2)").arg(QString::number(low, 'f', 8), -12).arg(pct(low, initialPrice)),
+                                        QString("Volume:  %1").arg(QString::number(volume, 'f', 4)),
+                                        QString("Bid:     %1").arg(QString::number(bid, 'f', 8)),
+                                        QString("Ask:     %1").arg(QString::number(ask, 'f', 8)),
+                                        ""
+                                    };
+                                };
+
+                                QStringList lines;
+                                lines << toText("GRIN-USDT", store->usdt);
+                                lines << toText("GRIN-BTC", store->btc);
+
+                                sendUserMessage(message, lines.join("\n"), false);
+                                delete store;
+                            }
+                        });
+
         m_publicApi->getTicker("GRIN-USDT");
-
-        connect(m_publicApi, &TradeOgrePublicApi::tickerReceived, this,
-                [this, message](const QJsonObject &ticker) {
-            QString txt;
-            if (ticker.contains("price")) {
-                txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
-                      .arg("GRIN-USDT",
-                           ticker.value("price").toString(),
-                           ticker.value("high").toString(),
-                           ticker.value("low").toString(),
-                           ticker.value("volume").toString(),
-                           ticker.value("bid").toString(),
-                           ticker.value("ask").toString());
-            }
-            sendUserMessage(message, txt, false);
-        }, Qt::SingleShotConnection);
-        return;
-    }
-    if (message.text.startsWith("/pricebtc")) {
         m_publicApi->getTicker("GRIN-BTC");
-
-        connect(m_publicApi, &TradeOgrePublicApi::tickerReceived, this,
-                [this, message](const QJsonObject &ticker) {
-            QString txt;
-            if (ticker.contains("price")) {
-                txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
-                      .arg("GRIN-BTC",
-                           ticker.value("price").toString(),
-                           ticker.value("high").toString(),
-                           ticker.value("low").toString(),
-                           ticker.value("volume").toString(),
-                           ticker.value("bid").toString(),
-                           ticker.value("ask").toString());
-            }
-            sendUserMessage(message, txt, false);
-        }, Qt::SingleShotConnection);
         return;
     }
 
     // -------- /orderbook --------
     if (message.text.startsWith("/orderbook")) {
-        auto handleBook = [this, message](const QJsonObject &book) {
-                              if (!book.value("success").toBool()) {
-                                  sendUserMessage(message, "Error retrieving orderbook", false);
-                                  return;
-                              }
-                              QString txt;
-                              txt += "=== BUY (Top 10) ===\n";
-                              int count = 0;
-                              for (auto it = book.value("buy").toObject().begin(); it != book.value("buy").toObject().end() && count < 10;
-                                   ++it, ++count) {
-                                  txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
-                              }
-                              txt += "\n=== SELL (Top 10) ===\n";
-                              count = 0;
-                              for (auto it = book.value("sell").toObject().begin(); it != book.value("sell").toObject().end() && count < 10;
-                                   ++it, ++count) {
-                                  txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
-                              }
-                              sendUserMessage(message, txt, false);
-                          };
+        struct OrderBookStore {
+            bool usdtDone = false;
+            bool btcDone = false;
+            QJsonObject usdt;
+            QJsonObject btc;
+        };
 
-        connect(m_publicApi, &TradeOgrePublicApi::orderBookReceived, this, handleBook);
+        OrderBookStore* store = new OrderBookStore();
+        QMetaObject::Connection* conn = new QMetaObject::Connection;
+
+        *conn = connect(m_publicApi, &TradeOgrePublicApi::orderBookReceived, this,
+                        [this, message, store, conn](const QString &market, const QJsonObject &book) mutable {
+                            if (!book.value("success").toBool())
+                                return;
+
+                            if (market == "GRIN-USDT") {
+                                store->usdt = book;
+                                store->usdtDone = true;
+                            } else if (market == "GRIN-BTC") {
+                                store->btc = book;
+                                store->btcDone = true;
+                            }
+
+                            if (!store->usdtDone || !store->btcDone)
+                                return;
+
+                            disconnect(*conn);
+                            delete conn;
+
+                            auto renderOrderBook = [](const QString& market, const QJsonObject& book) -> QString {
+                                std::map<double, QString, std::greater<double>> sortedBuy;
+                                QJsonObject buyObj = book.value("buy").toObject();
+                                for (auto it = buyObj.begin(); it != buyObj.end(); ++it)
+                                    sortedBuy[it.key().toDouble()] = it.value().toString();
+
+                                std::map<double, QString> sortedSell;
+                                QJsonObject sellObj = book.value("sell").toObject();
+                                for (auto it = sellObj.begin(); it != sellObj.end(); ++it)
+                                    sortedSell[it.key().toDouble()] = it.value().toString();
+
+                                QString txt;
+                                txt += "=========== ORDERBOOK ===========\n\n";
+                                txt += "[" + market + "]\n\n";
+
+                                // BUY Orders (Top 10 - Highest Bids)
+                                txt += "BUY Orders (Top 10 - Highest Bids):\n";
+                                txt += "  Price        ×     Quantity\n";
+                                txt += "-------------------------------\n";
+                                QVector<QPair<double, QString>> topBuy;
+                                int count = 0;
+                                for (auto it = sortedBuy.begin(); it != sortedBuy.end() && count < 10; ++it, ++count)
+                                    topBuy.append(qMakePair(it->first, it->second));
+                                for (int i = topBuy.size() - 1; i >= 0; --i) {
+                                    txt += QString("  %1     × %2\n")
+                                               .arg(QString::number(topBuy[i].first, 'f', 8), -12)
+                                               .arg(topBuy[i].second);
+                                }
+
+                                // SELL Orders (Top 10 - Lowest Asks)
+                                txt += "\nSELL Orders (Top 10 - Lowest Asks):\n";
+                                txt += "  Price        ×     Quantity\n";
+                                txt += "-------------------------------\n";
+                                count = 0;
+                                for (auto it = sortedSell.begin(); it != sortedSell.end() && count < 10; ++it, ++count) {
+                                    txt += QString("  %1     × %2\n")
+                                               .arg(QString::number(it->first, 'f', 8), -12)
+                                               .arg(it->second);
+                                }
+
+                                txt += "\n=================================\n";
+                                return txt;
+                            };
+
+                            QString fullText;
+                            fullText += renderOrderBook("GRIN-USDT", store->usdt);
+                            fullText += "\n\n";
+                            fullText += renderOrderBook("GRIN-BTC", store->btc);
+
+                            sendUserMessage(message, fullText, false);
+                            delete store;
+                        });
+
         m_publicApi->getOrderBook("GRIN-USDT");
         m_publicApi->getOrderBook("GRIN-BTC");
         return;
     }
 
-    // -------- /chart --------
+    // -------- /chart ------------
     if (message.text.startsWith("/chart")) {
         qint64 now = QDateTime::currentSecsSinceEpoch();
 
-        auto sendChart = [this, message](const QString &market, const QJsonArray &chart) {
-                             QString path = renderChartToFile(chart, market);
-                             if (!path.isEmpty()) {
-                                 m_bot->sendPhoto(
-                                     message.chat.id,
-                                     path,
-                                     QString("%1 4h Chart").arg(market),
-                                     0,
-                                     TelegramBot::NoFlag,
-                                     TelegramKeyboardRequest(),
-                                     nullptr
-                                     );
-                             } else {
-                                 sendUserMessage(message, QString("Konnte Chart für %1 nicht generieren.").arg(market), false);
-                             }
-                         };
+        struct ChartStore {
+            bool usdtDone = false;
+            bool btcDone = false;
+            QJsonArray usdtChart;
+            QJsonArray btcChart;
+        };
 
-        connect(m_publicApi, &TradeOgrePublicApi::chartDataReceived, this,
-                [sendChart](const QJsonArray &chart) {
-            sendChart("GRIN-USDT", chart);
-        }, Qt::SingleShotConnection);
+        ChartStore* store = new ChartStore();
+        QMetaObject::Connection* conn = new QMetaObject::Connection;
+
+        *conn = connect(m_publicApi, &TradeOgrePublicApi::chartDataReceived, this,
+                        [this, message, store, conn](const QString &market, const QJsonArray &chart) mutable {
+                            if (market == "GRIN-USDT") {
+                                store->usdtChart = chart;
+                                store->usdtDone = true;
+                            } else if (market == "GRIN-BTC") {
+                                store->btcChart = chart;
+                                store->btcDone = true;
+                            }
+
+                            if (!store->usdtDone || !store->btcDone)
+                                return;
+
+                            disconnect(*conn);
+                            delete conn;
+
+                            QString usdtPath = renderChartToFile(store->usdtChart, "GRIN-USDT");
+                            QString btcPath  = renderChartToFile(store->btcChart, "GRIN-BTC");
+
+                            if (!usdtPath.isEmpty())
+                                m_bot->sendPhoto(message.chat.id, usdtPath, "GRIN-USDT 4h Chart");
+                            else
+                                sendUserMessage(message, "Konnte Chart für GRIN-USDT nicht generieren.", false);
+
+                            if (!btcPath.isEmpty())
+                                m_bot->sendPhoto(message.chat.id, btcPath, "GRIN-BTC 4h Chart");
+                            else
+                                sendUserMessage(message, "Konnte Chart für GRIN-BTC nicht generieren.", false);
+
+                            delete store;
+                        });
 
         m_publicApi->getChart("4h", "GRIN-USDT", now);
+        m_publicApi->getChart("4h", "GRIN-BTC", now);
         return;
     }
 
     // -------- /history --------
     if (message.text.startsWith("/history")) {
-        auto handleHistory = [this, message](const QJsonArray &history) {
-                                 QString txt;
-                                 txt += "=== Recent Trades ===\n";
-                                 for (auto t : history) {
-                                     QJsonObject obj = t.toObject();
-                                     txt += QString("%1 %2 %3 @ %4\n")
-                                            .arg(QString::number(obj.value("date").toInt()),
-                                                 obj.value("type").toString(),
-                                                 obj.value("quantity").toString(),
-                                                 obj.value("price").toString());
-                                 }
-                                 sendUserMessage(message, txt, false);
-                             };
+        struct HistoryStore {
+            bool usdtDone = false;
+            bool btcDone = false;
+            QJsonArray usdtHistory;
+            QJsonArray btcHistory;
+        };
 
-        connect(m_publicApi, &TradeOgrePublicApi::tradeHistoryReceived, this, handleHistory);
+        HistoryStore* store = new HistoryStore();
+        QMetaObject::Connection* conn = new QMetaObject::Connection;
+
+        *conn = connect(m_publicApi, &TradeOgrePublicApi::tradeHistoryReceived, this,
+                        [this, message, store, conn](const QString &market, const QJsonArray &history) mutable {
+                            if (market == "GRIN-USDT") {
+                                store->usdtHistory = history;
+                                store->usdtDone = true;
+                            } else if (market == "GRIN-BTC") {
+                                store->btcHistory = history;
+                                store->btcDone = true;
+                            }
+
+                            if (!store->usdtDone || !store->btcDone)
+                                return;
+
+                            disconnect(*conn);
+                            delete conn;
+
+                            auto formatTrades = [](const QString& market, const QJsonArray& trades) -> QString {
+                                QStringList lines;
+                                lines << QString("=== Trade History for %1 ===").arg(market);
+                                lines << QString("  Date                Type     Quantity         Price");
+
+                                int shown = 0;
+                                for (const QJsonValue &v : trades) {
+                                    if (!v.isObject()) continue;
+                                    const QJsonObject obj = v.toObject();
+
+                                    QDateTime dt = QDateTime::fromSecsSinceEpoch(obj.value("date").toInt());
+                                    QString timeStr = dt.toString("yyyy-MM-dd hh:mm:ss");
+
+                                    QString type = obj.value("type").toString().toUpper();
+                                    QString qty  = obj.value("quantity").toString();
+                                    QString prc  = obj.value("price").toString();
+
+                                    lines << QString("  %1   %2   %3   @ %4")
+                                                 .arg(timeStr, -20)
+                                                 .arg(type, -7)
+                                                 .arg(qty, -15)
+                                                 .arg(prc);
+
+                                    if (++shown >= 12) break; // max 12 Zeilen pro Markt
+                                }
+                                return lines.join("\n");
+                            };
+
+                            QString result;
+                            result += formatTrades("GRIN-USDT", store->usdtHistory);
+                            result += "\n\n";
+                            result += formatTrades("GRIN-BTC", store->btcHistory);
+
+                            sendUserMessage(message, result, false);
+                            delete store;
+                        });
+
         m_publicApi->getTradeHistory("GRIN-USDT");
+        m_publicApi->getTradeHistory("GRIN-BTC");
         return;
     }
+
 }
 
 /**
@@ -242,7 +358,7 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
     QPainter p(&image);
     p.setRenderHint(QPainter::Antialiasing);
 
-    int axisLeft = 60;
+    int axisLeft = market.contains("BTC") ? 120 : 60;
     int axisBottom = height - 40;
     int axisTop = 20;
     int axisRight = width - 20;
@@ -298,7 +414,8 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
         double price = minPrice + (priceRange / ySteps) * i;
         int y = (int)(axisBottom - ((price - minPrice) / priceRange) * (axisBottom - axisTop));
         p.drawLine(axisLeft - 5, y, axisLeft, y);
-        p.drawText(2, y + 4, QString::number(price, 'f', 2));
+        int precision = (market.contains("BTC")) ? 8 : 4;
+        p.drawText(2, y + 4, QString::number(price, 'f', precision));
     }
 
     // X-Axes

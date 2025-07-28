@@ -38,6 +38,7 @@ void TradeOgreWebSocketApi::subscribeOrderBook(const QString &market)
     }
     QJsonObject obj{{"a", "subscribe"}, {"e", "book"}, {"t", market}};
     QByteArray msg = QJsonDocument(obj).toJson(QJsonDocument::Compact);
+    qDebug()<<Q_FUNC_INFO << QString::fromUtf8(msg);
     m_socket.sendTextMessage(QString::fromUtf8(msg));
 }
 
@@ -49,6 +50,7 @@ void TradeOgreWebSocketApi::subscribeTrades(const QString &market)
     }
     QJsonObject obj{{"a", "subscribe"}, {"e", "trade"}, {"t", market}};
     QByteArray msg = QJsonDocument(obj).toJson(QJsonDocument::Compact);
+    qDebug()<<Q_FUNC_INFO << QString::fromUtf8(msg);
     m_socket.sendTextMessage(QString::fromUtf8(msg));
 }
 
@@ -81,7 +83,7 @@ void TradeOgreWebSocketApi::onTextMessageReceived(const QString &message)
     } else if (event == "trade") {
         emit tradeUpdate(obj);
     } else {
-        qDebug() << "Unknown event type:" << event << obj;
+        //qDebug() << "Unknown event type:" << event << obj;
     }
 }
 

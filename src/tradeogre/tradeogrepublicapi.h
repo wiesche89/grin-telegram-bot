@@ -22,12 +22,11 @@ public:
 
 signals:
     void marketsReceived(const QJsonArray &markets);
-    void orderBookReceived(const QJsonObject &book);
-    void tickerReceived(const QJsonObject &ticker);
-    void tradeHistoryReceived(const QJsonArray &history);
-    void chartDataReceived(const QJsonArray &chart);
-
-    void requestError(const QString &endpoint, const QString &errorString);
+    void orderBookReceived(const QString &market, const QJsonObject &orderbook);
+    void tickerReceived(const QString &market, const QJsonObject &ticker);
+    void tradeHistoryReceived(const QString &market, const QJsonArray &history);
+    void chartDataReceived(const QString &market, const QJsonArray &chart);
+    void requestError(const QString &url, const QString &error);
 
 private slots:
     void onReplyFinished(QNetworkReply *reply);
