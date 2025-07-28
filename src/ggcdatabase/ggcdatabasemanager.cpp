@@ -1,28 +1,28 @@
-#include "databasemanager.h"
+#include "ggcdatabasemanager.h"
 
 /**
- * @brief DatabaseManager::DatabaseManager
+ * @brief GgcDatabaseManager::GgcDatabaseManager
  * @param parent
  */
-DatabaseManager::DatabaseManager(QObject *parent) : QObject(parent)
+GgcDatabaseManager::GgcDatabaseManager(QObject *parent) : QObject(parent)
 {
     db = QSqlDatabase::addDatabase("QSQLITE");
 }
 
 /**
- * @brief DatabaseManager::~DatabaseManager
+ * @brief GgcDatabaseManager::~GgcDatabaseManager
  */
-DatabaseManager::~DatabaseManager()
+GgcDatabaseManager::~GgcDatabaseManager()
 {
     closeDatabase();
 }
 
 /**
- * @brief DatabaseManager::connectToDatabase
+ * @brief GgcDatabaseManager::connectToDatabase
  * @param dbPath
  * @return
  */
-bool DatabaseManager::connectToDatabase(const QString &dbPath)
+bool GgcDatabaseManager::connectToDatabase(const QString &dbPath)
 {
     if (db.isOpen()) {
         db.close();
@@ -40,9 +40,9 @@ bool DatabaseManager::connectToDatabase(const QString &dbPath)
 }
 
 /**
- * @brief DatabaseManager::closeDatabase
+ * @brief GgcDatabaseManager::closeDatabase
  */
-void DatabaseManager::closeDatabase()
+void GgcDatabaseManager::closeDatabase()
 {
     if (db.isOpen()) {
         db.close();
@@ -51,21 +51,21 @@ void DatabaseManager::closeDatabase()
 }
 
 /**
- * @brief DatabaseManager::getDatabase
+ * @brief GgcDatabaseManager::getDatabase
  * @return
  */
-QSqlDatabase DatabaseManager::getDatabase() const
+QSqlDatabase GgcDatabaseManager::getDatabase() const
 {
     return db;
 }
 
 // ------------------ Donate CRUD ------------------
 /**
- * @brief DatabaseManager::insertDonate
+ * @brief GgcDatabaseManager::insertDonate
  * @param donate
  * @return
  */
-bool DatabaseManager::insertDonate(const Donate &donate)
+bool GgcDatabaseManager::insertDonate(const Donate &donate)
 {
     QSqlQuery query;
     query.prepare("INSERT INTO DONATE (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
@@ -86,11 +86,11 @@ bool DatabaseManager::insertDonate(const Donate &donate)
 }
 
 /**
- * @brief DatabaseManager::getDonateById
+ * @brief GgcDatabaseManager::getDonateById
  * @param id
  * @return
  */
-Donate DatabaseManager::getDonateById(int id)
+Donate GgcDatabaseManager::getDonateById(int id)
 {
     QSqlQuery query;
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM DONATE WHERE Id = ?");
@@ -107,7 +107,7 @@ Donate DatabaseManager::getDonateById(int id)
     return Donate();
 }
 
-QList<Donate> DatabaseManager::getAllDonate()
+QList<Donate> GgcDatabaseManager::getAllDonate()
 {
     QList<Donate> list;
     QSqlQuery query;
@@ -127,11 +127,11 @@ QList<Donate> DatabaseManager::getAllDonate()
 }
 
 /**
- * @brief DatabaseManager::updateDonate
+ * @brief GgcDatabaseManager::updateDonate
  * @param donate
  * @return
  */
-bool DatabaseManager::updateDonate(const Donate &donate)
+bool GgcDatabaseManager::updateDonate(const Donate &donate)
 {
     QSqlQuery query;
     query.prepare("UPDATE DONATE SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
@@ -144,11 +144,11 @@ bool DatabaseManager::updateDonate(const Donate &donate)
 }
 
 /**
- * @brief DatabaseManager::deleteDonate
+ * @brief GgcDatabaseManager::deleteDonate
  * @param id
  * @return
  */
-bool DatabaseManager::deleteDonate(int id)
+bool GgcDatabaseManager::deleteDonate(int id)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM DONATE WHERE Id = ?");
@@ -158,11 +158,11 @@ bool DatabaseManager::deleteDonate(int id)
 
 // ------------------ Faucet CRUD ------------------
 /**
- * @brief DatabaseManager::insertFaucet
+ * @brief GgcDatabaseManager::insertFaucet
  * @param faucet
  * @return
  */
-bool DatabaseManager::insertFaucet(const Faucet &faucet)
+bool GgcDatabaseManager::insertFaucet(const Faucet &faucet)
 {
     QSqlQuery query;
     query.prepare("INSERT INTO FAUCET (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
@@ -182,11 +182,11 @@ bool DatabaseManager::insertFaucet(const Faucet &faucet)
 }
 
 /**
- * @brief DatabaseManager::getFaucetById
+ * @brief GgcDatabaseManager::getFaucetById
  * @param id
  * @return
  */
-Faucet DatabaseManager::getFaucetById(int id)
+Faucet GgcDatabaseManager::getFaucetById(int id)
 {
     QSqlQuery query;
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM FAUCET WHERE Id = ?");
@@ -202,11 +202,11 @@ Faucet DatabaseManager::getFaucetById(int id)
 }
 
 /**
- * @brief DatabaseManager::updateFaucet
+ * @brief GgcDatabaseManager::updateFaucet
  * @param faucet
  * @return
  */
-bool DatabaseManager::updateFaucet(const Faucet &faucet)
+bool GgcDatabaseManager::updateFaucet(const Faucet &faucet)
 {
     QSqlQuery query;
     query.prepare("UPDATE FAUCET SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
@@ -219,11 +219,11 @@ bool DatabaseManager::updateFaucet(const Faucet &faucet)
 }
 
 /**
- * @brief DatabaseManager::deleteFaucet
+ * @brief GgcDatabaseManager::deleteFaucet
  * @param id
  * @return
  */
-bool DatabaseManager::deleteFaucet(int id)
+bool GgcDatabaseManager::deleteFaucet(int id)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM FAUCET WHERE Id = ?");
@@ -232,11 +232,11 @@ bool DatabaseManager::deleteFaucet(int id)
 }
 
 /**
- * @brief DatabaseManager::getFaucetAmountForToday
+ * @brief GgcDatabaseManager::getFaucetAmountForToday
  * @param userId
  * @return
  */
-QString DatabaseManager::getFaucetAmountForToday(const QString &userId)
+QString GgcDatabaseManager::getFaucetAmountForToday(const QString &userId)
 {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
@@ -260,10 +260,10 @@ QString DatabaseManager::getFaucetAmountForToday(const QString &userId)
 }
 
 /**
- * @brief DatabaseManager::getAllFaucetAmountForToday
+ * @brief GgcDatabaseManager::getAllFaucetAmountForToday
  * @return
  */
-QList<Faucet> DatabaseManager::getAllFaucetAmountForToday()
+QList<Faucet> GgcDatabaseManager::getAllFaucetAmountForToday()
 {
     QList<Faucet> list;
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
@@ -287,7 +287,7 @@ QList<Faucet> DatabaseManager::getAllFaucetAmountForToday()
     return list;
 }
 
-QList<Faucet> DatabaseManager::getAllFaucet()
+QList<Faucet> GgcDatabaseManager::getAllFaucet()
 {
     QList<Faucet> list;
 

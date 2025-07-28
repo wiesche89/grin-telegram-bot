@@ -1,5 +1,5 @@
-#ifndef WORKER_H
-#define WORKER_H
+#ifndef GGCWORKER_H
+#define GGCWORKER_H
 
 #include <QSettings>
 #include <QDir>
@@ -7,7 +7,7 @@
 #include <QTemporaryFile>
 
 #include "telegrambot.h"
-#include "databasemanager.h"
+#include "ggcdatabasemanager.h"
 #include "nodeownerapi.h"
 #include "walletownerapi.h"
 #include "walletforeignapi.h"
@@ -18,12 +18,12 @@
 #include "txlogentry.h"
 #include "debugutils.h"
 
-class Worker : public QObject
+class GgcWorker : public QObject
 {
     Q_OBJECT
 
 public:
-    Worker();
+    GgcWorker(TelegramBot *bot, QSettings *settings);
     bool init();
 
 private slots:
@@ -40,7 +40,7 @@ private:
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
     bool scanWallet();
 
-    DatabaseManager *m_dbManager;
+    GgcDatabaseManager *m_dbManager;
     TelegramBot *m_bot;
     NodeOwnerApi *m_nodeOwnerApi;
     NodeForeignApi *m_nodeForeignApi;
@@ -49,4 +49,4 @@ private:
     QSettings *m_settings;
 };
 
-#endif // WORKER_H
+#endif // GGCWORKER_H

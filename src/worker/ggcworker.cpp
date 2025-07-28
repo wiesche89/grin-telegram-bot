@@ -1,25 +1,23 @@
-#include "worker.h"
+#include "ggcworker.h"
 
 /**
- * @brief Worker::Worker
+ * @brief GgcWorker::GgcWorker
  */
-Worker::Worker() :
+GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings) :
     m_dbManager(nullptr),
-    m_bot(nullptr),
+    m_bot(bot),
     m_nodeOwnerApi(nullptr),
     m_nodeForeignApi(nullptr),
     m_walletOwnerApi(nullptr),
     m_walletForeignApi(nullptr),
-    m_settings(nullptr)
+    m_settings(settings)
 {
-    qDebug() << "Settingspath: " << QCoreApplication::applicationDirPath() + "/etc/settings.ini";
-    m_settings = new QSettings(QCoreApplication::applicationDirPath() + "/etc/settings.ini", QSettings::IniFormat);
 }
 
 /**
- * @brief Worker::initBot
+ * @brief GgcWorker::initBot
  */
-bool Worker::init()
+bool GgcWorker::init()
 {
     // Todo checking success instances
     bool success = true;
@@ -55,7 +53,7 @@ bool Worker::init()
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
 
     // DB Instance
-    m_dbManager = new DatabaseManager();
+    m_dbManager = new GgcDatabaseManager();
     qDebug() << "" << QCoreApplication::applicationDirPath() + "/etc/database/database.db";
     if (m_dbManager->connectToDatabase(QCoreApplication::applicationDirPath() + "/etc/database/database.db")) {
         // Database connection
@@ -65,16 +63,15 @@ bool Worker::init()
         success = false;
     }
 
-    // Bot - Instance
-    m_bot = new TelegramBot(m_settings->value("bot/token").toString());
+    //Set Slot to bot message
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
-    m_bot->startMessagePulling();
+
 
     // Helper transactions cleanup
     QTimer *cleanupTimer = new QTimer(this);
 
     // Connect timer's timeout signal to your slot/function
-    connect(cleanupTimer, &QTimer::timeout, this, &Worker::cleanupRetrieveTxs);
+    connect(cleanupTimer, &QTimer::timeout, this, &GgcWorker::cleanupRetrieveTxs);
 
     // Set interval to 5 minutes (300,000 milliseconds)
     cleanupTimer->start(5 * 60 * 1000);
@@ -86,10 +83,10 @@ bool Worker::init()
 }
 
 /**
- * @brief Worker::onMessage
+ * @brief GgcWorker::onMessage
  * @param update
  */
-void Worker::onMessage(TelegramBotUpdate update)
+void GgcWorker::onMessage(TelegramBotUpdate update)
 {
     // only handle Messages
     if (update->type != TelegramBotMessageType::Message) {
@@ -99,23 +96,6 @@ void Worker::onMessage(TelegramBotUpdate update)
     // simplify message access
     TelegramBotMessage &message = *update->message;
     qlonglong id = message.chat.id;
-
-    /// following commands exists
-    /*
-    start - introduction
-    address - get slatepack address
-    donate - dm slatepack address
-    faucet - use faucet
-    rewindhash - get rewindhash
-    scanrewindhash - scan current rewindhash
-    adminenabledisabledeposits - enable/disable deposits
-    adminenabledisablewithdrawals - enable/disable withdrawals
-    adminupdateresponsemessage - update bot response messages templates
-    adminrequirednumberofresponse - set the required number of responses to approve the withdrawal
-    adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
-    adminapprovedwithdrawalamount - set the approved withdrawal amount
-    adminamount - get account amounts
-    */
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command start
@@ -592,7 +572,7 @@ void Worker::onMessage(TelegramBotUpdate update)
  * @param filePath
  * @return
  */
-QString Worker::readFileToString(const QString &filePath)
+QString GgcWorker::readFileToString(const QString &filePath)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -607,11 +587,11 @@ QString Worker::readFileToString(const QString &filePath)
 }
 
 /**
- * @brief Worker::isAdmin
+ * @brief GgcWorker::isAdmin
  * @param id
  * @return
  */
-bool Worker::isAdmin(qlonglong id)
+bool GgcWorker::isAdmin(qlonglong id)
 {
     // admin rights
     QStringList stringList = m_settings->value("admin/telegramIds").toStringList();
@@ -631,11 +611,11 @@ bool Worker::isAdmin(qlonglong id)
 }
 
 /**
- * @brief Worker::handleSlateS1State
+ * @brief GgcWorker::handleSlateS1State
  * @param slate
  * @return
  */
-Result<QString> Worker::handleSlateS1State(Slate slate, TelegramBotMessage message)
+Result<QString> GgcWorker::handleSlateS1State(Slate slate, TelegramBotMessage message)
 {
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Debugging
@@ -677,11 +657,11 @@ Result<QString> Worker::handleSlateS1State(Slate slate, TelegramBotMessage messa
 }
 
 /**
- * @brief Worker::handleSlateI1State
+ * @brief GgcWorker::handleSlateI1State
  * @param slate
  * @return
  */
-Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage message)
+Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage message)
 {
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Debugging
@@ -715,7 +695,7 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
     txData["minimum_confirmations"] = 10;
-    txData["selection_strategy_is_use_all"] = true;
+    txData["selection_strategy_is_use_all"] = false;
 
     // default
     txData["amount_includes_fee"] = QJsonValue::Null;
@@ -777,9 +757,9 @@ Result<QString> Worker::handleSlateI1State(Slate slate, TelegramBotMessage messa
 }
 
 /**
- * @brief Worker::outputRetrieveTxs
+ * @brief GgcWorker::outputRetrieveTxs
  */
-void Worker::cleanupRetrieveTxs()
+void GgcWorker::cleanupRetrieveTxs()
 {
     QList<TxLogEntry> txList;
     {
@@ -815,11 +795,11 @@ void Worker::cleanupRetrieveTxs()
 }
 
 /**
- * @brief Worker::downloadFileToQString
+ * @brief GgcWorker::downloadFileToQString
  * @param url
  * @return
  */
-QString Worker::downloadFileToQString(const QUrl &url)
+QString GgcWorker::downloadFileToQString(const QUrl &url)
 {
     QNetworkAccessManager manager;
     QNetworkRequest request(url);
@@ -844,11 +824,11 @@ QString Worker::downloadFileToQString(const QUrl &url)
 }
 
 /**
- * @brief Worker::sendUserMessage
+ * @brief GgcWorker::sendUserMessage
  * @param message
  * @param content
  */
-void Worker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
+void GgcWorker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
 {
     QString msg;
     if (plain) {
@@ -869,10 +849,10 @@ void Worker::sendUserMessage(TelegramBotMessage message, QString content, bool p
 }
 
 /**
- * @brief Worker::scanWallet
+ * @brief GgcWorker::scanWallet
  * @return
  */
-bool Worker::scanWallet()
+bool GgcWorker::scanWallet()
 {
     bool scan = false;
     {

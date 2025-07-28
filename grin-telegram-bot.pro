@@ -1,6 +1,5 @@
 # Modules
-QT -= gui
-QT += core websockets sql
+QT += core websockets sql gui widgets
 
 # Config
 CONFIG += console
@@ -29,9 +28,10 @@ INCLUDEPATH += \
   src/api/node/owner \
   src/api/wallet/owner \
   src/telegrambot \
+  src/tradeogre \
   src/grinwalletmanager \
-  src/database \
-  src/database/attributes \
+  src/ggcdatabase \
+  src/ggcdatabase/attributes \
   src/telegrambot/modules/httpserver \
   src/telegrambot/modules/sslserver \
   3rdParty \
@@ -105,21 +105,26 @@ SOURCES += \
   src/api/wallet/attributes/viewwalletentry.cpp \
   src/api/wallet/attributes/walletconfig.cpp \
   src/api/wallet/attributes/walletinfo.cpp \
+  src/ggcdatabase/ggcdatabasemanager.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
   src/main.cpp \
   src/telegrambot/jsonhelper.cpp \
   src/telegrambot/modules/httpserver/httpserver.cpp \
   src/telegrambot/modules/sslserver/sslserver.cpp \
   src/telegrambot/telegrambot.cpp \
+  src/tradeogre/tradeogreprivateapi.cpp \
+  src/tradeogre/tradeogrepublicapi.cpp \
+  src/tradeogre/tradeogrewebsocketapi.cpp \
   src/util/jsonutil.cpp \
-  src/worker/worker.cpp \
   src/api/wallet/foreign/walletforeignapi.cpp \
   src/api/wallet/owner/walletownerapi.cpp \
   src/api/wallet/attributes/slate.cpp \
-  src/database/databasemanager.cpp \
-  src/database/attributes/donate.cpp \
-  src/database/attributes/faucet.cpp \
-  src/util/debugutils.cpp
+  src/ggcdatabase/attributes/donate.cpp \
+  src/ggcdatabase/attributes/faucet.cpp \
+  src/util/debugutils.cpp \
+  src/worker/ggcworker.cpp \
+  src/worker/tippingworker.cpp \
+  src/worker/tradeogreworker.cpp
 
 # .h
 HEADERS += \
@@ -185,6 +190,7 @@ HEADERS += \
   src/api/wallet/attributes/walletinfo.h \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
+  src/ggcdatabase/ggcdatabasemanager.h \
   src/grinwalletmanager/grinwalletmanager.h \
   src/telegrambot/jsonhelper.h \
   src/telegrambot/modules/httpserver/httpserver.h \
@@ -193,23 +199,26 @@ HEADERS += \
   src/telegrambot/telegrambot.h \
   src/telegrambot/telegramdatainterface.h \
   src/telegrambot/telegramdatastructs.h \
+  src/tradeogre/tradeogreprivateapi.h \
+  src/tradeogre/tradeogrepublicapi.h \
+  src/tradeogre/tradeogrewebsocketapi.h \
   src/util/jsonutil.h \
-  src/worker/worker.h \
   3rdParty/secp256k1/include/secp256k1.h \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \
   3rdParty/openssl/openssl/evp.h \
   3rdParty/openssl/openssl/rand.h \
   src/api/wallet/attributes/slate.h \
-  src/database/databasemanager.h \
-  src/database/attributes/donate.h \
-  src/database/attributes/faucet.h \
-  src/util/debugutils.h
+  src/ggcdatabase/attributes/donate.h \
+  src/ggcdatabase/attributes/faucet.h \
+  src/util/debugutils.h \
+  src/worker/ggcworker.h \
+  src/worker/tippingworker.h \
+  src/worker/tradeogreworker.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1
-#win32:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
-win32:LIBS += -L$$PWD/3rdParty/secp256k1/lib -lsecp256k1
-INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
+win32:LIBS += -LC:/ProjekteGit/github/grin-telegram-bot/3rdParty/secp256k1/.libs -lsecp256k1
+INCLUDEPATH += C:/ProjekteGit/github/grin-telegram-bot/3rdParty/secp256k1/include
 
 # openssl
 unix:LIBS += -lcrypto

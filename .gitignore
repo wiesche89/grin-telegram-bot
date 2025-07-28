@@ -1,2 +1,4 @@
+.wallet/
 .libs/
 .grin/
+build/

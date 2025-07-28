@@ -1,5 +1,5 @@
-#ifndef DATABASEMANAGER_H
-#define DATABASEMANAGER_H
+#ifndef GGCDATABASEMANAGER_H
+#define GGCDATABASEMANAGER_H
 
 #include <QObject>
 #include <QSqlDatabase>
@@ -13,13 +13,13 @@
 #include "faucet.h"
 #include "donate.h"
 
-class DatabaseManager : public QObject
+class GgcDatabaseManager : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit DatabaseManager(QObject *parent = nullptr);
-    ~DatabaseManager();
+    explicit GgcDatabaseManager(QObject *parent = nullptr);
+    ~GgcDatabaseManager();
 
     bool connectToDatabase(const QString &dbPath);
     void closeDatabase();
@@ -45,4 +45,4 @@ private:
     QSqlDatabase db;
 };
 
-#endif // DATABASEMANAGER_H
+#endif // GGCDATABASEMANAGER_H
