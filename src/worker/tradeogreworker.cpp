@@ -12,15 +12,20 @@ TradeOgreWorker::TradeOgreWorker(TelegramBot *bot, QSettings *settings) :
     m_privateApi(nullptr),
     m_wsApi(nullptr)
 {
-
 }
 
+/**
+ * @brief TradeOgreWorker::init
+ * @param pubKey
+ * @param privKey
+ * @return
+ */
 bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
 {
     // Public API
     if (!m_publicApi) {
         m_publicApi = new TradeOgrePublicApi(this);
-        connect(m_publicApi, &TradeOgrePublicApi::requestError, this, [](const QString &ep, const QString &err){
+        connect(m_publicApi, &TradeOgrePublicApi::requestError, this, [](const QString &ep, const QString &err) {
             qWarning() << "[PublicAPI]" << ep << err;
         });
     }
@@ -28,7 +33,7 @@ bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
     // Private API
     if (!m_privateApi) {
         m_privateApi = new TradeOgrePrivateApi(pubKey, privKey, this);
-        connect(m_privateApi, &TradeOgrePrivateApi::requestError, this, [](const QString &ep, const QString &err){
+        connect(m_privateApi, &TradeOgrePrivateApi::requestError, this, [](const QString &ep, const QString &err) {
             qWarning() << "[PrivateAPI]" << ep << err;
         });
     }
@@ -36,16 +41,16 @@ bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
     // WebSocket API
     if (!m_wsApi) {
         m_wsApi = new TradeOgreWebSocketApi(this);
-        connect(m_wsApi, &TradeOgreWebSocketApi::errorOccurred, this, [](const QString &err){
+        connect(m_wsApi, &TradeOgreWebSocketApi::errorOccurred, this, [](const QString &err) {
             qWarning() << "[WebSocketAPI]" << err;
         });
-        connect(m_wsApi, &TradeOgreWebSocketApi::connected, this, [](){
+        connect(m_wsApi, &TradeOgreWebSocketApi::connected, this, []() {
             qDebug() << "[WebSocketAPI] Connected";
         });
-        connect(m_wsApi, &TradeOgreWebSocketApi::orderBookUpdate, this, [](const QJsonObject &obj){
+        connect(m_wsApi, &TradeOgreWebSocketApi::orderBookUpdate, this, [](const QJsonObject &obj) {
             qDebug() << "[WS OrderBook]" << obj;
         });
-        connect(m_wsApi, &TradeOgreWebSocketApi::tradeUpdate, this, [](const QJsonObject &obj){
+        connect(m_wsApi, &TradeOgreWebSocketApi::tradeUpdate, this, [](const QJsonObject &obj) {
             qDebug() << "[WS Trade]" << obj;
         });
 
@@ -54,97 +59,88 @@ bool TradeOgreWorker::init(const QString &pubKey, const QString &privKey)
 
     qDebug() << "TradeOgreManager initialized";
 
-    //Set Slot to bot message
+    // Set Slot to bot message
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
-
 
     return true;
 }
 
+/**
+ * @brief TradeOgreWorker::onMessage
+ * @param update
+ */
 void TradeOgreWorker::onMessage(TelegramBotUpdate update)
 {
-    if (update->type != TelegramBotMessageType::Message)
+    if (update->type != TelegramBotMessageType::Message) {
         return;
+    }
 
     TelegramBotMessage &message = *update->message;
-    qlonglong id = message.chat.id;
 
     // -------- /ticker --------
     if (message.text.startsWith("/priceusdt")) {
         m_publicApi->getTicker("GRIN-USDT");
 
         connect(m_publicApi, &TradeOgrePublicApi::tickerReceived, this,
-                [this, message](const QJsonObject &ticker){
-                    QString txt;
-                    if (ticker.contains("price")) {
-                        txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
-                        .arg("GRIN-USDT",
-                             ticker.value("price").toString(),
-                             ticker.value("high").toString(),
-                             ticker.value("low").toString(),
-                             ticker.value("volume").toString(),
-                             ticker.value("bid").toString(),
-                             ticker.value("ask").toString());
-                    } else {
-                        // Wenn API kein "market"-Feld liefert, kannst du den Market selbst mitgeben
-                        txt = QString("Price: %1 High: %2 Low: %3 Volume: %4")
-                                  .arg(ticker.value("price").toString(),
-                                       ticker.value("high").toString(),
-                                       ticker.value("low").toString(),
-                                       ticker.value("volume").toString());
-                    }
-                    sendUserMessage(message, txt, false);
-                }, Qt::SingleShotConnection);
+                [this, message](const QJsonObject &ticker) {
+            QString txt;
+            if (ticker.contains("price")) {
+                txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
+                      .arg("GRIN-USDT",
+                           ticker.value("price").toString(),
+                           ticker.value("high").toString(),
+                           ticker.value("low").toString(),
+                           ticker.value("volume").toString(),
+                           ticker.value("bid").toString(),
+                           ticker.value("ask").toString());
+            }
+            sendUserMessage(message, txt, false);
+        }, Qt::SingleShotConnection);
         return;
     }
     if (message.text.startsWith("/pricebtc")) {
         m_publicApi->getTicker("GRIN-BTC");
 
         connect(m_publicApi, &TradeOgrePublicApi::tickerReceived, this,
-                [this, message](const QJsonObject &ticker){
-                    QString txt;
-                    if (ticker.contains("price")) {
-                        txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
-                        .arg("GRIN-USDT",
-                             ticker.value("price").toString(),
-                             ticker.value("high").toString(),
-                             ticker.value("low").toString(),
-                             ticker.value("volume").toString(),
-                             ticker.value("bid").toString(),
-                             ticker.value("ask").toString());
-                    } else {
-                        // Wenn API kein "market"-Feld liefert, kannst du den Market selbst mitgeben
-                        txt = QString("Price: %1 High: %2 Low: %3 Volume: %4")
-                                  .arg(ticker.value("price").toString(),
-                                       ticker.value("high").toString(),
-                                       ticker.value("low").toString(),
-                                       ticker.value("volume").toString());
-                    }
-                    sendUserMessage(message, txt, false);
-                }, Qt::SingleShotConnection);
+                [this, message](const QJsonObject &ticker) {
+            QString txt;
+            if (ticker.contains("price")) {
+                txt = QString("Market: %1\nPrice: %2\nHigh: %3\nLow: %4\nVolume: %5\nBid: %6\nAsk: %7")
+                      .arg("GRIN-BTC",
+                           ticker.value("price").toString(),
+                           ticker.value("high").toString(),
+                           ticker.value("low").toString(),
+                           ticker.value("volume").toString(),
+                           ticker.value("bid").toString(),
+                           ticker.value("ask").toString());
+            }
+            sendUserMessage(message, txt, false);
+        }, Qt::SingleShotConnection);
         return;
     }
 
     // -------- /orderbook --------
     if (message.text.startsWith("/orderbook")) {
-        auto handleBook = [this, message](const QJsonObject &book){
-            if (!book.value("success").toBool()) {
-                sendUserMessage(message, "Error retrieving orderbook", false);
-                return;
-            }
-            QString txt;
-            txt += "=== BUY (Top 10) ===\n";
-            int count = 0;
-            for (auto it = book.value("buy").toObject().begin(); it != book.value("buy").toObject().end() && count < 10; ++it, ++count) {
-                txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
-            }
-            txt += "\n=== SELL (Top 10) ===\n";
-            count = 0;
-            for (auto it = book.value("sell").toObject().begin(); it != book.value("sell").toObject().end() && count < 10; ++it, ++count) {
-                txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
-            }
-            sendUserMessage(message, txt, false);
-        };
+        auto handleBook = [this, message](const QJsonObject &book) {
+                              if (!book.value("success").toBool()) {
+                                  sendUserMessage(message, "Error retrieving orderbook", false);
+                                  return;
+                              }
+                              QString txt;
+                              txt += "=== BUY (Top 10) ===\n";
+                              int count = 0;
+                              for (auto it = book.value("buy").toObject().begin(); it != book.value("buy").toObject().end() && count < 10;
+                                   ++it, ++count) {
+                                  txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
+                              }
+                              txt += "\n=== SELL (Top 10) ===\n";
+                              count = 0;
+                              for (auto it = book.value("sell").toObject().begin(); it != book.value("sell").toObject().end() && count < 10;
+                                   ++it, ++count) {
+                                  txt += QString("%1 : %2\n").arg(it.key(), it.value().toString());
+                              }
+                              sendUserMessage(message, txt, false);
+                          };
 
         connect(m_publicApi, &TradeOgrePublicApi::orderBookReceived, this, handleBook);
         m_publicApi->getOrderBook("GRIN-USDT");
@@ -156,50 +152,47 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
     if (message.text.startsWith("/chart")) {
         qint64 now = QDateTime::currentSecsSinceEpoch();
 
-        // Signal-Handler vorbereiten
         auto sendChart = [this, message](const QString &market, const QJsonArray &chart) {
-            QString path = renderChartToFile(chart, market);  // Hilfsfunktion wie oben
-            if (!path.isEmpty()) {
-                m_bot->sendPhoto(
-                    message.chat.id,      // chat
-                    path,                 // Pfad zum PNG
-                    QString("%1 4h Chart").arg(market), // Caption
-                    0,                    // replyToMessageId
-                    TelegramBot::NoFlag,      // Flags
-                    TelegramKeyboardRequest(), // kein Keyboard
-                    nullptr               // keine Antwort erwartet
-                    );
-            } else {
-                sendUserMessage(message, QString("Konnte Chart für %1 nicht generieren.").arg(market), false);
-            }
-        };
+                             QString path = renderChartToFile(chart, market);
+                             if (!path.isEmpty()) {
+                                 m_bot->sendPhoto(
+                                     message.chat.id,
+                                     path,
+                                     QString("%1 4h Chart").arg(market),
+                                     0,
+                                     TelegramBot::NoFlag,
+                                     TelegramKeyboardRequest(),
+                                     nullptr
+                                     );
+                             } else {
+                                 sendUserMessage(message, QString("Konnte Chart für %1 nicht generieren.").arg(market), false);
+                             }
+                         };
 
-        // Verbindung herstellen (einmalig ist besser, aber für Demo direkt hier)
         connect(m_publicApi, &TradeOgrePublicApi::chartDataReceived, this,
-                [sendChart](const QJsonArray &chart){ sendChart("GRIN-USDT", chart); },Qt::SingleShotConnection);
+                [sendChart](const QJsonArray &chart) {
+            sendChart("GRIN-USDT", chart);
+        }, Qt::SingleShotConnection);
 
-        // Requests auslösen
         m_publicApi->getChart("4h", "GRIN-USDT", now);
         return;
     }
 
-
-
     // -------- /history --------
     if (message.text.startsWith("/history")) {
-        auto handleHistory = [this, message](const QJsonArray &history){
-            QString txt;
-            txt += "=== Recent Trades ===\n";
-            for (auto t : history) {
-                QJsonObject obj = t.toObject();
-                txt += QString("%1 %2 %3 @ %4\n")
-                           .arg(QString::number(obj.value("date").toInt()),
-                                obj.value("type").toString(),
-                                obj.value("quantity").toString(),
-                                obj.value("price").toString());
-            }
-            sendUserMessage(message, txt, false);
-        };
+        auto handleHistory = [this, message](const QJsonArray &history) {
+                                 QString txt;
+                                 txt += "=== Recent Trades ===\n";
+                                 for (auto t : history) {
+                                     QJsonObject obj = t.toObject();
+                                     txt += QString("%1 %2 %3 @ %4\n")
+                                            .arg(QString::number(obj.value("date").toInt()),
+                                                 obj.value("type").toString(),
+                                                 obj.value("quantity").toString(),
+                                                 obj.value("price").toString());
+                                 }
+                                 sendUserMessage(message, txt, false);
+                             };
 
         connect(m_publicApi, &TradeOgrePublicApi::tradeHistoryReceived, this, handleHistory);
         m_publicApi->getTradeHistory("GRIN-USDT");
@@ -212,11 +205,6 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
  * @param message
  * @param content
  * @param plain
- */
-/**
- * @brief GgcWorker::sendUserMessage
- * @param message
- * @param content
  */
 void TradeOgreWorker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
 {
@@ -238,12 +226,18 @@ void TradeOgreWorker::sendUserMessage(TelegramBotMessage message, QString conten
                        nullptr);
 }
 
+/**
+ * @brief TradeOgreWorker::renderChartToFile
+ * @param chart
+ * @param market
+ * @return
+ */
 QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QString &market)
 {
     const int width = 900;
     const int height = 500;
     QImage image(width, height, QImage::Format_ARGB32);
-    image.fill(QColor("#222222")); // dunkler Hintergrund
+    image.fill(QColor("#222222")); // dark background
 
     QPainter p(&image);
     p.setRenderHint(QPainter::Antialiasing);
@@ -253,13 +247,15 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
     int axisTop = 20;
     int axisRight = width - 20;
 
-    // Rahmen
+    // Frame
     p.setPen(QPen(Qt::white, 1));
     p.drawRect(0, 0, width - 1, height - 1);
 
-    // Daten vorbereiten
     const int candleCount = qMin(chart.size(), 300);
-    struct Candle { qint64 ts; double open, high, low, close; };
+    struct Candle {
+        qint64 ts;
+        double open, high, low, close;
+    };
     QVector<Candle> candles;
     candles.reserve(candleCount);
 
@@ -272,7 +268,7 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
             qint64 ts = c.at(0).toVariant().toLongLong();
             double open = c.at(1).toDouble();
             double high = c.at(2).toDouble();
-            double low  = c.at(3).toDouble();
+            double low = c.at(3).toDouble();
             double close = c.at(4).toDouble();
             candles.push_back({ts, open, high, low, close});
             minPrice = qMin(minPrice, low);
@@ -284,15 +280,17 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
     }
 
     double priceRange = maxPrice - minPrice;
-    if (priceRange <= 0.0) priceRange = 1.0;
+    if (priceRange <= 0.0) {
+        priceRange = 1.0;
+    }
     double candleWidth = (double)(axisRight - axisLeft) / candles.size();
 
-    // Achsen zeichnen
+    // Axes
     p.setPen(QPen(Qt::white, 1, Qt::DashLine));
     p.drawLine(axisLeft, axisBottom, axisRight, axisBottom);
     p.drawLine(axisLeft, axisBottom, axisLeft, axisTop);
 
-    // Y-Achse Beschriftung
+    // Y-Axes
     p.setPen(Qt::white);
     p.setFont(QFont("Arial", 10));
     int ySteps = 8;
@@ -303,18 +301,18 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
         p.drawText(2, y + 4, QString::number(price, 'f', 2));
     }
 
-    // X-Achse Beschriftung (Tag)
+    // X-Axes
     int xLabels = 8;
     for (int i = 0; i <= xLabels; ++i) {
         int idx = (candles.size() - 1) * i / xLabels;
         double x = axisLeft + idx * candleWidth;
         QDateTime dt = QDateTime::fromSecsSinceEpoch(candles[idx].ts);
-        QString label = dt.toString("dd.MM"); // nur Tag und Monat
+        QString label = dt.toString("dd.MM"); // day and month
         p.drawLine((int)x, axisBottom, (int)x, axisBottom + 5);
         p.drawText((int)x - 20, axisBottom + 18, label);
     }
 
-    // Kerzen zeichnen
+    // Candles
     for (int i = 0; i < candles.size(); ++i) {
         double x = axisLeft + i * candleWidth;
         double o = candles[i].open;
@@ -323,8 +321,8 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
         double c = candles[i].close;
 
         auto toY = [&](double price) {
-            return (int)(axisBottom - ((price - minPrice) / priceRange) * (axisBottom - axisTop));
-        };
+                       return (int)(axisBottom - ((price - minPrice) / priceRange) * (axisBottom - axisTop));
+                   };
 
         int yHigh = toY(h);
         int yLow = toY(l);
@@ -335,11 +333,9 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
         p.setPen(QPen(Qt::white, 1));
         p.setBrush(bodyColor);
 
-        // Docht
         p.drawLine(QPointF(x + candleWidth / 2, yHigh),
                    QPointF(x + candleWidth / 2, yLow));
 
-        // Körper
         int top = qMin(yOpen, yClose);
         int bottom = qMax(yOpen, yClose);
         QRectF bodyRect(x - candleWidth * 0.4, top, candleWidth * 0.8, bottom - top);
@@ -353,7 +349,7 @@ QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QStrin
 
     p.end();
 
-    // Speichern
+    // Save
     QString tempPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     QDir().mkpath(tempPath);
     QString filePath = tempPath + "/" + market + "_chart.png";

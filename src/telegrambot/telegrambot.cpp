@@ -15,7 +15,7 @@ QMap<qint16, HttpServer *> TelegramBot::webHookWebServers = QMap<qint16, HttpSer
 TelegramKeyboardRequest TelegramBot::constructInlineMenu(QList<QString> menu, QString dataPattern, int page, int columns, int limit,
                                                          QString lastPage)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // generate time zone keyboard for continent
     TelegramKeyboardRequest keyboard;
     int column = 0;
@@ -59,7 +59,7 @@ TelegramKeyboardRequest TelegramBot::constructInlineMenu(QList<QString> menu, QS
 TelegramBot::TelegramBot(QString apikey, QObject *parent) : QObject(parent),
     apiKey(apikey)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
 }
 
 /**
@@ -67,7 +67,7 @@ TelegramBot::TelegramBot(QString apikey, QObject *parent) : QObject(parent),
  */
 TelegramBot::~TelegramBot()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     qDeleteAll(this->messageRoutes);
 }
 
@@ -77,7 +77,7 @@ TelegramBot::~TelegramBot()
  */
 TelegramBotUser TelegramBot::getMe()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     return TelegramBotUser(this->callApiJson("getMe").value("result").toObject());
 }
 
@@ -89,7 +89,7 @@ TelegramBotUser TelegramBot::getMe()
  */
 void TelegramBot::sendChatAction(QVariant chatId, TelegramBotChatAction action, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     return this->sendChatAction(chatId, action == TelegramBotChatAction::Typing ? "typing"
                                 : action == TelegramBotChatAction::UploadPhoto ? "upload_photo"
                                 : action == TelegramBotChatAction::RecordVideo ? "record_video"
@@ -110,7 +110,7 @@ void TelegramBot::sendChatAction(QVariant chatId, TelegramBotChatAction action, 
  */
 void TelegramBot::sendChatAction(QVariant chatId, QString action, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // param check
     if (action.isEmpty()) {
         return;
@@ -132,7 +132,7 @@ void TelegramBot::sendChatAction(QVariant chatId, QString action, bool *response
  */
 TelegramBotFile TelegramBot::getFile(QString fileId, bool generateAbsoluteLink)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // prepare
     QDateTime validUntil = QDateTime::currentDateTime().addSecs(3600);
 
@@ -158,7 +158,7 @@ TelegramBotFile TelegramBot::getFile(QString fileId, bool generateAbsoluteLink)
  */
 TelegramBotUserProfilePhotos TelegramBot::getUserProfilePhotos(qint32 userId, int offset, int limit)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("user_id", QString::number(userId));
     if (offset > 0) {
@@ -180,7 +180,7 @@ TelegramBotUserProfilePhotos TelegramBot::getUserProfilePhotos(qint32 userId, in
  */
 void TelegramBot::kickChatMember(QVariant chatId, qint32 userId, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("user_id", QString::number(userId));
@@ -196,7 +196,7 @@ void TelegramBot::kickChatMember(QVariant chatId, qint32 userId, bool *response)
  */
 void TelegramBot::unbanChatMember(QVariant chatId, qint32 userId, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("user_id", QString::number(userId));
@@ -211,7 +211,7 @@ void TelegramBot::unbanChatMember(QVariant chatId, qint32 userId, bool *response
  */
 void TelegramBot::leaveChat(QVariant chatId, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
 
@@ -225,7 +225,7 @@ void TelegramBot::leaveChat(QVariant chatId, bool *response)
  */
 TelegramBotChat TelegramBot::getChat(QVariant chatId)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
 
@@ -239,7 +239,7 @@ TelegramBotChat TelegramBot::getChat(QVariant chatId)
  */
 QList<TelegramBotChatMember> TelegramBot::getChatAdministrators(QVariant chatId)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
 
@@ -256,7 +256,7 @@ QList<TelegramBotChatMember> TelegramBot::getChatAdministrators(QVariant chatId)
  */
 int TelegramBot::getChatMembersCount(QVariant chatId)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     return this->callApiJson("getChatMembersCount", params).value("result").toInt();
@@ -270,7 +270,7 @@ int TelegramBot::getChatMembersCount(QVariant chatId)
  */
 TelegramBotChatMember TelegramBot::getChatMember(QVariant chatId, qint32 userId)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("user_id", QString::number(userId));
@@ -289,7 +289,7 @@ TelegramBotChatMember TelegramBot::getChatMember(QVariant chatId, qint32 userId)
  */
 void TelegramBot::answerCallbackQuery(QString callbackQueryId, QString text, bool showAlert, int cacheTime, QString url, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("callback_query_id", callbackQueryId);
     if (!text.isNull()) {
@@ -320,7 +320,7 @@ void TelegramBot::answerCallbackQuery(QString callbackQueryId, QString text, boo
 void TelegramBot::sendMessage(QVariant chatId, QString text, int replyToMessageId, TelegramFlags flags, TelegramKeyboardRequest keyboard,
                               TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("text", text);
@@ -358,14 +358,14 @@ void TelegramBot::sendMessage(QVariant chatId, QString text, int replyToMessageI
 void TelegramBot::editMessageText(QVariant chatId, QVariant messageId, QString text, TelegramFlags flags, TelegramKeyboardRequest keyboard,
                                   bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // if we have a null messageId, and user don't request a response, call send Message
     if (!response && messageId.isNull()) {
         return this->sendMessage(chatId, text, 0, flags, keyboard);
     }
 
     // determine message id type
-    bool isInlineMessageId = messageId.type() == QVariant::String;
+    bool isInlineMessageId = messageId.typeId() == QMetaType::QString;
 
     QUrlQuery params;
     if (!isInlineMessageId && !chatId.isNull()) {
@@ -402,9 +402,9 @@ void TelegramBot::editMessageText(QVariant chatId, QVariant messageId, QString t
  */
 void TelegramBot::editMessageCaption(QVariant chatId, QVariant messageId, QString caption, TelegramKeyboardRequest keyboard, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // determine message id type
-    bool isInlineMessageId = messageId.type() == QVariant::String;
+    bool isInlineMessageId = messageId.typeId() == QMetaType::QString;
 
     QUrlQuery params;
     if (!isInlineMessageId && !chatId.isNull()) {
@@ -431,9 +431,9 @@ void TelegramBot::editMessageCaption(QVariant chatId, QVariant messageId, QStrin
  */
 void TelegramBot::editMessageReplyMarkup(QVariant chatId, QVariant messageId, TelegramKeyboardRequest keyboard, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // determine message id type
-    bool isInlineMessageId = messageId.type() == QVariant::String;
+    bool isInlineMessageId = messageId.typeId() == QVariant::String;
 
     QUrlQuery params;
     if (!isInlineMessageId && !chatId.isNull()) {
@@ -459,7 +459,7 @@ void TelegramBot::editMessageReplyMarkup(QVariant chatId, QVariant messageId, Te
 void TelegramBot::forwardMessage(QVariant targetChatId, QVariant fromChatId, qint32 fromMessageId, TelegramFlags flags,
                                  TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", targetChatId.toString());
     params.addQueryItem("from_chat_id", fromChatId.toString());
@@ -479,7 +479,7 @@ void TelegramBot::forwardMessage(QVariant targetChatId, QVariant fromChatId, qin
  */
 void TelegramBot::deleteMessage(QVariant chatId, qint32 messageId, bool *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("message_id", QString::number(messageId));
@@ -500,7 +500,7 @@ void TelegramBot::deleteMessage(QVariant chatId, qint32 messageId, bool *respons
 void TelegramBot::sendPhoto(QVariant chatId, QVariant photo, QString caption, int replyToMessageId, TelegramFlags flags,
                             TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (!caption.isNull()) {
@@ -517,7 +517,7 @@ void TelegramBot::sendPhoto(QVariant chatId, QVariant photo, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("photo","photo", photo, params);
+    QHttpMultiPart *multiPart = this->handleFile("photo", "photo", photo, params);
 
     // call api
     this->callApiTemplate("sendPhoto", params, response, multiPart);
@@ -539,7 +539,7 @@ void TelegramBot::sendPhoto(QVariant chatId, QVariant photo, QString caption, in
 void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QString performer, QString title, int duration,
                             int replyToMessageId, TelegramFlags flags, TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (!caption.isNull()) {
@@ -565,7 +565,7 @@ void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QS
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("audio","audio", audio, params);
+    QHttpMultiPart *multiPart = this->handleFile("audio", "audio", audio, params);
 
     // call api
     this->callApiTemplate("sendAudio", params, response, multiPart);
@@ -581,15 +581,15 @@ void TelegramBot::sendAudio(QVariant chatId, QVariant audio, QString caption, QS
  * @param keyboard
  * @param response
  */
-void TelegramBot::sendDocument(QString filename,QVariant chatId, QVariant document, QString caption, int replyToMessageId, TelegramFlags flags,
-                               TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
+void TelegramBot::sendDocument(QString filename, QVariant chatId, QVariant document, QString caption, int replyToMessageId,
+                               TelegramFlags flags, TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    qDebug()<<Q_FUNC_INFO <<" ";
-    qDebug()<<filename;
-    qDebug()<<chatId;
-    qDebug()<<document;
-    qDebug()<<caption;
-    qDebug()<<replyToMessageId;
+    qDebug() << Q_FUNC_INFO << " ";
+    qDebug() << filename;
+    qDebug() << chatId;
+    qDebug() << document;
+    qDebug() << caption;
+    qDebug() << replyToMessageId;
 
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
@@ -607,7 +607,7 @@ void TelegramBot::sendDocument(QString filename,QVariant chatId, QVariant docume
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile(filename,"document", document, params);
+    QHttpMultiPart *multiPart = this->handleFile(filename, "document", document, params);
 
     // call api
     this->callApiTemplate("sendDocument", params, response, multiPart);
@@ -625,7 +625,7 @@ void TelegramBot::sendDocument(QString filename,QVariant chatId, QVariant docume
 void TelegramBot::sendSticker(QVariant chatId, QVariant sticker, int replyToMessageId, TelegramFlags flags,
                               TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (flags && TelegramFlags::DisableNotfication) {
@@ -639,7 +639,7 @@ void TelegramBot::sendSticker(QVariant chatId, QVariant sticker, int replyToMess
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("sticker","sticker", sticker, params);
+    QHttpMultiPart *multiPart = this->handleFile("sticker", "sticker", sticker, params);
 
     // call api
     this->callApiTemplate("sendSticker", params, response, multiPart);
@@ -661,7 +661,7 @@ void TelegramBot::sendSticker(QVariant chatId, QVariant sticker, int replyToMess
 void TelegramBot::sendVideo(QVariant chatId, QVariant video, QString caption, int duration, int width, int height, int replyToMessageId,
                             TelegramFlags flags, TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (!caption.isNull()) {
@@ -687,7 +687,7 @@ void TelegramBot::sendVideo(QVariant chatId, QVariant video, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("video","video", video, params);
+    QHttpMultiPart *multiPart = this->handleFile("video", "video", video, params);
 
     // call api
     this->callApiTemplate("sendVideo", params, response, multiPart);
@@ -707,7 +707,7 @@ void TelegramBot::sendVideo(QVariant chatId, QVariant video, QString caption, in
 void TelegramBot::sendVoice(QVariant chatId, QVariant voice, QString caption, int duration, int replyToMessageId, TelegramFlags flags,
                             TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (!caption.isNull()) {
@@ -727,7 +727,7 @@ void TelegramBot::sendVoice(QVariant chatId, QVariant voice, QString caption, in
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("voice","voice", voice, params);
+    QHttpMultiPart *multiPart = this->handleFile("voice", "voice", voice, params);
 
     // call api
     this->callApiTemplate("sendVoice", params, response, multiPart);
@@ -747,7 +747,7 @@ void TelegramBot::sendVoice(QVariant chatId, QVariant voice, QString caption, in
 void TelegramBot::sendVideoNote(QVariant chatId, QVariant videoNote, int length, int duration, int replyToMessageId, TelegramFlags flags,
                                 TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     if (length >= 0) {
@@ -767,7 +767,7 @@ void TelegramBot::sendVideoNote(QVariant chatId, QVariant videoNote, int length,
     this->hanldeReplyMarkup(params, flags, keyboard);
 
     // handle file
-    QHttpMultiPart *multiPart = this->handleFile("video_note","video_note", videoNote, params);
+    QHttpMultiPart *multiPart = this->handleFile("video_note", "video_note", videoNote, params);
 
     // call api
     this->callApiTemplate("sendVideoNote", params, response, multiPart);
@@ -786,7 +786,7 @@ void TelegramBot::sendVideoNote(QVariant chatId, QVariant videoNote, int length,
 void TelegramBot::sendLocation(QVariant chatId, double latitude, double longitude, int replyToMessageId, TelegramFlags flags,
                                TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("latitude", QString::number(latitude));
@@ -821,7 +821,7 @@ void TelegramBot::sendLocation(QVariant chatId, double latitude, double longitud
 void TelegramBot::sendVenue(QVariant chatId, double latitude, double longitude, QString title, QString address, QString foursquareId,
                             int replyToMessageId, TelegramFlags flags, TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("latitude", QString::number(latitude));
@@ -859,7 +859,7 @@ void TelegramBot::sendVenue(QVariant chatId, double latitude, double longitude, 
 void TelegramBot::sendContact(QVariant chatId, QString phoneNumber, QString firstName, QString lastName, int replyToMessageId,
                               TelegramFlags flags, TelegramKeyboardRequest keyboard, TelegramBotMessage *response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     QUrlQuery params;
     params.addQueryItem("chat_id", chatId.toString());
     params.addQueryItem("phone_number", phoneNumber);
@@ -890,7 +890,7 @@ void TelegramBot::sendContact(QVariant chatId, QString phoneNumber, QString firs
  */
 void TelegramBot::startMessagePulling(uint timeout, uint limit, TelegramPollMessageTypes messageTypes, long offset)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // remove webhook
     this->deleteWebhookResult();
 
@@ -943,7 +943,7 @@ void TelegramBot::startMessagePulling(uint timeout, uint limit, TelegramPollMess
  */
 void TelegramBot::stopMessagePulling(bool instantly)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     this->pullParams.clear();
     if (instantly && this->replyPull) {
         this->replyPull->abort();
@@ -955,7 +955,7 @@ void TelegramBot::stopMessagePulling(bool instantly)
  */
 void TelegramBot::pull()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // if we pull is disabled, exit
     if (this->pullParams.isEmpty()) {
         return;
@@ -976,7 +976,7 @@ void TelegramBot::pull()
  */
 void TelegramBot::handlePullResponse()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // remove update id from request
     this->pullParams.removeQueryItem("offset");
 
@@ -1005,7 +1005,7 @@ void TelegramBot::handlePullResponse()
 bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pathPrivateKey, int maxConnections,
                                        TelegramPollMessageTypes messageTypes)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // try to acquire httpServer
     HttpServer *httpServer = 0;
     QSslCertificate cert;
@@ -1029,8 +1029,8 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
     // if no webserver exist, create it
     else {
         // create new http server and register it for auto scope deletion if an error occours
-        httpServer = new HttpServer;
-        QScopedPointer<HttpServer> scopedHttpServer(httpServer);
+        std::unique_ptr<HttpServer> scopedHttpServer = std::make_unique<HttpServer>();
+        HttpServer *httpServer = scopedHttpServer.get();
 
         // handle certificates
         cert = httpServer->addCert(pathCert);
@@ -1038,7 +1038,7 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
             EXIT_FAILED("TelegramBot::setHttpServerWebhook - Cert file %s is invalid, webhook installation failed...", qPrintable(pathCert))
         }
         if (cert.subjectInfo(QSslCertificate::CommonName).isEmpty()) {
-            EXIT_FAILED("TelegramBot::setHttpServerWebhook - Cert don't contain a Common Name (CN), webhook installation failed...")
+            EXIT_FAILED("TelegramBot::setHttpServerWebhook - Cert doesn't contain a Common Name (CN), webhook installation failed...")
         }
         if (!httpServer->setPrivateKey(pathPrivateKey)) {
             EXIT_FAILED("TelegramBot::setHttpServerWebhook - Private Key file %s is invalid, webhook installation failed...",
@@ -1054,7 +1054,7 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
         }
 
         // everything is okay, so register http server
-        this->webHookWebServers.insert(port, scopedHttpServer.take());
+        this->webHookWebServers.insert(port, scopedHttpServer.release());
     }
 
     // simplify data
@@ -1112,7 +1112,7 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
  */
 void TelegramBot::deleteWebhook()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     this->callApi("deleteWebhook");
 }
 
@@ -1122,7 +1122,7 @@ void TelegramBot::deleteWebhook()
  */
 TelegramBotOperationResult TelegramBot::deleteWebhookResult()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     return TelegramBotOperationResult(this->callApiJson("deleteWebhook"));
 }
 
@@ -1132,7 +1132,7 @@ TelegramBotOperationResult TelegramBot::deleteWebhookResult()
  */
 TelegramBotWebHookInfo TelegramBot::getWebhookInfo()
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     return TelegramBotWebHookInfo(this->callApiJson("getWebhookInfo").value("result").toObject());
 }
 
@@ -1144,7 +1144,7 @@ TelegramBotWebHookInfo TelegramBot::getWebhookInfo()
  */
 void TelegramBot::messageRouterRegister(QString startWith, QDelegate<bool(TelegramBotUpdate)> delegate, TelegramBotMessageType type)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // save message route
     this->messageRoutes.append(new MessageRoute{
         type,
@@ -1160,7 +1160,7 @@ void TelegramBot::messageRouterRegister(QString startWith, QDelegate<bool(Telegr
  */
 void TelegramBot::parseMessage(QByteArray &data, bool singleMessage)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // parse result
     QJsonParseError jError;
     QJsonObject oUpdate = QJsonDocument::fromJson(data, &jError).object();
@@ -1221,7 +1221,7 @@ void TelegramBot::parseMessage(QByteArray &data, bool singleMessage)
  */
 void TelegramBot::handleServerWebhookResponse(HttpServerRequest request, HttpServerResponse response)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // parse response
     this->parseMessage(request->content, true);
 
@@ -1234,16 +1234,16 @@ typename std::enable_if<std::is_base_of<TelegramBotObject, T>::value>::type Tele
                                                                                                          T *response,
                                                                                                          QHttpMultiPart *multiPart)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // if no response was provided, just call the api
     if (!response) {
-         //qDebug()<<Q_FUNC_INFO <<" "<<"response";
+        // qDebug()<<Q_FUNC_INFO <<" "<<"response";
         return (void)this->callApi(method, params, true, multiPart);
     }
 
     // get result and parse it
     QJsonObject object = QJsonObject(this->callApiJson(method, params, multiPart)).value("result").toObject();
-    //qDebug()<<Q_FUNC_INFO <<" "<<object;
+    // qDebug()<<Q_FUNC_INFO <<" "<<object;
     response->fromJson(object);
 }
 
@@ -1252,7 +1252,7 @@ typename std::enable_if<!std::is_base_of<TelegramBotObject, T>::value>::type Tel
                                                                                                           T *response,
                                                                                                           QHttpMultiPart *multiPart)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // if no response was provided, just call the api
     if (!response) {
         return (void)this->callApi(method, params, true, multiPart);
@@ -1276,7 +1276,7 @@ typename std::enable_if<!std::is_base_of<TelegramBotObject, T>::value>::type Tel
 QNetworkReply *TelegramBot::callApi(QString method, QUrlQuery params, bool deleteOnFinish, QHttpMultiPart *multiPart)
 {
     // build url
-    //qDebug()<<Q_FUNC_INFO <<" "<<method;
+    // qDebug()<<Q_FUNC_INFO <<" "<<method;
     QUrl url(QString("https://api.telegram.org/bot%1/%2").arg(this->apiKey, method));
     url.setQuery(params);
 
@@ -1302,7 +1302,7 @@ QNetworkReply *TelegramBot::callApi(QString method, QUrlQuery params, bool delet
 QJsonObject TelegramBot::callApiJson(QString method, QUrlQuery params, QHttpMultiPart *multiPart)
 {
     // exec request
-    //qDebug()<<Q_FUNC_INFO <<" "<<method;
+    // qDebug()<<Q_FUNC_INFO <<" "<<method;
     QNetworkReply *reply = this->callApi(method, params, true, multiPart);
 
     // wait async for answer
@@ -1326,7 +1326,7 @@ QJsonObject TelegramBot::callApiJson(QString method, QUrlQuery params, QHttpMult
 QHttpMultiPart *TelegramBot::createUploadFile(QString name, QString fileName, QByteArray &content, bool detectMimeType,
                                               QHttpMultiPart *multiPart)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // construct instance if not provided
     if (!multiPart) {
         multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
@@ -1352,7 +1352,7 @@ QHttpMultiPart *TelegramBot::createUploadFile(QString name, QString fileName, QB
  */
 void TelegramBot::hanldeReplyMarkup(QUrlQuery &params, TelegramFlags flags, TelegramKeyboardRequest &keyboard)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // handle types
     QString replyMarkup;
     if (flags && TelegramFlags::ForceReply) {
@@ -1438,16 +1438,16 @@ void TelegramBot::hanldeReplyMarkup(QUrlQuery &params, TelegramFlags flags, Tele
  * @param multiPart
  * @return
  */
-QHttpMultiPart *TelegramBot::handleFile(QString filename,QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart)
+QHttpMultiPart *TelegramBot::handleFile(QString filename, QString fieldName, QVariant file, QUrlQuery &params, QHttpMultiPart *multiPart)
 {
-    //qDebug()<<Q_FUNC_INFO <<" ";
+    // qDebug()<<Q_FUNC_INFO <<" ";
     // handle content
-    if (file.type() == QVariant::ByteArray) {
+    if (file.typeId() == QMetaType::QByteArray) {
         QByteArray content = file.value<QByteArray>();
         multiPart = this->createUploadFile(fieldName, filename, content, true, multiPart);
     }
     // handle url
-    else if (file.type() == QVariant::String) {
+    else if (file.typeId() == QMetaType::QString) {
         QUrl url = QUrl::fromUserInput(file.toString());
 
         // upload the local file to telegram

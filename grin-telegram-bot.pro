@@ -17,6 +17,7 @@ INCLUDEPATH += \
   src \
   src/worker \
   src/util \
+  src/games \
   src/api \
   src/api/common/attributes \
   src/api/node \
@@ -29,6 +30,7 @@ INCLUDEPATH += \
   src/api/wallet/owner \
   src/telegrambot \
   src/tradeogre \
+  src/tippingdatabase \
   src/grinwalletmanager \
   src/ggcdatabase \
   src/ggcdatabase/attributes \
@@ -105,6 +107,7 @@ SOURCES += \
   src/api/wallet/attributes/viewwalletentry.cpp \
   src/api/wallet/attributes/walletconfig.cpp \
   src/api/wallet/attributes/walletinfo.cpp \
+  src/games/blackjackgame.cpp \
   src/ggcdatabase/ggcdatabasemanager.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
   src/main.cpp \
@@ -112,6 +115,7 @@ SOURCES += \
   src/telegrambot/modules/httpserver/httpserver.cpp \
   src/telegrambot/modules/sslserver/sslserver.cpp \
   src/telegrambot/telegrambot.cpp \
+  src/tippingdatabase/tippingdatabase.cpp \
   src/tradeogre/tradeogreprivateapi.cpp \
   src/tradeogre/tradeogrepublicapi.cpp \
   src/tradeogre/tradeogrewebsocketapi.cpp \
@@ -190,6 +194,7 @@ HEADERS += \
   src/api/wallet/attributes/walletinfo.h \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
+  src/games/blackjackgame.h \
   src/ggcdatabase/ggcdatabasemanager.h \
   src/grinwalletmanager/grinwalletmanager.h \
   src/telegrambot/jsonhelper.h \
@@ -199,6 +204,7 @@ HEADERS += \
   src/telegrambot/telegrambot.h \
   src/telegrambot/telegramdatainterface.h \
   src/telegrambot/telegramdatastructs.h \
+  src/tippingdatabase/tippingdatabase.h \
   src/tradeogre/tradeogreprivateapi.h \
   src/tradeogre/tradeogrepublicapi.h \
   src/tradeogre/tradeogrewebsocketapi.h \
@@ -217,8 +223,8 @@ HEADERS += \
 
 # secp256k1
 unix:LIBS += -lsecp256k1
-win32:LIBS += -LC:/ProjekteGit/github/grin-telegram-bot/3rdParty/secp256k1/.libs -lsecp256k1
-INCLUDEPATH += C:/ProjekteGit/github/grin-telegram-bot/3rdParty/secp256k1/include
+win32:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
+INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
 
 # openssl
 unix:LIBS += -lcrypto

@@ -9,6 +9,8 @@
 #include "telegrambot.h"
 #include "result.h"
 #include "slate.h"
+#include "tippingdatabase.h"
+#include "blackjackgame.h"
 
 class TippingWorker : public QObject
 {
@@ -22,13 +24,20 @@ private slots:
     void onMessage(TelegramBotUpdate update);
 
 private:
-    Result<QString> handleSlateS1State(Slate slate, TelegramBotMessage message);
-    Result<QString> handleSlateI1State(Slate slate, TelegramBotMessage message);
+    void sendUserMessage(TelegramBotMessage message, QString content, bool plain = false);
 
-    void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
+    QString handleDeposit(const QString &user, int amount);
+    QString handleWithdraw(const QString &user, int amount);
+    QString handleTip(const QString &fromUser, const QString &toUser, int amount);
+    QString handleBlackjackRequest(const QString &fromUser, const QString &toUser, int amount);
+    QString makeGameKey(const QString &user1, const QString &user2);
 
     TelegramBot *m_bot;
     QSettings *m_settings;
+    TippingDatabase *m_db;
+    QMap<QString, BlackjackGame *> m_activeGames;
+    bool isPlayerInGame(const QString &user) const;
+    void sendUserMessage(QString user, QString content);
 };
 
 #endif // TIPPINGWORKER_H

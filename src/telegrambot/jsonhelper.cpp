@@ -33,8 +33,8 @@ QVariant JsonHelper::jsonPathGetImpl(QJsonValue data, QString path, bool showWar
                 intPath = -1;
             } else if (showWarnings && jArray.count() <= intPath) {
                 if (jArray.count() >= 1) {
-                    qWarning("JsonHelper::jsonPath: pos: %s -> QJsonArray with length %i, is smaller than requested",
-                             qPrintable(processed.join(".")), jArray.count());
+                    qWarning("JsonHelper::jsonPath: pos: %s -> QJsonArray with length %lld, is smaller than requested",
+                             qPrintable(processed.join(".")), static_cast<long long>(jArray.count()));
                 } else {
                     qWarning("JsonHelper::jsonPath: pos: %s -> QJsonArray is empty so cannot access requested index",
                              qPrintable(processed.join(".")));

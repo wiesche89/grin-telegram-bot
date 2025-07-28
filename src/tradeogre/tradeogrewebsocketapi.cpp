@@ -1,8 +1,7 @@
 #include "tradeogrewebsocketapi.h"
 
-
-TradeOgreWebSocketApi::TradeOgreWebSocketApi(QObject *parent)
-    : QObject(parent)
+TradeOgreWebSocketApi::TradeOgreWebSocketApi(QObject *parent) :
+    QObject(parent)
 {
     connect(&m_socket, &QWebSocket::connected,
             this, &TradeOgreWebSocketApi::onConnected);
@@ -10,8 +9,7 @@ TradeOgreWebSocketApi::TradeOgreWebSocketApi(QObject *parent)
             this, &TradeOgreWebSocketApi::onDisconnected);
     connect(&m_socket, &QWebSocket::textMessageReceived,
             this, &TradeOgreWebSocketApi::onTextMessageReceived);
-    connect(&m_socket,
-            QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
+    connect(&m_socket, &QWebSocket::errorOccurred,
             this, &TradeOgreWebSocketApi::onError);
 }
 
@@ -38,7 +36,7 @@ void TradeOgreWebSocketApi::subscribeOrderBook(const QString &market)
         qWarning() << "WebSocket not connected!";
         return;
     }
-    QJsonObject obj{{"a","subscribe"},{"e","book"},{"t",market}};
+    QJsonObject obj{{"a", "subscribe"}, {"e", "book"}, {"t", market}};
     QByteArray msg = QJsonDocument(obj).toJson(QJsonDocument::Compact);
     m_socket.sendTextMessage(QString::fromUtf8(msg));
 }
@@ -49,7 +47,7 @@ void TradeOgreWebSocketApi::subscribeTrades(const QString &market)
         qWarning() << "WebSocket not connected!";
         return;
     }
-    QJsonObject obj{{"a","subscribe"},{"e","trade"},{"t",market}};
+    QJsonObject obj{{"a", "subscribe"}, {"e", "trade"}, {"t", market}};
     QByteArray msg = QJsonDocument(obj).toJson(QJsonDocument::Compact);
     m_socket.sendTextMessage(QString::fromUtf8(msg));
 }

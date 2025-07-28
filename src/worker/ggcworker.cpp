@@ -63,9 +63,8 @@ bool GgcWorker::init()
         success = false;
     }
 
-    //Set Slot to bot message
+    // Set Slot to bot message
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
-
 
     // Helper transactions cleanup
     QTimer *cleanupTimer = new QTimer(this);
@@ -117,6 +116,8 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             Result<QString> res = m_walletOwnerApi->getSlatepackAddress(0);
             if (!res.unwrapOrLog(str)) {
                 str = QString("Error message: %1").arg(res.errorMessage());
+            } else {
+                str = QString("`%1`").arg(str);
             }
         }
 
