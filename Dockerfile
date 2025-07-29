@@ -51,8 +51,5 @@ RUN wget https://github.com/mimblewimble/grin-wallet/releases/download/v5.4.0-al
 COPY start.sh /grin-telegram-bot/start.sh
 RUN chmod +x /grin-telegram-bot/start.sh
 
-# Symlink für ~/.grin → Datenvolume
-RUN rm -rf /root/.grin && ln -s ${DATA_DIR}/.grin /root/.grin
-
 # Startkommando
 CMD ["./start.sh"]

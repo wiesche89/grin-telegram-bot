@@ -30,8 +30,6 @@ int main(int argc, char *argv[])
         // Bot - Instance
         QSettings *settings = new QSettings(QCoreApplication::applicationDirPath() + "/etc/settings.ini", QSettings::IniFormat);
 
-
-
         /// following commands exists
         /*
         GGC commands
@@ -65,13 +63,11 @@ int main(int argc, char *argv[])
         */
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-
         GgcWorker *ggcWorker = new GgcWorker(bot,settings);
         if (!ggcWorker->init()) {
             qDebug()<<"GGC Worker init failed!";
             QCoreApplication::quit();
         }
-
 
         TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
         if (!tradeOgreWorker->init()) {
