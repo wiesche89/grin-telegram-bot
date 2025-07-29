@@ -6,8 +6,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LD_LIBRARY_PATH=/usr/local/lib
 ENV DATA_DIR=/opt/grin-telegram-bot/data
 ENV QT_QPA_PLATFORM=offscreen
-ENV QT_DEBUG_PLUGINS=1
-ENV QT_LOGGING_RULES="qt.qpa.*=false"
 
 # Qt und System-Abhängigkeiten installieren
 RUN apt-get update && apt-get install -y \
@@ -34,7 +32,6 @@ RUN apt-get update && apt-get install -y \
     strace \
     && apt-get clean
 
-
 # libsecp256k1 aus GitHub bauen
 RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     cd secp256k1 && \
@@ -48,7 +45,6 @@ RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/secp256k1.conf && ldconfig
 
 # Grin Telegram Bot klonen (Branch qt6.6)
-ARG CACHE_BREAK=11
 RUN git clone --branch qt6.9 --single-branch https://github.com/wiesche89/grin-telegram-bot.git /grin-telegram-bot
 
 # Arbeitsverzeichnis setzen
