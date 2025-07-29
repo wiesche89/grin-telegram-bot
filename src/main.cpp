@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
     QGuiApplication a(argc, argv);
     qputenv("QT_QPA_PLATFORM", "offscreen");
 
+    // Dummy QObject zur Lebendigkeit
+    QObject *runner = new QObject();
+
     qDebug()<<"main start ";
 
     // Manager
