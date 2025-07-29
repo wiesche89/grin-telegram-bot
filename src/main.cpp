@@ -10,10 +10,13 @@
 
 int main(int argc, char *argv[])
 {
-    qDebug() << "before app";
-    QCoreApplication app(argc, argv);
-    qDebug() << "after app";
-    return app.exec();
+    QApplication app(argc, argv);  // GUI-App starten, auch ohne Fenster
+
+    qDebug() << "App gestartet";
+
+    // Hier kannst du deine renderChartToFile()-Funktion aufrufen
+
+    return app.exec();  // oder 0, wenn kein Event-Loop gebraucht wird
 }
 
 /**
