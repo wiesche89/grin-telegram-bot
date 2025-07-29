@@ -3,6 +3,7 @@ set -e  # Skript beenden, wenn ein Befehl fehlschlägt
 set -x  # Alle Befehle anzeigen (Debug-Modus)
 
 export QT_QPA_PLATFORM=offscreen
+export QT_DEBUG_PLUGINS=1
 
 echo "[INFO] Startskript ausgeführt"
 echo "[INFO] DATA_DIR = $DATA_DIR"
@@ -42,10 +43,10 @@ fi
 echo "[INFO] Warte 30 Sekunden auf Tor/wallet..."
 sleep 30
 
-# Starte den Telegram Bot
+# Starte den Telegram Bot über strace
 if [ -x ./grin-telegram-bot ]; then
-    echo "[INFO] Starte grin-telegram-bot..."
-    ./grin-telegram-bot
+    echo "[INFO] Starte grin-telegram-bot mit strace..."
+    strace -f -o /tmp/grinbot_strace.log ./grin-telegram-bot
 else
     echo "[ERROR] grin-telegram-bot nicht gefunden oder nicht ausführbar!"
     ls -la .
