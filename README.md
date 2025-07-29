@@ -71,8 +71,28 @@ Workflow
 ###Develop
 
 ### 1. Instal Qt 
-install Qt 5.9.2
-includes mingw_32
+install Qt 6.9
+
+MSYS2 installieren
+
+## instal secp256k1
+pacman -Syu    # einmal komplett aktualisieren, danach Shell neu starten
+pacman -S --needed base-devel mingw-w64-x86_64-toolchain autoconf automake libtool
+pacman -S git
+
+
+git clone https://github.com/bitcoin-core/secp256k1.git
+
+cd secp236k1
+
+make distclean   # wenn du schonmal gebaut hast
+
+./autogen.sh
+./configure --enable-module-ecdh --enable-module-recovery \
+            --enable-shared --disable-static \
+            --host=x86_64-w64-mingw32
+make -j$(nproc)
+
 
 ### 2. Check Enviroments
 Currently the bot doesnt create a wallet.
@@ -179,3 +199,16 @@ sudo docker container ls
 ```bash
 sudo docker logs -f <container id>
 ```
+
+
+# Extract `database.db` from Docker (Snap-based)
+
+To extract the `database.db` file from a Snap-based Docker container and move it to your home directory, execute the following in one go:
+
+```bash
+sudo -i && \
+cd /tmp/snap-private-tmp/snap.docker/tmp && \
+sudo docker cp grin-telegram-bot-container:/opt/grin-telegram-bot/etc/database/database.db /tmp/ && \
+sudo mv /tmp/snap-private-tmp/snap.docker/tmp/database.db /home/grin/ && \
+chown grin:grin /home/grin/database.db && \
+ls -lh /home/grin/database.db

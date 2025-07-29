@@ -760,7 +760,7 @@ Result<QList<TxLogEntry> > WalletOwnerApi::retrieveTxs(bool refreshFromNode, int
     params["token"] = QString(m_openWalletToken.toHex());
     params["refresh_from_node"] = refreshFromNode;
     params["tx_id"] = (txId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txId);
-    params["tx_slate_id"] = (txSlateId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
+    params["tx_slate_id"] = (txSlateId.isEmpty()) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
 
     auto res = JsonUtil::extractOkValue(postEncrypted("retrieve_txs", params));
     QJsonValue OkVal;
@@ -1269,7 +1269,7 @@ Result<PaymentProof> WalletOwnerApi::retrievePaymentProof(bool refreshFromNode, 
     params["token"] = QString(m_openWalletToken.toHex());
     params["refresh_from_node"] = refreshFromNode;
     params["tx_id"] = (txId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txId);
-    params["tx_slate_id"] = (txSlateId == 0) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
+    params["tx_slate_id"] = (txSlateId.isEmpty()) ? QJsonValue(QJsonValue::Null) : QJsonValue(txSlateId);
 
     auto res = JsonUtil::extractOkObject(postEncrypted("retrieve_payment_proof", params));
     QJsonObject okObj;

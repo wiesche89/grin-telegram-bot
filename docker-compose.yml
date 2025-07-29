@@ -1,25 +1,29 @@
+# Docker Compose configuration for the Grin Telegram Bot
+name: grin
+
 services:
   grin-telegram-bot:
     build:
-      context: .
-      dockerfile: Dockerfile
-    image: grin-telegram-bot
-    container_name: grin-telegram-bot-container
-    command: ["./start.sh"]
+      context: .                # Use current directory as build context
+      dockerfile: Dockerfile   # Use Dockerfile in current directory
+    image: grin-telegram-bot    # Name of the resulting image
+    container_name: grin-telegram-bot-container  # Set container name
+    command: ["./start.sh"]     # Start script inside the container
     environment:
-      RUST_BACKTRACE: "1"
-      GRIN_CHAIN_TYPE: "Mainnet"
+      RUST_BACKTRACE: "1"       # Enable Rust backtraces for debugging
+      GRIN_CHAIN_TYPE: "Mainnet" # Run on the main Grin network
+      DATA_DIR: "/opt/grin-telegram-bot/data" # Path to persistent data
     ports:
-      - "3415:3415"
-      - "3420:3420"
+      - "3415:3415"              # Wallet owner API port
+      - "3420:3420"              # Foreign API port (Tor listener, etc.)
     volumes:
-      - grin-wallet-data:/opt/grin-telegram-bot/wallet
+      - grin-telegram-data:/opt/grin-telegram-bot/data # Mount persistent volume
     networks:
-      - grin-network
+      - grin-network            # Connect to custom network
 
 volumes:
-  grin-wallet-data:
+  grin-telegram-data:           # Define named volume for bot data
 
 networks:
   grin-network:
-    name: grin_network
+    name: grin_network          # Name of the Docker network

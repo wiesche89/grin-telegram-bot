@@ -104,6 +104,8 @@ bool GrinWalletManager::startWallet()
         return false;
     }
 
+        qDebug()<<"waitForStarted success ";
+
 #ifdef Q_OS_WIN
     HANDLE processHandle = (HANDLE)m_walletProcess->processId();
     if (m_jobHandle && processHandle) {

@@ -1,77 +1,67 @@
-FROM ubuntu:22.04
+# Base image: Ubuntu 24.04 with system-wide Qt 6.6
+FROM ubuntu:24.04
 
-# Set environment variables
+# Environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LD_LIBRARY_PATH=/usr/local/lib
-ENV QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt5/plugins/platforms
-	
-# Install system dependencies including build tools, Qt, Tor, libssl3, and other libraries
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository universe && \
-    apt-get update && \
-    apt-get install -y \
-    build-essential \
-    git \
-    wget \
-    curl \
-    unzip \
-    ca-certificates \
-    qt5-qmake \
-    qtbase5-dev \
-    libqt5websockets5-dev \
-    qtbase5-dev-tools \
-    qttools5-dev-tools \
-    qtchooser \
+ENV DATA_DIR=/opt/grin-telegram-bot/data
+ENV QT_QPA_PLATFORM=offscreen
+
+# Install Qt and system dependencies
+RUN apt-get update && apt-get install -y \
+    qt6-base-dev \
+    qt6-base-dev-tools \
+    qt6-tools-dev \
+    qt6-tools-dev-tools \
+    qt6-websockets-dev \
+    libqt6sql6 \
+    libqt6sql6-sqlite \
     libssl-dev \
-    libssl3 \
-    pkg-config \
-    zlib1g-dev \
     libcurl4-openssl-dev \
     libjsoncpp-dev \
+    build-essential \
     autoconf \
     libtool \
-    tor && \
-    apt-get clean
+    tor \
+    git \
+    unzip \
+    ca-certificates \
+    wget \
+    python3 \
+    xz-utils \
+    strace \
+    && apt-get clean
 
-# Set working directory
-WORKDIR /opt
-
-# Build and install libsecp256k1
+# Build and install libsecp256k1 from GitHub
 RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     cd secp256k1 && \
     ./autogen.sh && \
-    ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh && \
+    ./configure --disable-dependency-tracking \
+                --enable-module-recovery \
+                --enable-experimental \
+                --enable-module-ecdh && \
     make -j$(nproc) && \
     make install && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/secp256k1.conf && ldconfig
 
-ENV CACHEBUST=1
+# Clone the Grin Telegram Bot project (branch qt6.9)
+RUN git clone --branch qt6.9 --single-branch https://github.com/wiesche89/grin-telegram-bot.git /grin-telegram-bot
 
-# Clone grin-telegram-bot repository
-RUN git clone https://github.com/wiesche89/grin-telegram-bot.git
+# Set working directory
+WORKDIR /grin-telegram-bot
 
-# IMPORTANT: Copy configuration folder from the deploy directory
-COPY etc /opt/grin-telegram-bot/etc
-COPY .wallet /opt/grin-telegram-bot/.wallet/
-COPY qt.conf /opt/grin-telegram-bot/qt.conf
-COPY qtlogging.ini /opt/grin-telegram-bot/qtlogging.ini
-COPY .grin /root/.grin/
-COPY start.sh /opt/grin-telegram-bot/start.sh
-RUN chmod +x /opt/grin-telegram-bot/start.sh
+# Build the project
+RUN qmake6 grin-telegram-bot.pro && make -j$(nproc)
 
-# Change working directory to project root
-WORKDIR /opt/grin-telegram-bot
-
-# Download and extract grin-wallet
-RUN wget https://github.com/mimblewimble/grin-wallet/releases/download/v5.4.0-alpha.1/grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz
-
-RUN tar -xzf grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz && \
+# Download and extract the Grin Wallet binary
+RUN wget https://github.com/mimblewimble/grin-wallet/releases/download/v5.4.0-alpha.1/grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz && \
+    tar -xzf grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz && \
     chmod +x grin-wallet && \
     rm -f grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz
 
-# Build the application
-RUN qmake grin-telegram-bot.pro && make -j$(nproc)
+# Copy startup script into the image
+COPY start.sh /grin-telegram-bot/start.sh
+RUN chmod +x /grin-telegram-bot/start.sh
 
-# Command to start skript
+# Set default command
 CMD ["./start.sh"]

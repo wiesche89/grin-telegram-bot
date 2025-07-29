@@ -56,7 +56,7 @@ enum TelegramBotMessageType {
     InlineQuery = 1 << 4,
     ChosenInlineResult = 1 << 5,
     CallbackQuery = 1 << 6,
-    All = (2 ^ 7) - 1
+    All = (1 << 7) - 1
 };
 
 // TelegramBotOperationResult - This object represents a Telegram Operation result
