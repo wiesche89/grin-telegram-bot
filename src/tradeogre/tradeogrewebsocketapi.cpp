@@ -9,7 +9,7 @@ TradeOgreWebSocketApi::TradeOgreWebSocketApi(QObject *parent) :
             this, &TradeOgreWebSocketApi::onDisconnected);
     connect(&m_socket, &QWebSocket::textMessageReceived,
             this, &TradeOgreWebSocketApi::onTextMessageReceived);
-    connect(&m_socket, &QWebSocket::errorOccurred,
+    connect(&m_socket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
             this, &TradeOgreWebSocketApi::onError);
 }
 
