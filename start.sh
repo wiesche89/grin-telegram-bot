@@ -1,4 +1,6 @@
 #!/bin/bash
+export QT_QPA_PLATFORM=offscreen
+
 ln -sf "$DATA_DIR/.grin" /root/.grin
 
 # Fix permissions for Tor onion service directories
@@ -9,6 +11,7 @@ cat /opt/grin-telegram-bot/data/.wallet/password.txt | ./grin-wallet listen &
 
 # Wait 30 seconds before starting the telegram bot
 sleep 30
+
 
 # Start the grin-telegram-bot
 ./grin-telegram-bot
