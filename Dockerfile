@@ -45,7 +45,7 @@ RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/secp256k1.conf && ldconfig
 
 # Clone the Grin Telegram Bot project (branch qt6.9)
-RUN git clone --branch qt6.9 --single-branch https://github.com/wiesche89/grin-telegram-bot.git /grin-telegram-bot
+RUN git clone --branch 0.2 --single-branch https://github.com/wiesche89/grin-telegram-bot.git /grin-telegram-bot
 
 # Set working directory
 WORKDIR /grin-telegram-bot
