@@ -1,5 +1,10 @@
 #include "tippingdatabase.h"
 
+/**
+ * @brief TippingDatabase::TippingDatabase
+ * @param dbPath
+ * @param parent
+ */
 TippingDatabase::TippingDatabase(const QString &dbPath, QObject *parent) :
     QObject(parent)
 {
@@ -7,6 +12,10 @@ TippingDatabase::TippingDatabase(const QString &dbPath, QObject *parent) :
     m_db.setDatabaseName(dbPath);
 }
 
+/**
+ * @brief TippingDatabase::initialize
+ * @return
+ */
 bool TippingDatabase::initialize()
 {
     if (!m_db.open()) {
@@ -16,6 +25,10 @@ bool TippingDatabase::initialize()
     return ensureTables();
 }
 
+/**
+ * @brief TippingDatabase::ensureTables
+ * @return
+ */
 bool TippingDatabase::ensureTables()
 {
     QSqlQuery query;
@@ -38,6 +51,15 @@ bool TippingDatabase::ensureTables()
     return query.exec(balancesSQL);
 }
 
+/**
+ * @brief TippingDatabase::recordTransaction
+ * @param fromUser
+ * @param toUser
+ * @param amount
+ * @param type
+ * @param reference
+ * @return
+ */
 bool TippingDatabase::recordTransaction(const QString &fromUser, const QString &toUser, int amount, const QString &type,
                                         const QString &reference)
 {
@@ -53,6 +75,11 @@ bool TippingDatabase::recordTransaction(const QString &fromUser, const QString &
     return query.exec();
 }
 
+/**
+ * @brief TippingDatabase::getBalance
+ * @param userId
+ * @return
+ */
 int TippingDatabase::getBalance(const QString &userId)
 {
     QSqlQuery query;
@@ -64,12 +91,24 @@ int TippingDatabase::getBalance(const QString &userId)
     return 0;
 }
 
+/**
+ * @brief TippingDatabase::updateBalance
+ * @param userId
+ * @param amountDelta
+ * @return
+ */
 bool TippingDatabase::updateBalance(const QString &userId, int amountDelta)
 {
     int current = getBalance(userId);
     return setBalance(userId, current + amountDelta);
 }
 
+/**
+ * @brief TippingDatabase::setBalance
+ * @param userId
+ * @param balance
+ * @return
+ */
 bool TippingDatabase::setBalance(const QString &userId, int balance)
 {
     QSqlQuery query;

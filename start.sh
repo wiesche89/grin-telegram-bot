@@ -1,55 +1,54 @@
 #!/bin/bash
-set -e  # Skript beenden, wenn ein Befehl fehlschlägt
-set -x  # Alle Befehle anzeigen (Debug-Modus)
+set -e  # Exit script if any command fails
+set -x  # Print each command before executing (debug mode)
 
 export QT_QPA_PLATFORM=offscreen
 export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins
 
-
-echo "[INFO] Startskript ausgeführt"
+echo "[INFO] Startup script executed"
 echo "[INFO] DATA_DIR = $DATA_DIR"
 
-# Prüfe ob DATA_DIR existiert
+# Check if DATA_DIR exists
 if [ ! -d "$DATA_DIR" ]; then
-    echo "[ERROR] DATA_DIR '$DATA_DIR' existiert nicht"
+    echo "[ERROR] DATA_DIR '$DATA_DIR' does not exist"
     exit 1
 fi
 
-# .grin-Verzeichnis verlinken
+# Symlink .grin directory
 if [ -d "$DATA_DIR/.grin" ]; then
-    echo "[INFO] .grin-Verzeichnis gefunden, verlinke nach /root/.grin"
+    echo "[INFO] .grin directory found, linking to /root/.grin"
     ln -sf "$DATA_DIR/.grin" /root/.grin
 else
-    echo "[WARN] Kein .grin-Verzeichnis in $DATA_DIR gefunden"
+    echo "[WARN] No .grin directory found in $DATA_DIR"
 fi
 
-# Fixe Tor-Onion-Service-Rechte
+# Fix Tor onion service permissions
 if [ -d "/root/.grin/main/tor/listener/onion_service_addresses" ]; then
-    echo "[INFO] Setze Rechte für Tor onion_service_addresses"
+    echo "[INFO] Setting permissions for Tor onion_service_addresses"
     find /root/.grin/main/tor/listener/onion_service_addresses -type d -exec chmod 700 {} \;
 else
-    echo "[WARN] Onion-Service-Verzeichnis existiert nicht (noch nicht erstellt?)"
+    echo "[WARN] Onion service directory does not exist (not yet created?)"
 fi
 
-# Starte grin-wallet listen im Hintergrund
+# Start grin-wallet listen in the background
 if [ -f "$DATA_DIR/.wallet/password.txt" ]; then
-    echo "[INFO] Starte grin-wallet mit Passwortdatei..."
+    echo "[INFO] Starting grin-wallet using password file..."
     cat "$DATA_DIR/.wallet/password.txt" | ./grin-wallet listen &
 else
-    echo "[ERROR] Passwortdatei nicht gefunden: $DATA_DIR/.wallet/password.txt"
+    echo "[ERROR] Password file not found: $DATA_DIR/.wallet/password.txt"
     exit 1
 fi
 
-# Warte auf Tor-Startup
-echo "[INFO] Warte 30 Sekunden auf Tor/wallet..."
+# Wait for Tor/wallet to start
+echo "[INFO] Waiting 30 seconds for Tor/wallet to initialize..."
 sleep 30
 
-# Starte den Telegram Bot über strace
+# Start the Telegram bot with strace
 if [ -x ./grin-telegram-bot ]; then
-    echo "[INFO] Starte grin-telegram-bot mit strace..."
+    echo "[INFO] Starting grin-telegram-bot with strace..."
     strace -f -o /tmp/grinbot_strace.log ./grin-telegram-bot
 else
-    echo "[ERROR] grin-telegram-bot nicht gefunden oder nicht ausführbar!"
+    echo "[ERROR] grin-telegram-bot not found or not executable!"
     ls -la .
     exit 1
 fi

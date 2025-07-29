@@ -2,11 +2,9 @@
 #include <QProcess>
 
 #include "grinwalletmanager.h"
-
 #include "ggcworker.h"
 #include "tippingworker.h"
 #include "tradeogreworker.h"
-
 
 /**
  * @brief main
@@ -17,7 +15,6 @@
 int main(int argc, char *argv[])
 {
     QApplication  a(argc, argv);
-    qDebug()<<"main start ";
 
     // Manager
     GrinWalletManager manager;
@@ -25,25 +22,25 @@ int main(int argc, char *argv[])
         return -10;
     }
 
-    qDebug()<<"manager is started!";
-
     // Start worker, wait x msecs
     QTimer::singleShot(3000, [&]() {
-        qDebug() << "start worker";
-
 
         QString settingsPath;
-        QString dataDir = qEnvironmentVariable("DATA_DIR");
+        QString dataDir;
 
-        qDebug()<<dataDir;
+        dataDir = qEnvironmentVariable("DATA_DIR");
+
+        // native
         if (dataDir.isEmpty()) {
             settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
         }
+        // docker
         else
         {
             settingsPath = QDir(dataDir).filePath("etc/settings.ini");
         }
 
+        // check existing Config
         if (!QFile::exists(settingsPath)) {
             qWarning() << "Settings file not found:" << settingsPath;
             QCoreApplication::quit();
@@ -51,6 +48,7 @@ int main(int argc, char *argv[])
             qDebug() << "Settings file found at:" << settingsPath;
         }
 
+        // instance config
         QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
 
 
@@ -80,8 +78,15 @@ int main(int argc, char *argv[])
         adminamount - get account amounts
 
         Tipping commands
-        tip - Tipping Grins to other user
-        blackjack - Start BlackJack game with other user
+        deposit - example /deposit 10
+        withdraw - example /withdraw 10
+        tip - tipping Grins to other user example /tip @user 10
+        blackjack - start BlackJack game with other user /blackjack @user 10
+        hit - command blackjack
+        stand - command blackjack
+        balance - shows your balance
+        cancelgame - cancel current game
+        games - list all active games
 
         Tradeogre commands
         */

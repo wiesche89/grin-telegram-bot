@@ -1,9 +1,9 @@
 #include "tradeogreworker.h"
 
 /**
- * @brief TradeOgreWorker::TradeOgreWorker
- * @param bot
- * @param settings
+ * @brief TradeOgreWorker constructor
+ * @param bot Telegram bot instance
+ * @param settings App settings
  */
 TradeOgreWorker::TradeOgreWorker(TelegramBot *bot, QSettings *settings) :
     m_bot(bot),
@@ -12,9 +12,14 @@ TradeOgreWorker::TradeOgreWorker(TelegramBot *bot, QSettings *settings) :
 {
 }
 
+/**
+ * @brief TradeOgreWorker::init
+ * initialize the api
+ * @return
+ */
 bool TradeOgreWorker::init()
 {
-    // Public API
+    // Initialize TradeOgre public API
     if (!m_publicApi) {
         m_publicApi = new TradeOgrePublicApi(this);
         connect(m_publicApi, &TradeOgrePublicApi::requestError, this, [](const QString &ep, const QString &err) {
@@ -22,22 +27,23 @@ bool TradeOgreWorker::init()
         });
     }
 
-    // Set Slot to bot message
+    // Connect incoming Telegram messages to the handler
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
 
     return true;
 }
 
 /**
- * @brief TradeOgreWorker::onMessage
- * @param update
+ * @brief Handles incoming Telegram messages
+ * @param update Telegram update
  */
 void TradeOgreWorker::onMessage(TelegramBotUpdate update)
 {
     if (update->type != TelegramBotMessageType::Message) return;
     TelegramBotMessage &message = *update->message;
 
-    //--------- /price-------------
+    // ----- /price command -----
+    // Fetch and display current GRIN-BTC and GRIN-USDT prices
     if (message.text.startsWith("/price")) {
         struct TickerStore {
             bool usdtDone = false;
@@ -104,7 +110,8 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
         return;
     }
 
-    // -------- /orderbook --------
+    // ----- /orderbook command -----
+    // Fetch and display order book (top 10 bids/asks)
     if (message.text.startsWith("/orderbook")) {
         struct OrderBookStore {
             bool usdtDone = false;
@@ -193,7 +200,8 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
         return;
     }
 
-    // -------- /chart ------------
+    // ----- /chart command -----
+    // Fetch and render 4h candlestick charts as PNG images
     if (message.text.startsWith("/chart")) {
         qint64 now = QDateTime::currentSecsSinceEpoch();
 
@@ -244,7 +252,8 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
         return;
     }
 
-    // -------- /history --------
+    // ----- /history command -----
+    // Fetch and show latest trades (last 12) from both markets
     if (message.text.startsWith("/history")) {
         struct HistoryStore {
             bool usdtDone = false;
@@ -317,10 +326,10 @@ void TradeOgreWorker::onMessage(TelegramBotUpdate update)
 }
 
 /**
- * @brief TradeOgreWorker::sendUserMessage
- * @param message
- * @param content
- * @param plain
+ * @brief Sends a message to the Telegram user
+ * @param message Incoming Telegram message object
+ * @param content Message text
+ * @param plain If true, skip formatting with greeting
  */
 void TradeOgreWorker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
 {
@@ -343,10 +352,10 @@ void TradeOgreWorker::sendUserMessage(TelegramBotMessage message, QString conten
 }
 
 /**
- * @brief TradeOgreWorker::renderChartToFile
- * @param chart
- * @param market
- * @return
+ * @brief Renders a candlestick chart image from JSON chart data
+ * @param chart Raw JSON chart array
+ * @param market Market name (e.g. "GRIN-BTC")
+ * @return Path to the saved image or empty string on failure
  */
 QString TradeOgreWorker::renderChartToFile(const QJsonArray &chart, const QString &market)
 {

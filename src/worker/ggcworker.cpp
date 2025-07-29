@@ -543,6 +543,9 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             return;
         }
 
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // command adminfaucet
+        // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/adminfaucet")) {
             QList<Faucet> list = m_dbManager->getAllFaucetAmountForToday();
 
@@ -564,6 +567,9 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             return;
         }
 
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // command admindonate
+        // --------------------------------------------------------------------------------------------------------------------------------------
         if (message.text.contains("/admindonate")) {
             QList<Donate> list = m_dbManager->getAllDonate();
 

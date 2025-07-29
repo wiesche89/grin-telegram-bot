@@ -199,3 +199,16 @@ sudo docker container ls
 ```bash
 sudo docker logs -f <container id>
 ```
+
+
+# Extract `database.db` from Docker (Snap-based)
+
+To extract the `database.db` file from a Snap-based Docker container and move it to your home directory, execute the following in one go:
+
+```bash
+sudo -i && \
+cd /tmp/snap-private-tmp/snap.docker/tmp && \
+sudo docker cp grin-telegram-bot-container:/opt/grin-telegram-bot/etc/database/database.db /tmp/ && \
+sudo mv /tmp/snap-private-tmp/snap.docker/tmp/database.db /home/grin/ && \
+chown grin:grin /home/grin/database.db && \
+ls -lh /home/grin/database.db

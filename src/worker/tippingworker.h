@@ -5,6 +5,9 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <QTemporaryFile>
+#include <QTimer>
+#include <QDateTime>
+#include <QDebug>
 
 #include "telegrambot.h"
 #include "result.h"

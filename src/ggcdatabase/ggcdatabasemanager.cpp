@@ -107,6 +107,10 @@ Donate GgcDatabaseManager::getDonateById(int id)
     return Donate();
 }
 
+/**
+ * @brief GgcDatabaseManager::getAllDonate
+ * @return
+ */
 QList<Donate> GgcDatabaseManager::getAllDonate()
 {
     QList<Donate> list;
@@ -287,6 +291,10 @@ QList<Faucet> GgcDatabaseManager::getAllFaucetAmountForToday()
     return list;
 }
 
+/**
+ * @brief GgcDatabaseManager::getAllFaucet
+ * @return
+ */
 QList<Faucet> GgcDatabaseManager::getAllFaucet()
 {
     QList<Faucet> list;
