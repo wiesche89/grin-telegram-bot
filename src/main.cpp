@@ -32,17 +32,19 @@ int main(int argc, char *argv[])
         qDebug() << "start worker";
 
 
-        QString settingsPath = qgetenv("DATA_DIR");
-        qDebug()<<"settingsPath: "<<settingsPath;
+        QString dataDir = qEnvironmentVariable("DATA_DIR");
+        QString settingsPath = QDir(dataDir).filePath("etc/settings.ini");
         if (settingsPath.isEmpty()) {
             settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
-        }else
-        {
-            settingsPath = settingsPath+"/etc/settings.ini";
         }
 
+        if (!QFile::exists(settingsPath)) {
+            qWarning() << "Settings file not found:" << settingsPath;
+        } else {
+            qDebug() << "Settings file found at:" << settingsPath;
+        }
 
-        QSettings *settings = new QSettings(settingsPath+"/etc/settings.ini", QSettings::IniFormat);
+        QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
 
 
         /// following commands exists
