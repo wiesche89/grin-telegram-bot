@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
         return -10;
     }
 
+    qDebug()<<"manager is started!";
+
     // Start worker, wait x msecs
     QTimer::singleShot(3000, [&]() {
         qDebug() << "start worker";
