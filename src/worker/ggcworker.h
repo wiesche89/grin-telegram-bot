@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <QTemporaryFile>
+#include <QProcessEnvironment>
 
 #include "telegrambot.h"
 #include "ggcdatabasemanager.h"

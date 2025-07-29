@@ -9,16 +9,17 @@ services:
     environment:
       RUST_BACKTRACE: "1"
       GRIN_CHAIN_TYPE: "Mainnet"
+      DATA_DIR: "/opt/grin-telegram-bot/data"
     ports:
       - "3415:3415"
       - "3420:3420"
     volumes:
-      - grin-wallet-data:/opt/grin-telegram-bot/wallet
+      - grin-telegram-data:/opt/grin-telegram-bot/data
     networks:
       - grin-network
 
 volumes:
-  grin-wallet-data:
+  grin-telegram-data:
 
 networks:
   grin-network:
