@@ -1,4 +1,6 @@
 #!/bin/bash
+export QT_QPA_PLATFORM=offscreen
+
 ln -sf "$DATA_DIR/.grin" /root/.grin
 
 # Fix permissions for Tor onion service directories
