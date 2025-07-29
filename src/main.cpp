@@ -8,105 +8,96 @@
 #include "tradeogreworker.h"
 
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);  // GUI-App starten, auch ohne Fenster
-
-    qDebug() << "App gestartet";
-
-    // Hier kannst du deine renderChartToFile()-Funktion aufrufen
-
-    return app.exec();  // oder 0, wenn kein Event-Loop gebraucht wird
-}
-
 /**
  * @brief main
  * @param argc
  * @param argv
  * @return
  */
-// int main(int argc, char *argv[])
-// {
-//     QApplication  a(argc, argv);
-//     qDebug()<<"main start ";
+int main(int argc, char *argv[])
+{
+    QApplication  a(argc, argv);
+    qDebug()<<"main start ";
 
-//     // Manager
-//     GrinWalletManager manager;
-//     if (!manager.startWallet()) {
-//         return -10;
-//     }
+    // // Manager
+    // GrinWalletManager manager;
+    // if (!manager.startWallet()) {
+    //     return -10;
+    // }
 
-//     qDebug()<<"manager is started!";
+    // qDebug()<<"manager is started!";
 
-//     // Start worker, wait x msecs
-//     QTimer::singleShot(3000, [&]() {
-//         qDebug() << "start worker";
-
-//         // Bot - Instance
-//         QString settingsPath = qgetenv("DATA_DIR");
-//         qDebug()<<"settingsPath: "<<settingsPath;
-//         if (settingsPath.isEmpty()) {
-//             settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
-//         }
-//         QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+    // Start worker, wait x msecs
+    QTimer::singleShot(3000, [&]() {
+        qDebug() << "start worker";
 
 
-//         /// following commands exists
-//         /*
-//         GGC commands
-//         start - introduction
-//         address - get slatepack address
-//         donate - dm slatepack address
-//         faucet - use faucet
-//         rewindhash - get rewindhash
-//         scanrewindhash - scan current rewindhash
-
-//         Tradeogre commands
-//         price - TO price USDT and BTC
-//         orderbook - TO orderbook
-//         chart - TO chart 4h BTC and USDT
-//         history - TO last x trades BTC and USDT
-
-//         Admin commands
-//         adminenabledisabledeposits - enable/disable deposits
-//         adminenabledisablewithdrawals - enable/disable withdrawals
-//         adminupdateresponsemessage - update bot response messages templates
-//         adminrequirednumberofresponse - set the required number of responses to approve the withdrawal
-//         adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
-//         adminapprovedwithdrawalamount - set the approved withdrawal amount
-//         adminamount - get account amounts
-
-//         Tipping commands
-//         tip - Tipping Grins to other user
-//         blackjack - Start BlackJack game with other user
-
-//         Tradeogre commands
-//         */
-//         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
-
-//         GgcWorker *ggcWorker = new GgcWorker(bot,settings);
-//         if (!ggcWorker->init()) {
-//             qDebug()<<"GGC Worker init failed!";
-//             QCoreApplication::quit();
-//         }
-
-//         TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
-//         if (!tradeOgreWorker->init()) {
-//             qDebug()<<"Tradeogre Worker init failed!";
-//             QCoreApplication::quit();
-//         }
-
-//         // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
-//         // if (!tippingWorker->init()) {
-//         //     qDebug()<<"Tipping Worker init failed!";
-//         //     QCoreApplication::quit();
-//         // }
+        QString settingsPath = qgetenv("DATA_DIR");
+        qDebug()<<"settingsPath: "<<settingsPath;
+        if (settingsPath.isEmpty()) {
+            settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+        }
+        QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
 
 
-//         bot->startMessagePulling();
+        /// following commands exists
+        /*
+        GGC commands
+        start - introduction
+        address - get slatepack address
+        donate - dm slatepack address
+        faucet - use faucet
+        rewindhash - get rewindhash
+        scanrewindhash - scan current rewindhash
 
-//     });
+        Tradeogre commands
+        price - TO price USDT and BTC
+        orderbook - TO orderbook
+        chart - TO chart 4h BTC and USDT
+        history - TO last x trades BTC and USDT
+
+        Admin commands
+        adminenabledisabledeposits - enable/disable deposits
+        adminenabledisablewithdrawals - enable/disable withdrawals
+        adminupdateresponsemessage - update bot response messages templates
+        adminrequirednumberofresponse - set the required number of responses to approve the withdrawal
+        adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
+        adminapprovedwithdrawalamount - set the approved withdrawal amount
+        adminamount - get account amounts
+
+        Tipping commands
+        tip - Tipping Grins to other user
+        blackjack - Start BlackJack game with other user
+
+        Tradeogre commands
+        */
+
+        // Bot - Instance
+        TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
+
+        // GgcWorker *ggcWorker = new GgcWorker(bot,settings);
+        // if (!ggcWorker->init()) {
+        //     qDebug()<<"GGC Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
+
+        TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
+        if (!tradeOgreWorker->init()) {
+            qDebug()<<"Tradeogre Worker init failed!";
+            QCoreApplication::quit();
+        }
+
+        // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        // if (!tippingWorker->init()) {
+        //     qDebug()<<"Tipping Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
 
 
-//     return a.exec();
-// }
+        // bot->startMessagePulling();
+
+    });
+
+
+    return a.exec();
+}

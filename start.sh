@@ -5,6 +5,7 @@ set -x  # Alle Befehle anzeigen (Debug-Modus)
 export QT_QPA_PLATFORM=offscreen
 export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins
 
+
 echo "[INFO] Startskript ausgeführt"
 echo "[INFO] DATA_DIR = $DATA_DIR"
 
