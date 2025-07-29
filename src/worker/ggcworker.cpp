@@ -55,10 +55,23 @@ bool GgcWorker::init()
     // DB Instance
     m_dbManager = new GgcDatabaseManager();
 
-    QString defaultPath = QCoreApplication::applicationDirPath() + "/etc/database/database.db";
-    QString envPath = QProcessEnvironment::systemEnvironment().value("DB_PATH", defaultPath);
-    qDebug() << "DB Pfad:" << envPath;
-    if (m_dbManager->connectToDatabase(envPath)) {
+
+
+
+    QString dbPath;
+    QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+    if (dataDir.isEmpty()) {
+        dbPath = QCoreApplication::applicationDirPath() + "/etc/database/database.db";
+    }
+    else
+    {
+        dbPath = QDir(dataDir).filePath("etc/database/database.db");
+    }
+
+
+    qDebug() << "DB Pfad:" << dbPath;
+    if (m_dbManager->connectToDatabase(dbPath)) {
         // Database connection
         qDebug() << "db connection success!";
     } else {

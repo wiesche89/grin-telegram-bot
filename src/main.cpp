@@ -32,14 +32,21 @@ int main(int argc, char *argv[])
         qDebug() << "start worker";
 
 
+        QString settingsPath;
         QString dataDir = qEnvironmentVariable("DATA_DIR");
-        QString settingsPath = QDir(dataDir).filePath("etc/settings.ini");
-        if (settingsPath.isEmpty()) {
+
+        qDebug()<<dataDir;
+        if (dataDir.isEmpty()) {
             settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+        }
+        else
+        {
+            settingsPath = QDir(dataDir).filePath("etc/settings.ini");
         }
 
         if (!QFile::exists(settingsPath)) {
             qWarning() << "Settings file not found:" << settingsPath;
+            QCoreApplication::quit();
         } else {
             qDebug() << "Settings file found at:" << settingsPath;
         }
@@ -101,7 +108,7 @@ int main(int argc, char *argv[])
         // }
 
 
-        // bot->startMessagePulling();
+        bot->startMessagePulling();
 
     });
 

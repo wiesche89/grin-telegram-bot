@@ -48,7 +48,7 @@ RUN git clone https://github.com/bitcoin-core/secp256k1.git && \
     echo "/usr/local/lib" > /etc/ld.so.conf.d/secp256k1.conf && ldconfig
 
 # Grin Telegram Bot klonen (Branch qt6.6)
-ARG CACHE_BREAK=10
+ARG CACHE_BREAK=11
 RUN git clone --branch qt6.9 --single-branch https://github.com/wiesche89/grin-telegram-bot.git /grin-telegram-bot
 
 # Arbeitsverzeichnis setzen
