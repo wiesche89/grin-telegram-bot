@@ -19,13 +19,13 @@ int main(int argc, char *argv[])
     QApplication  a(argc, argv);
     qDebug()<<"main start ";
 
-    // // Manager
-    // GrinWalletManager manager;
-    // if (!manager.startWallet()) {
-    //     return -10;
-    // }
+    // Manager
+    GrinWalletManager manager;
+    if (!manager.startWallet()) {
+        return -10;
+    }
 
-    // qDebug()<<"manager is started!";
+    qDebug()<<"manager is started!";
 
     // Start worker, wait x msecs
     QTimer::singleShot(3000, [&]() {
