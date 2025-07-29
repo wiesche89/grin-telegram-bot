@@ -15,7 +15,8 @@
  */
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    QGuiApplication a(argc, argv);
+    qputenv("QT_QPA_PLATFORM", "offscreen");
 
     qDebug()<<"main start ";
 
