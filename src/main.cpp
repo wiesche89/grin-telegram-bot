@@ -36,8 +36,13 @@ int main(int argc, char *argv[])
         qDebug()<<"settingsPath: "<<settingsPath;
         if (settingsPath.isEmpty()) {
             settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+        }else
+        {
+            settingsPath = settingsPath+"/etc/settings.ini";
         }
-        QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+
+
+        QSettings *settings = new QSettings(settingsPath+"/etc/settings.ini", QSettings::IniFormat);
 
 
         /// following commands exists
@@ -75,11 +80,11 @@ int main(int argc, char *argv[])
         // Bot - Instance
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-        // GgcWorker *ggcWorker = new GgcWorker(bot,settings);
-        // if (!ggcWorker->init()) {
-        //     qDebug()<<"GGC Worker init failed!";
-        //     QCoreApplication::quit();
-        // }
+        GgcWorker *ggcWorker = new GgcWorker(bot,settings);
+        if (!ggcWorker->init()) {
+            qDebug()<<"GGC Worker init failed!";
+            QCoreApplication::quit();
+        }
 
         TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
         if (!tradeOgreWorker->init()) {
