@@ -14,7 +14,7 @@ services:
       - "3415:3415"
       - "3420:3420"
     volumes:
-      - grin-telegram-bot_grin-telegram-data:/opt/grin-telegram-bot/data
+      - grin-telegram-data:/opt/grin-telegram-bot/data
     networks:
       - grin-network
 
@@ -24,3 +24,6 @@ volumes:
 networks:
   grin-network:
     name: grin_network
+
+
+
