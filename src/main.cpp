@@ -17,10 +17,12 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    qDebug()<<"main start ";
+
     // Manager
     GrinWalletManager manager;
     if (!manager.startWallet()) {
-        return 0;
+        return -10;
     }
 
     // Start worker, wait x msecs

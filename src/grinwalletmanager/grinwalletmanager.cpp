@@ -97,12 +97,15 @@ bool GrinWalletManager::startWallet()
     program = "./grin-wallet";
     #endif
 
+    qDebug()<<"program: " <<program;
     m_walletProcess->start(program, {"owner_api", "--run_foreign"});
 
     if (!m_walletProcess->waitForStarted(3000)) {
         qCritical() << "Error: grin-wallet process could not be started.";
         return false;
     }
+
+        qDebug()<<"waitForStarted success ";
 
 #ifdef Q_OS_WIN
     HANDLE processHandle = (HANDLE)m_walletProcess->processId();
