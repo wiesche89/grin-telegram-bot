@@ -1,5 +1,5 @@
-# Basis-Image mit Qt 6.6.2 und Buildtools
-FROM carlonluca/qt-dev:6.6.2
+# Basis-Image mit Qt 6.9.1 und Buildtools
+FROM carlonluca/qt-dev:6.9.1
 
 # Umgebungsvariablen
 ENV DEBIAN_FRONTEND=noninteractive
