@@ -3,8 +3,7 @@ set -e  # Skript beenden, wenn ein Befehl fehlschlägt
 set -x  # Alle Befehle anzeigen (Debug-Modus)
 
 export QT_QPA_PLATFORM=offscreen
-export QT_DEBUG_PLUGINS=1
-export QT_PLUGIN_PATH=/opt/qt/6.9.1/gcc_64/plugins
+export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins
 
 echo "[INFO] Startskript ausgeführt"
 echo "[INFO] DATA_DIR = $DATA_DIR"
