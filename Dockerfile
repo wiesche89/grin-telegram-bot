@@ -47,8 +47,6 @@ RUN wget https://github.com/mimblewimble/grin-wallet/releases/download/v5.4.0-al
     chmod +x grin-wallet && \
     rm -f grin-wallet-v5.4.0-alpha.1-linux-x86_64.tar.gz
 
-RUN apt-get update && apt-get install -y strace
-
 RUN chmod +x /grin-telegram-bot/grin-telegram-bot
 
 # Startscript ins Image kopieren
