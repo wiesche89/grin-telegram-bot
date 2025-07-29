@@ -7,10 +7,8 @@
 TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings) :
     m_bot(bot),
     m_settings(settings),
-    m_db(new TippingDatabase("tipping.db", this))
+    m_db(nullptr)
 {
-    m_db->initialize();
-
     // Timer to clean up expired or finished games every 60 seconds
     QTimer *cleanupTimer = new QTimer(this);
     connect(cleanupTimer, &QTimer::timeout, this, [this]() {
@@ -33,6 +31,22 @@ TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings) :
  */
 bool TippingWorker::init()
 {
+    QString dbPath;
+    QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+    if (dataDir.isEmpty()) {
+        dbPath = QCoreApplication::applicationDirPath() + "/etc/database/tipping.db";
+    }
+    else
+    {
+        dbPath = QDir(dataDir).filePath("etc/database/tipping.db");
+    }
+
+    qDebug() << "DB Pfad Tipping:" << dbPath;
+
+    m_db = new TippingDatabase(dbPath, this);
+    m_db->initialize();
+
     // Connect incoming Telegram messages to the handler
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
     return true;

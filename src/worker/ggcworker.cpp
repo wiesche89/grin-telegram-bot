@@ -70,7 +70,7 @@ bool GgcWorker::init()
     }
 
 
-    qDebug() << "DB Pfad:" << dbPath;
+    qDebug() << "DB Pfad GGC:" << dbPath;
     if (m_dbManager->connectToDatabase(dbPath)) {
         // Database connection
         qDebug() << "db connection success!";

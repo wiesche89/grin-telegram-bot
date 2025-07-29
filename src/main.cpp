@@ -87,8 +87,6 @@ int main(int argc, char *argv[])
         balance - shows your balance
         cancelgame - cancel current game
         games - list all active games
-
-        Tradeogre commands
         */
 
         // Bot - Instance
@@ -106,12 +104,11 @@ int main(int argc, char *argv[])
             QCoreApplication::quit();
         }
 
-        // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
-        // if (!tippingWorker->init()) {
-        //     qDebug()<<"Tipping Worker init failed!";
-        //     QCoreApplication::quit();
-        // }
-
+        TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        if (!tippingWorker->init()) {
+            qDebug()<<"Tipping Worker init failed!";
+            QCoreApplication::quit();
+        }
 
         bot->startMessagePulling();
 
