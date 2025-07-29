@@ -28,7 +28,13 @@ int main(int argc, char *argv[])
         qDebug() << "start worker";
 
         // Bot - Instance
-        QSettings *settings = new QSettings(QCoreApplication::applicationDirPath() + "/etc/settings.ini", QSettings::IniFormat);
+        QString settingsPath = qgetenv("DATA_DIR");
+        qDebug()<<"settingsPath: "<<settingsPath;
+        if (settingsPath.isEmpty()) {
+            settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+        }
+        QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+
 
         /// following commands exists
         /*
