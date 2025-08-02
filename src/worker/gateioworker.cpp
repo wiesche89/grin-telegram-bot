@@ -93,12 +93,13 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             QJsonArray asks = book["asks"].toArray();
             QJsonArray bids = book["bids"].toArray();
 
+
             QString text;
             text += "📘 Order Book: GRIN/USDT\n\n";
-            text += "Asks (Lowest 10):\n";
+            text += "Asks (Highest 10):\n";
             text += "   Price       ×     Quantity     =     USDT\n";
 
-            for (int i = 0; i < qMin(10, asks.size()); ++i) {
+            for (int i = qMin(10, asks.size()) - 1; i >= 0; --i) {
                 QJsonArray a = asks[i].toArray();
                 double price = a[0].toString().toDouble();
                 double qty = a[1].toString().toDouble();
