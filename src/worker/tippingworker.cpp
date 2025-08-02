@@ -256,6 +256,10 @@ void TippingWorker::onMessage(TelegramBotUpdate update)
  */
 QString TippingWorker::handleDeposit(const QString &user, int amount)
 {
+    //TODO Create Slatepack
+
+
+
     m_db->updateBalance(user, amount);
     m_db->recordTransaction("", user, amount, "deposit");
     return QString("Slatepack created for deposit of %1 GRIN.").arg(amount);

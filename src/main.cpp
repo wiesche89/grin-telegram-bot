@@ -5,6 +5,7 @@
 #include "ggcworker.h"
 #include "tippingworker.h"
 #include "tradeogreworker.h"
+#include "gateioworker.h"
 
 /**
  * @brief main
@@ -63,10 +64,10 @@ int main(int argc, char *argv[])
         scanrewindhash - scan current rewindhash
 
         Tradeogre commands
-        price - TO price USDT and BTC
-        orderbook - TO orderbook
-        chart - TO chart 4h BTC and USDT
-        history - TO last x trades BTC and USDT
+        price - price USDT
+        orderbook - current orderbook
+        chart - chart 4h USDT
+        history - last x trades USDT
 
         Admin commands
         adminenabledisabledeposits - enable/disable deposits
@@ -92,21 +93,27 @@ int main(int argc, char *argv[])
         // Bot - Instance
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-        GgcWorker *ggcWorker = new GgcWorker(bot,settings);
-        if (!ggcWorker->init()) {
-            qDebug()<<"GGC Worker init failed!";
-            QCoreApplication::quit();
-        }
+        // GgcWorker *ggcWorker = new GgcWorker(bot,settings);
+        // if (!ggcWorker->init()) {
+        //     qDebug()<<"GGC Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
 
-        TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
-        if (!tradeOgreWorker->init()) {
-            qDebug()<<"Tradeogre Worker init failed!";
-            QCoreApplication::quit();
-        }
+        // TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
+        // if (!tradeOgreWorker->init()) {
+        //     qDebug()<<"Tradeogre Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
 
-        TippingWorker *tippingWorker = new TippingWorker(bot,settings);
-        if (!tippingWorker->init()) {
-            qDebug()<<"Tipping Worker init failed!";
+        // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        // if (!tippingWorker->init()) {
+        //     qDebug()<<"Tipping Worker init failed!";
+        //     QCoreApplication::quit();
+        // }
+
+        GateIoWorker *gateIoeWorker = new GateIoWorker(bot,settings);
+        if (!gateIoeWorker->init()) {
+            qDebug()<<"GateIo Worker init failed!";
             QCoreApplication::quit();
         }
 
