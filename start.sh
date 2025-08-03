@@ -2,6 +2,7 @@
 set -e  # Exit script if any command fails
 set -x  # Print each command before executing (debug mode)
 
+
 export QT_QPA_PLATFORM=offscreen
 export QT_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins
 
