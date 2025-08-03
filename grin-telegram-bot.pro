@@ -107,6 +107,7 @@ SOURCES += \
   src/api/wallet/attributes/viewwalletentry.cpp \
   src/api/wallet/attributes/walletconfig.cpp \
   src/api/wallet/attributes/walletinfo.cpp \
+  src/dexdatabase/dexdatabase.cpp \
   src/games/blackjackgame.cpp \
   src/gateio/gateioclient.cpp \
   src/ggcdatabase/ggcdatabasemanager.cpp \
@@ -127,6 +128,7 @@ SOURCES += \
   src/ggcdatabase/attributes/donate.cpp \
   src/ggcdatabase/attributes/faucet.cpp \
   src/util/debugutils.cpp \
+  src/worker/dexworker.cpp \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
   src/worker/tippingworker.cpp \
@@ -196,6 +198,7 @@ HEADERS += \
   src/api/wallet/attributes/walletinfo.h \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
+  src/dexdatabase/dexdatabase.h \
   src/games/blackjackgame.h \
   src/gateio/gateioclient.h \
   src/ggcdatabase/ggcdatabasemanager.h \
@@ -220,6 +223,7 @@ HEADERS += \
   src/ggcdatabase/attributes/donate.h \
   src/ggcdatabase/attributes/faucet.h \
   src/util/debugutils.h \
+  src/worker/dexworker.h \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \
   src/worker/tippingworker.h \

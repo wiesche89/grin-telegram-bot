@@ -93,11 +93,10 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             QJsonArray asks = book["asks"].toArray();
             QJsonArray bids = book["bids"].toArray();
 
-
             QString text;
             text += "📘 Order Book: GRIN/USDT\n\n";
             text += "Asks (Highest 10):\n";
-            text += "   Price       ×     Quantity     =     USDT\n";
+            text += "    Price       ×     Quantity     =     USDT\n";
 
             for (int i = qMin(10, asks.size()) - 1; i >= 0; --i) {
                 QJsonArray a = asks[i].toArray();
@@ -112,7 +111,7 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             }
 
             text += "\nBids (Highest 10):\n";
-            text += "   Price       ×     Quantity     =     USDT\n";
+            text += "     Price       ×     Quantity     =     USDT\n";
 
             for (int i = 0; i < qMin(10, bids.size()); ++i) {
                 QJsonArray b = bids[i].toArray();
@@ -129,7 +128,7 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             m_bot->sendMessage(message.chat.id, escapeMarkdownV2(text), 0, TelegramBot::TelegramFlags::Markdown);
         });
 
-        m_client->getOrderBook("GRIN_USDT");
+        m_client->getOrderBook("GRIN_USDT",10);
         return;
     }
 
@@ -160,7 +159,7 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             }
         });
 
-        m_client->getCandlesticks("GRIN_USDT", "4h", 100);
+        m_client->getCandlesticks("GRIN_USDT", "4h", 150);
         return;
     }
 
@@ -184,12 +183,13 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
                 QString side   = obj["side"].toString().toUpper();
                 QString amount = QString::number(obj["amount"].toString().toDouble(), 'f', 2);
                 QString price  = QString::number(obj["price"].toString().toDouble(), 'f', 5);
-
-                out << QString("%1  %2  %3  @ %4")
+                QString usdt =  QString::number(obj["price"].toString().toDouble()*obj["amount"].toString().toDouble(),'f',2);
+                out << QString("%1  %2  %3  @ %4  (%5 USDT)")
                            .arg(time, -20)
                            .arg(side, -6)
                            .arg(amount, 10)
-                           .arg(price);
+                           .arg(price)
+                           .arg(usdt);
             }
 
             m_bot->sendMessage(message.chat.id, escapeMarkdownV2(out.join("\n")), 0, TelegramBot::TelegramFlags::Markdown);
