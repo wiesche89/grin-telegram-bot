@@ -93,11 +93,11 @@ int main(int argc, char *argv[])
         // Bot - Instance
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-        // GgcWorker *ggcWorker = new GgcWorker(bot,settings);
-        // if (!ggcWorker->init()) {
-        //     qDebug()<<"GGC Worker init failed!";
-        //     QCoreApplication::quit();
-        // }
+        GgcWorker *ggcWorker = new GgcWorker(bot,settings);
+        if (!ggcWorker->init()) {
+            qDebug()<<"GGC Worker init failed!";
+            QCoreApplication::quit();
+        }
 
         // TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
         // if (!tradeOgreWorker->init()) {
@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
         //     QCoreApplication::quit();
         // }
 
-        GateIoWorker *gateIoeWorker = new GateIoWorker(bot,settings);
-        if (!gateIoeWorker->init()) {
+        GateIoWorker *gateIoWorker = new GateIoWorker(bot,settings);
+        if (!gateIoWorker->init()) {
             qDebug()<<"GateIo Worker init failed!";
             QCoreApplication::quit();
         }
