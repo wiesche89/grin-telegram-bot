@@ -45,7 +45,10 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
     //-------/price----------
     if (message.text.startsWith("/price")) {
-        connect(m_client, &GateIoClient::tickerReceived, this, [this, message](const QJsonArray &tickers) {
+        QMetaObject::Connection *conn = new QMetaObject::Connection;
+        *conn = connect(m_client, &GateIoClient::tickerReceived, this, [this, message, conn](const QJsonArray &tickers) {
+            disconnect(*conn);
+            delete conn;
             for (const auto &val : tickers) {
                 QJsonObject obj = val.toObject();
                 QString pair = obj["currency_pair"].toString();
