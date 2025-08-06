@@ -44,7 +44,7 @@ bool GgcWorker::init()
     m_walletOwnerApi->initSecureApi();
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
-    // scan whole wallet
+    //scan whole wallet
     if (!scanWallet()) {
         success = false;
     }
@@ -54,8 +54,6 @@ bool GgcWorker::init()
 
     // DB Instance
     m_dbManager = new GgcDatabaseManager();
-
-
 
 
     QString dbPath;
@@ -116,15 +114,24 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     // command start
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/start")) {
-        sendUserMessage(message, readFileToString(QCoreApplication::applicationDirPath() + "/etc/messages/start.txt"), false);
+
+        QString path;
+        QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+        if (dataDir.isEmpty()) {
+            path = QCoreApplication::applicationDirPath() + "/etc/messages/start.txt";
+        }
+        else
+        {
+            path = QDir(dataDir).filePath("etc/database/database.db");
+        }
+
+        sendUserMarkdownMessage(message, readFileToString(path), false);
         return;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command address
-    // Getting the address
-    // 1. User runs `/address` command.
-    // 2. Bot replies with slatepack address.
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/address")) {
         QString str;
@@ -133,11 +140,18 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             if (!res.unwrapOrLog(str)) {
                 str = QString("Error message: %1").arg(res.errorMessage());
             } else {
-                str = QString("`%1`").arg(str);
+                str = QString("Hi %2,\nhere is my slatepack address:\n`%1`").arg(str).arg(message.chat.firstName);
             }
         }
+        m_bot->sendMessage(message.chat.id, str, 0, TelegramBot::Markdown);
+        return;
+    }
 
-        sendUserMessage(message, QString(str), false);
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command donatepack
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.text.contains("/donatepack")) {
+        sendUserMessage(message, "function currently not implemented!", false);
         return;
     }
 
@@ -147,16 +161,19 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     if (message.text.contains("/donate")) {
         // enable
         if (m_settings->value("admin/enableDisableDeposits").toInt() == 1) {
-            QString msg
-                = "nice that you want to make a donation.\n"
-                  "### Deposit protocol\n"
-                  "1) User runs '/donate' to get manual\n"
-                  "2) Send a Slatepack to donate GRIN (file or plain)\n"
-                  "3) Bot sends response Slatepack (file or plain)\n"
-                  "4) Finalize\n"
-                  "\n";
+            QString path;
+            QString dataDir = qEnvironmentVariable("DATA_DIR");
 
-            sendUserMessage(message, msg, false);
+            if (dataDir.isEmpty()) {
+                path = QCoreApplication::applicationDirPath() + "/etc/messages/donate.txt";
+            }
+            else
+            {
+                path = QDir(dataDir).filePath("etc/database/database.db");
+            }
+
+            sendUserMarkdownMessage(message, readFileToString(path), false);
+            return;
         }
         // disable
         else {
@@ -377,16 +394,29 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command faucetpack
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.text.contains("/faucetpack")) {
+        sendUserMessage(message, "function currently not implemented!", false);
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
     // command faucet
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/faucet")) {
-        QString instructions = "send a Slatepack to get GRIN.\n"
-                               "### Withdrawal protocol\n"
-                               "1) User runs '/faucet' to get manual\n"
-                               "2) Send a Slatepack to receive GRIN (file or plain)\n"
-                               "3) Bot send repsonse Slatepack (file or plain)\n"
-                               "4) Finalize\n\n";
-        sendUserMessage(message, instructions, false);
+        QString path;
+        QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+        if (dataDir.isEmpty()) {
+            path = QCoreApplication::applicationDirPath() + "/etc/messages/faucet.txt";
+        }
+        else
+        {
+            path = QDir(dataDir).filePath("etc/database/database.db");
+        }
+
+        sendUserMarkdownMessage(message, readFileToString(path), false);
         return;
     }
 
@@ -433,11 +463,13 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             if (!res.unwrapOrLog(rewindHash)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
-            } else {
-                sendUserMessage(message, rewindHash.rewindHash(), false);
+            }
+            else {
+                QString str = QString("Hi %2,\nhere is the rewind hash :\n`%1`").arg(rewindHash.rewindHash()).arg(message.chat.firstName);
+                m_bot->sendMessage(message.chat.id, str, 0, TelegramBot::Markdown);
             }
         }
-        return;
+    return;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -870,6 +902,27 @@ void GgcWorker::sendUserMessage(TelegramBotMessage message, QString content, boo
                        TelegramKeyboardRequest(),
                        nullptr);
 }
+
+void GgcWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain)
+{
+    QString msg;
+    if (plain) {
+        msg = content;
+    } else {
+        msg = QString("Hi "
+                      + message.from.firstName
+                      + ",\n"
+                      + content);
+    }
+
+    m_bot->sendMessage(message.chat.id,
+                       msg,
+                       0,
+                       TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,
+                       TelegramKeyboardRequest(),
+                       nullptr);
+}
+
 
 /**
  * @brief GgcWorker::scanWallet

@@ -1,0 +1,35 @@
+💰 *Deposit Protocol*
+Nice that you want to make a donation 🙏  
+You can use the grin wallet to send a Slatepack transaction to the bot
+
+*1️⃣ User sends a send Slatepack*
+1 In your grin wallet click on *SEND*
+2 Enter the amount of GRIN you wish to donate for example 1․0 ツ
+3 Now you see the *Slatepack* starting with:
+   `BEGINSLATEPACK. ... ENDSLATEPACK.`
+   
+   You can either:
+   Click *COPY* and paste the Slatepack into the Telegram chat  
+   Click *SHARE* and save it as a file named *․S1․slatepack*,
+   then send that file to the bot
+
+4 The bot will process the Slatepack and respond with a signed *response Slatepack*, either:
+   As plain text in the chat, or  
+   As a file for example *․S2․slatepack*
+
+5 Paste the bot's response Slatepack into the box, or click *CHOOSE FILE* to load the *․S2․slatepack* file
+
+6 The wallet will automatically finalize and broadcast the transaction
+
+✅ *Donation complete*, thank you
+
+*2️⃣ The bot initiates the transaction*
+1 User sends the following command with amount like `/donatepack 10`
+2 Bot creates a donation Slatepack with x GRIN 
+3 Now you see the *Slatepack* starting with:
+   `BEGINSLATEPACK. ... ENDSLATEPACK.`
+4 User signed *slatepack* in the wallet
+5 Paste the *result slatepack* into the Telegram chat
+6 The bot will automatically finalize and broadcast the transaction
+
+✅ *Donation complete*, thank you

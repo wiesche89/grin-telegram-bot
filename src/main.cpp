@@ -58,16 +58,16 @@ int main(int argc, char *argv[])
         GGC commands
         start - introduction
         address - get slatepack address
-        donate - dm slatepack address
+        donate - donate instruction
+        donatepack - bot initiate donation
         faucet - use faucet
+        faucetpack - bot initiate faucet
         rewindhash - get rewindhash
         scanrewindhash - scan current rewindhash
-
-        Tradeogre commands
         price - price USDT
         orderbook - current orderbook
         chart - chart 4h USDT
-        history - last x trades USDT
+        history - last 10 trades USDT
 
         Admin commands
         adminenabledisabledeposits - enable/disable deposits

@@ -39,6 +39,8 @@ private:
     Result<QString> handleSlateI1State(Slate slate, TelegramBotMessage message);
     QString downloadFileToQString(const QUrl &url);
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
+    void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
+    QString sanitizeTelegramMarkdown(const QString &input);
     bool scanWallet();
 
     GgcDatabaseManager *m_dbManager;
@@ -48,6 +50,7 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
     QSettings *m_settings;
+
 };
 
 #endif // GGCWORKER_H

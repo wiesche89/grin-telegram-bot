@@ -1,17 +1,37 @@
-### Getting the address
-1. User runs `/address` command.
-2. Bot replies with slatepack address.
+*GRIN Telegram Bot Protocols*
 
-The response message template should be customizable.
+📬 *Getting the Address*
+1 User sends the /address command
+2 Bot replies with the Slatepack address, for example
+  `grin1...`
+3 You can donate via *TOR*
 
-### Deposit protocol
-1) User runs '/donate' to get manual
-2) Send a Slatepack to donate GRIN
-3) Bot send repsonse Slatepack
-4) Finalize
+💰 *Deposit Protocol*
+User sends the /donate command to receive deposit instructions
 
-### Withdrawal protocol
-1) User runs '/faucet' to get manual
-2) Send a Slatepack to receive GRIN
-3) Bot send repsonse Slatepack
-4) Finalize
+💸 *Withdrawal Protocol*
+User sends the /faucet command to receive withdrawal instructions
+
+🧩 *Notes*
+1 All communication is based on **Slatepack**, compatible with grin wallet
+2 Malformed or invalid Slatepacks should be handled with proper error responses
+
+🛠️ *Further Info*
+For detailed wallet help and Slatepack examples, check out the
+[GRIN Wallet Handbook](https://docs.grin.mw/getting-started/wallet-handbook/)
+
+📈 *Price*  
+User sends the /price command  
+Bot replies with the current GRIN/USDT price and 24h stats
+
+📊 *Orderbook*  
+User sends the /orderbook command  
+Bot replies with the current GRIN/USDT order book, top bids and asks
+
+🕒 *Chart*  
+User sends the /chart command  
+Bot replies with a 4h GRIN/USDT candlestick chart
+
+📜 *History*  
+User sends the /history command  
+Bot replies with the last 10 GRIN/USDT trades, price, amount, time
