@@ -50,6 +50,7 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
     QSettings *m_settings;
+    qlonglong m_faucetAmount;
 
 };
 

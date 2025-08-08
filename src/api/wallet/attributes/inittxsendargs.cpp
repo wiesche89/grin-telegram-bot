@@ -4,10 +4,25 @@
  * @brief InitTxSendArgs::InitTxSendArgs
  */
 InitTxSendArgs::InitTxSendArgs() :
+    m_valid(false),
+    m_dest(QString()),
     m_postTx(false),
     m_fluff(false),
     m_skipTor(false)
 {
+}
+InitTxSendArgs::InitTxSendArgs(QString dest, bool postTx, bool fluff, bool skipTor) :
+    m_valid(true),
+    m_dest(dest),
+    m_postTx(postTx),
+    m_fluff(fluff),
+    m_skipTor(skipTor)
+{
+}
+
+bool InitTxSendArgs::isValid() const
+{
+    return m_valid;
 }
 
 /**
@@ -20,30 +35,12 @@ QString InitTxSendArgs::dest() const
 }
 
 /**
- * @brief InitTxSendArgs::setDest
- * @param value
- */
-void InitTxSendArgs::setDest(const QString &value)
-{
-    m_dest = value;
-}
-
-/**
  * @brief InitTxSendArgs::postTx
  * @return
  */
 bool InitTxSendArgs::postTx() const
 {
     return m_postTx;
-}
-
-/**
- * @brief InitTxSendArgs::setPostTx
- * @param value
- */
-void InitTxSendArgs::setPostTx(bool value)
-{
-    m_postTx = value;
 }
 
 /**
@@ -56,15 +53,6 @@ bool InitTxSendArgs::fluff() const
 }
 
 /**
- * @brief InitTxSendArgs::setFluff
- * @param value
- */
-void InitTxSendArgs::setFluff(bool value)
-{
-    m_fluff = value;
-}
-
-/**
  * @brief InitTxSendArgs::skipTor
  * @return
  */
@@ -74,20 +62,17 @@ bool InitTxSendArgs::skipTor() const
 }
 
 /**
- * @brief InitTxSendArgs::setSkipTor
- * @param value
- */
-void InitTxSendArgs::setSkipTor(bool value)
-{
-    m_skipTor = value;
-}
-
-/**
  * @brief InitTxSendArgs::toJson
  * @return
  */
 QJsonObject InitTxSendArgs::toJson() const
 {
+
+    if(!m_valid)
+    {
+        return QJsonObject();
+    }
+
     QJsonObject obj;
     obj["dest"] = m_dest;
     obj["post_tx"] = m_postTx;

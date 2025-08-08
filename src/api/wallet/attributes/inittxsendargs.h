@@ -8,23 +8,19 @@ class InitTxSendArgs
 {
 public:
     InitTxSendArgs();
+    InitTxSendArgs(QString dest, bool postTx, bool fluff, bool skipTor);
 
+    bool isValid() const;
     QString dest() const;
-    void setDest(const QString &value);
-
     bool postTx() const;
-    void setPostTx(bool value);
-
     bool fluff() const;
-    void setFluff(bool value);
-
     bool skipTor() const;
-    void setSkipTor(bool value);
 
     QJsonObject toJson() const;
     bool fromJson(const QJsonObject &json);
 
 private:
+    bool m_valid;
     QString m_dest;
     bool m_postTx;
     bool m_fluff;

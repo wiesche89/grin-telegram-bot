@@ -10,7 +10,8 @@ GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings) :
     m_nodeForeignApi(nullptr),
     m_walletOwnerApi(nullptr),
     m_walletForeignApi(nullptr),
-    m_settings(settings)
+    m_settings(settings),
+    m_faucetAmount(1000000000)
 {
 }
 
@@ -45,9 +46,9 @@ bool GgcWorker::init()
     m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
 
     //scan whole wallet
-    if (!scanWallet()) {
-        success = false;
-    }
+    // if (!scanWallet()) {
+    //     success = false;
+    // }
 
     // Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
@@ -150,8 +151,47 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command donatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/donatepack")) {
-        sendUserMessage(message, "function currently not implemented!", false);
+    if (message.text.startsWith("/donatepack")) {
+        QStringList parts = message.text.split(" ", Qt::SkipEmptyParts);
+
+        //Partsize size must 2
+        if (parts.size() == 2) {
+            bool ok = false;
+            qlonglong amount = parts[1].toInt(&ok);
+
+            if (ok && amount > 0) {
+                // Valid /donatepack command with amount
+                QString response;
+
+                amount = amount*1000000000; //nano grin
+
+                Result<Slate> resIssueInvoiceTx =  m_walletOwnerApi->issueInvoiceTx(QString::number(amount),"","");
+                Slate slate;
+                if (!resIssueInvoiceTx.unwrapOrLog(slate)) {
+                    response = resIssueInvoiceTx.errorMessage();
+                }
+                else
+                {
+                    Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
+                    if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
+                        response = resCreateSlatepackMessage.errorMessage();
+                    }
+                }
+                sendUserMessage(message,response,false);
+
+            }
+            //invalid amount
+            else {
+                QString response = "Invalid amount. Please enter a positive number, e.g. /donatepack 10";
+                sendUserMessage(message, response,false);
+            }
+        }
+        //Missing or too many arguments
+        else {
+            QString response = "Usage: /donatepack <amount>\nExample: /donatepack 10";
+            sendUserMessage(message, response,false);
+        }
+
         return;
     }
 
@@ -397,7 +437,52 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     // command faucetpack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("/faucetpack")) {
-        sendUserMessage(message, "function currently not implemented!", false);
+
+        QString response;
+        InitTxArgs args;
+        args.setSrcAcctName(QJsonValue::Null);
+        args.setAmount(m_faucetAmount);
+        args.setAmountIncludesFee(QJsonValue::Null);
+        args.setMinimumConfirmations(10);
+        args.setMaxOutputs(500);
+        args.setNumChangeOutputs(1);
+        args.setSelectionStrategyIsUseAll(false);
+        args.setTargetSlateVersion(QJsonValue::Null);
+        args.setTtlBlocks(QJsonValue::Null);
+        args.setPaymentProofRecipientAddress(QJsonValue::Null);
+        args.setEstimateOnly(QJsonValue::Null);
+        args.setLateLock(QJsonValue::Null);
+        args.setSendArgs(InitTxSendArgs());
+
+
+        Result<Slate> resInitSendTx =  m_walletOwnerApi->initSendTx(args);
+        Slate slate;
+        if (!resInitSendTx.unwrapOrLog(slate)) {
+            response = resInitSendTx.errorMessage();
+        }
+        else
+        {
+            Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
+            if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
+                response = resCreateSlatepackMessage.errorMessage();
+            }
+        }
+
+        ///---------------------------------------------------------------------------------------------------------------------------
+        /// Handling txLockOutputs
+        ///---------------------------------------------------------------------------------------------------------------------------
+        //TODO lock on round 2, befove finalize?
+        bool lockOutputs = false;
+        {
+            Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
+            if (!res.unwrapOrLog(lockOutputs)) {
+                response = res.errorMessage();
+            } else {
+                qDebug() << "txLockOutputs: " << lockOutputs;
+            }
+        }
+
+        sendUserMessage(message, response, false);
         return;
     }
 
@@ -728,7 +813,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     ///---------------------------------------------------------------------------------------------------------------------------
     QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
 
-    if (amountToday.toLongLong() >= 2000000000 || slate.amt().toLongLong() > 2000000000) {
+    if (amountToday.toLongLong() >= m_faucetAmount || slate.amt().toLongLong() > m_faucetAmount) {
         return Error(ErrorType::Unknown,
                      QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user."));
     }

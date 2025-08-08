@@ -24,7 +24,7 @@ InitTxArgs::InitTxArgs() :
  * @brief InitTxArgs::srcAcctName
  * @return
  */
-QString InitTxArgs::srcAcctName() const
+QJsonValue InitTxArgs::srcAcctName() const
 {
     return m_srcAcctName;
 }
@@ -33,7 +33,7 @@ QString InitTxArgs::srcAcctName() const
  * @brief InitTxArgs::setSrcAcctName
  * @param value
  */
-void InitTxArgs::setSrcAcctName(const QString &value)
+void InitTxArgs::setSrcAcctName(const QJsonValue &value)
 {
     m_srcAcctName = value;
 }
@@ -60,7 +60,7 @@ void InitTxArgs::setAmount(quint64 value)
  * @brief InitTxArgs::amountIncludesFee
  * @return
  */
-bool InitTxArgs::amountIncludesFee() const
+QJsonValue InitTxArgs::amountIncludesFee() const
 {
     return m_amountIncludesFee;
 }
@@ -69,7 +69,7 @@ bool InitTxArgs::amountIncludesFee() const
  * @brief InitTxArgs::setAmountIncludesFee
  * @param value
  */
-void InitTxArgs::setAmountIncludesFee(bool value)
+void InitTxArgs::setAmountIncludesFee(QJsonValue value)
 {
     m_amountIncludesFee = value;
 }
@@ -150,7 +150,7 @@ void InitTxArgs::setSelectionStrategyIsUseAll(bool value)
  * @brief InitTxArgs::targetSlateVersion
  * @return
  */
-quint16 InitTxArgs::targetSlateVersion() const
+QJsonValue InitTxArgs::targetSlateVersion() const
 {
     return m_targetSlateVersion;
 }
@@ -159,7 +159,7 @@ quint16 InitTxArgs::targetSlateVersion() const
  * @brief InitTxArgs::setTargetSlateVersion
  * @param value
  */
-void InitTxArgs::setTargetSlateVersion(quint16 value)
+void InitTxArgs::setTargetSlateVersion(QJsonValue value)
 {
     m_targetSlateVersion = value;
 }
@@ -168,7 +168,7 @@ void InitTxArgs::setTargetSlateVersion(quint16 value)
  * @brief InitTxArgs::ttlBlocks
  * @return
  */
-quint64 InitTxArgs::ttlBlocks() const
+QJsonValue InitTxArgs::ttlBlocks() const
 {
     return m_ttlBlocks;
 }
@@ -177,7 +177,7 @@ quint64 InitTxArgs::ttlBlocks() const
  * @brief InitTxArgs::setTtlBlocks
  * @param value
  */
-void InitTxArgs::setTtlBlocks(quint64 value)
+void InitTxArgs::setTtlBlocks(QJsonValue value)
 {
     m_ttlBlocks = value;
 }
@@ -186,7 +186,7 @@ void InitTxArgs::setTtlBlocks(quint64 value)
  * @brief InitTxArgs::paymentProofRecipientAddress
  * @return
  */
-QString InitTxArgs::paymentProofRecipientAddress() const
+QJsonValue InitTxArgs::paymentProofRecipientAddress() const
 {
     return m_paymentProofRecipientAddress;
 }
@@ -195,7 +195,7 @@ QString InitTxArgs::paymentProofRecipientAddress() const
  * @brief InitTxArgs::setPaymentProofRecipientAddress
  * @param value
  */
-void InitTxArgs::setPaymentProofRecipientAddress(const QString &value)
+void InitTxArgs::setPaymentProofRecipientAddress(const QJsonValue &value)
 {
     m_paymentProofRecipientAddress = value;
 }
@@ -204,7 +204,7 @@ void InitTxArgs::setPaymentProofRecipientAddress(const QString &value)
  * @brief InitTxArgs::estimateOnly
  * @return
  */
-bool InitTxArgs::estimateOnly() const
+QJsonValue InitTxArgs::estimateOnly() const
 {
     return m_estimateOnly;
 }
@@ -213,7 +213,7 @@ bool InitTxArgs::estimateOnly() const
  * @brief InitTxArgs::setEstimateOnly
  * @param value
  */
-void InitTxArgs::setEstimateOnly(bool value)
+void InitTxArgs::setEstimateOnly(QJsonValue value)
 {
     m_estimateOnly = value;
 }
@@ -222,7 +222,7 @@ void InitTxArgs::setEstimateOnly(bool value)
  * @brief InitTxArgs::lateLock
  * @return
  */
-bool InitTxArgs::lateLock() const
+QJsonValue InitTxArgs::lateLock() const
 {
     return m_lateLock;
 }
@@ -231,7 +231,7 @@ bool InitTxArgs::lateLock() const
  * @brief InitTxArgs::setLateLock
  * @param value
  */
-void InitTxArgs::setLateLock(bool value)
+void InitTxArgs::setLateLock(QJsonValue value)
 {
     m_lateLock = value;
 }
@@ -262,22 +262,40 @@ QJsonObject InitTxArgs::toJson() const
 {
     QJsonObject obj;
 
-    obj["src_acct_name"] = m_srcAcctName;
+    if (!m_srcAcctName.isNull())
+        obj["src_acct_name"] = m_srcAcctName;
+
     obj["amount"] = QString::number(m_amount);
-    obj["amount_includes_fee"] = m_amountIncludesFee;
+
+    if (!m_amountIncludesFee.isNull())
+        obj["amount_includes_fee"] = m_amountIncludesFee;
+
     obj["minimum_confirmations"] = QString::number(m_minimumConfirmations);
     obj["max_outputs"] = static_cast<int>(m_maxOutputs);
     obj["num_change_outputs"] = static_cast<int>(m_numChangeOutputs);
     obj["selection_strategy_is_use_all"] = m_selectionStrategyIsUseAll;
-    obj["target_slate_version"] = static_cast<int>(m_targetSlateVersion);
-    obj["ttl_blocks"] = QString::number(m_ttlBlocks);
-    obj["payment_proof_recipient_address"] = m_paymentProofRecipientAddress;
-    obj["estimate_only"] = m_estimateOnly;
-    obj["late_lock"] = m_lateLock;
-    obj["send_args"] = m_sendArgs.toJson();
+
+    if (!m_targetSlateVersion.isNull())
+        obj["target_slate_version"] = m_targetSlateVersion;
+
+    if (!m_ttlBlocks.isNull())
+        obj["ttl_blocks"] = m_ttlBlocks;
+
+    if (!m_paymentProofRecipientAddress.isNull())
+        obj["payment_proof_recipient_address"] = m_paymentProofRecipientAddress;
+
+    if (!m_estimateOnly.isNull())
+        obj["estimate_only"] = m_estimateOnly;
+
+    if (!m_lateLock.isNull())
+        obj["late_lock"] = m_lateLock;
+
+    if(m_sendArgs.isValid())
+        obj["send_args"] = m_sendArgs.toJson();
 
     return obj;
 }
+
 
 /**
  * @brief InitTxArgs::fromJson
@@ -352,9 +370,9 @@ bool InitTxArgs::fromJson(const QJsonObject &json)
 
     if (json.contains("ttl_blocks")) {
         if (json["ttl_blocks"].isDouble()) {
-            m_ttlBlocks = static_cast<quint64>(json["ttl_blocks"].toDouble());
+            m_ttlBlocks = json["ttl_blocks"].toDouble();
         } else if (json["ttl_blocks"].isString()) {
-            m_ttlBlocks = json["ttl_blocks"].toString().toULongLong();
+            m_ttlBlocks = json["ttl_blocks"].toString();
         } else {
             m_ttlBlocks = 0;
         }
