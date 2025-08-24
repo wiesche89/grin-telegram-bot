@@ -454,14 +454,17 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         args.setLateLock(QJsonValue::Null);
         args.setSendArgs(InitTxSendArgs());
 
+        qDebug()<<debugJsonString(args);
 
         Result<Slate> resInitSendTx =  m_walletOwnerApi->initSendTx(args);
         Slate slate;
         if (!resInitSendTx.unwrapOrLog(slate)) {
             response = resInitSendTx.errorMessage();
         }
+
         else
         {
+            qDebug()<<debugJsonString(slate);
             Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
             if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
                 response = resCreateSlatepackMessage.errorMessage();
