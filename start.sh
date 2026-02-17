@@ -18,17 +18,20 @@ fi
 # Symlink .grin directory
 if [ -d "$DATA_DIR/.grin" ]; then
     echo "[INFO] .grin directory found, linking to /root/.grin"
-    ln -sf "$DATA_DIR/.grin" /root/.grin
+    rm -rf /root/.grin
+    ln -s "$DATA_DIR/.grin" /root/.grin
 else
     echo "[WARN] No .grin directory found in $DATA_DIR"
 fi
 
 # Fix Tor onion service permissions
-if [ -d "/root/.grin/main/tor/listener/onion_service_addresses" ]; then
-    echo "[INFO] Setting permissions for Tor onion_service_addresses"
-    find /root/.grin/main/tor/listener/onion_service_addresses -type d -exec chmod 700 {} \;
+CHAIN_DIR="main"
+[ "$GRIN_CHAIN_TYPE" = "testnet" ] && CHAIN_DIR="test"
+
+if [ -d "/root/.grin/${CHAIN_DIR}/tor/listener/onion_service_addresses" ]; then
+  find "/root/.grin/${CHAIN_DIR}/tor/listener/onion_service_addresses" -type d -exec chmod 700 {} \;
 else
-    echo "[WARN] Onion service directory does not exist (not yet created?)"
+  echo "[WARN] Onion service directory does not exist (not yet created?)"
 fi
 
 # Start grin-wallet listen in the background
