@@ -124,7 +124,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         }
         else
         {
-            path = QDir(dataDir).filePath("etc/database/database.db");
+            path = QDir(dataDir).filePath("etc/messages/start.txt");
         }
 
         sendUserMarkdownMessage(message, readFileToString(path), false);
@@ -209,7 +209,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             }
             else
             {
-                path = QDir(dataDir).filePath("etc/database/database.db");
+                path = QDir(dataDir).filePath("etc/messages/donate.txt");
             }
 
             sendUserMarkdownMessage(message, readFileToString(path), false);
@@ -501,7 +501,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         }
         else
         {
-            path = QDir(dataDir).filePath("etc/database/database.db");
+            path = QDir(dataDir).filePath("etc/messages/faucet.txt");
         }
 
         sendUserMarkdownMessage(message, readFileToString(path), false);
