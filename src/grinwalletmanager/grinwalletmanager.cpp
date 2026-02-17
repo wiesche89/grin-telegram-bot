@@ -97,7 +97,16 @@ bool GrinWalletManager::startWallet()
     program = "./grin-wallet";
     #endif
 
-    m_walletProcess->start(program, {"owner_api", "--run_foreign"});
+    QString net = qEnvironmentVariable("GRIN_CHAIN_TYPE");
+
+    if(net == "testnet")
+    {
+        m_walletProcess->start(program, {"owner_api","--testnet", "--run_foreign"});
+    }
+    else
+    {
+        m_walletProcess->start(program, {"owner_api", "--run_foreign"});
+    }
 
     if (!m_walletProcess->waitForStarted(3000)) {
         qCritical() << "Error: grin-wallet process could not be started.";
