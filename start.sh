@@ -34,7 +34,13 @@ fi
 # Start grin-wallet listen in the background
 if [ -f "$DATA_DIR/.wallet/password.txt" ]; then
     echo "[INFO] Starting grin-wallet using password file..."
-    cat "$DATA_DIR/.wallet/password.txt" | ./grin-wallet listen &
+
+    WALLET_ARGS=("listen")
+    if [ "$GRIN_CHAIN_TYPE" = "testnet" ]; then
+        WALLET_ARGS=("--testnet" "listen")
+    fi
+
+    ./grin-wallet "${WALLET_ARGS[@]}" < "$DATA_DIR/.wallet/password.txt" &
 else
     echo "[ERROR] Password file not found: $DATA_DIR/.wallet/password.txt"
     exit 1
