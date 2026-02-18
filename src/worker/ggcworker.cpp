@@ -13,6 +13,16 @@ GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings) :
     m_settings(settings),
     m_faucetAmount(1000000000)
 {
+    QString net = qEnvironmentVariable("GRIN_CHAIN_TYPE");
+    if(net == "testnet")
+    {
+        m_faucetAmount = 50000000000;
+    }
+    else
+    {
+        m_faucetAmount = 1000000000;
+    }
+    qDebug()<<"m_faucetAmount = "<<m_faucetAmount;
 }
 
 /**
@@ -85,13 +95,13 @@ bool GgcWorker::init()
     QTimer *cleanupTimer = new QTimer(this);
 
     // Connect timer's timeout signal to your slot/function
-    connect(cleanupTimer, &QTimer::timeout, this, &GgcWorker::cleanupRetrieveTxs);
+    connect(cleanupTimer, &QTimer::timeout, this, [this]() { cleanupRetrieveTxs(false); });
 
     // Set interval to 5 minutes (300,000 milliseconds)
     cleanupTimer->start(5 * 60 * 1000);
 
     // Optional: call it once immediately at startup
-    cleanupRetrieveTxs();
+    cleanupRetrieveTxs(true);
 
     return success;
 }
@@ -177,7 +187,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
                         response = resCreateSlatepackMessage.errorMessage();
                     }
                 }
-                sendUserMessage(message,response,false);
+                sendUserMessage(message,response,true);
 
             }
             //invalid amount
@@ -347,16 +357,16 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             return;
         }
 
-        sendUserMessage(message, "transaction finalized and broadcast, the following message contains your S3 slatepack file!", false);
+        sendUserMessage(message, "transaction finalized and broadcast!", false);
 
-        m_bot->sendDocument(filename + ".S3.slatepack",
-                            id,
-                            QVariant(msg.toUtf8() + "\n"),
-                            "",
-                            0,
-                            TelegramBot::NoFlag,
-                            TelegramKeyboardRequest(),
-                            nullptr);
+        // m_bot->sendDocument(filename + ".S3.slatepack",
+        //                     id,
+        //                     QVariant(msg.toUtf8() + "\n"),
+        //                     "",
+        //                     0,
+        //                     TelegramBot::NoFlag,
+        //                     TelegramKeyboardRequest(),
+        //                     nullptr);
 
         return;
     }
@@ -407,7 +417,6 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         sendUserMessage(message, msg, false);
         return;
     }
-
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // I1 File
@@ -533,16 +542,16 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             return;
         }
 
-        sendUserMessage(message, "transaction finalized and broadcast, the following message contains your I3 slatepack file!", false);
+        sendUserMessage(message, "transaction finalized and broadcast!", false);
 
-        m_bot->sendDocument(filename + ".I3.slatepack",
-                            id,
-                            QVariant(msg.toUtf8() + "\n"),
-                            "",
-                            0,
-                            TelegramBot::NoFlag,
-                            TelegramKeyboardRequest(),
-                            nullptr);
+        // m_bot->sendDocument(filename + ".I3.slatepack",
+        //                     id,
+        //                     QVariant(msg.toUtf8() + "\n"),
+        //                     "",
+        //                     0,
+        //                     TelegramBot::NoFlag,
+        //                     TelegramKeyboardRequest(),
+        //                     nullptr);
 
         return;
     }
@@ -634,8 +643,8 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
-                sendUserMessage(message, "transaction finalized and broadcast", false);
-                sendUserMessage(message, msg, true);
+                sendUserMessage(message, "transaction finalized and broadcast!", false);
+                //sendUserMessage(message, msg, true);
             }
         } else if (state == SlateState::S3) {
             // S3 - Standard: Slate complete, ready to post
@@ -679,8 +688,8 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
-                sendUserMessage(message, "transaction finalized and broadcast", false);
-                sendUserMessage(message, msg, true);
+                sendUserMessage(message, "transaction finalized and broadcast!", false);
+                //sendUserMessage(message, msg, true);
             }
         } else if (state == SlateState::I3) {
             // I3 - Invoice: Slate complete, ready to post
@@ -711,8 +720,9 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
 
         QString response;
         InitTxArgs args;
+        qlonglong amount = 1000000000;
         args.setSrcAcctName(QJsonValue::Null);
-        args.setAmount(m_faucetAmount);
+        args.setAmount(amount);
         args.setAmountIncludesFee(QJsonValue::Null);
         args.setMinimumConfirmations(10);
         args.setMaxOutputs(500);
@@ -725,12 +735,24 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         args.setLateLock(QJsonValue::Null);
         args.setSendArgs(InitTxSendArgs());
 
-        qDebug()<<debugJsonString(args);
+        ///---------------------------------------------------------------------------------------------------------------------------
+        /// Check functions
+        ///---------------------------------------------------------------------------------------------------------------------------
+        QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
+
+        if (amountToday.toLongLong() >= m_faucetAmount || amount > m_faucetAmount) {
+            sendUserMessage(message,
+                            QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs %1 GRIN per day per user.").arg(m_faucetAmount/1000000000),
+                            true);
+            return;
+        }
 
         Result<Slate> resInitSendTx =  m_walletOwnerApi->initSendTx(args);
         Slate slate;
         if (!resInitSendTx.unwrapOrLog(slate)) {
             response = resInitSendTx.errorMessage();
+            sendUserMessage(message, response, true);
+            return;
         }
 
         else
@@ -739,6 +761,8 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
             if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
                 response = resCreateSlatepackMessage.errorMessage();
+                sendUserMessage(message, response, true);
+                return;
             }
         }
 
@@ -753,10 +777,16 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
                 response = res.errorMessage();
             } else {
                 qDebug() << "txLockOutputs: " << lockOutputs;
+                Faucet f;
+                f.setUserId(QString::number(message.from.id));
+                f.setUsername(message.from.firstName);
+                f.setAmount(QString::number(amount));
+                f.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
+                qDebug() << "insert faucet pack: " << m_dbManager->insertFaucet(f);
             }
         }
 
-        sendUserMessage(message, response, false);
+        sendUserMessage(message, response, true);
         return;
     }
 
@@ -978,6 +1008,14 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
             }
             sendUserMessage(message, result, true);
         }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // command admincleanup
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        if (message.text.contains("/admincleanup")) {
+            cleanupRetrieveTxs(true);
+            sendUserMessage(message, "cleanup success!", true);
+        }
     }
 }
 
@@ -1089,7 +1127,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
 
     if (amountToday.toLongLong() >= m_faucetAmount || slate.amt().toLongLong() > m_faucetAmount) {
         return Error(ErrorType::Unknown,
-                     QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs 2 GRIN per day per user."));
+                     QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs %1 GRIN per day per user.").arg(m_faucetAmount/1000000000));
     }
 
     ///---------------------------------------------------------------------------------------------------------------------------
@@ -1253,6 +1291,16 @@ Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage me
         }
     }
 
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling insert donate in db
+    ///---------------------------------------------------------------------------------------------------------------------------
+    Donate donate;
+    donate.setUserId(QString::number(message.from.id));
+    donate.setUsername(message.from.firstName);
+    donate.setAmount(slate.amt());
+    donate.setDate(QDateTime::currentDateTime().toString("yyyy-MM-dd"));
+    qDebug() << "insert donate: " << m_dbManager->insertDonate(donate);
+
     return slatepack;
 }
 
@@ -1271,7 +1319,7 @@ Result<QString> GgcWorker::handleSlateI3State(Slate slate, TelegramBotMessage me
 /**
  * @brief GgcWorker::outputRetrieveTxs
  */
-void GgcWorker::cleanupRetrieveTxs()
+void GgcWorker::cleanupRetrieveTxs(bool cleanAll)
 {
     QList<TxLogEntry> txList;
     {
@@ -1287,7 +1335,7 @@ void GgcWorker::cleanupRetrieveTxs()
         if (txList[i].confirmed() == false && (txList[i].txType() == "TxReceived" || txList[i].txType() == "TxSent")) {
             QDateTime now = QDateTime::currentDateTimeUtc();
 
-            if (txList[i].creationTs().secsTo(now) > 36000) { // Older than 10 hours
+            if (txList[i].creationTs().secsTo(now) > 36000 || cleanAll) { // Older than 10 hours
                 qDebug() << "Transaction is older than 10 hours:";
                 qInfo().noquote() << debugJsonString(txList[i]);
 

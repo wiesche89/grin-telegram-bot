@@ -29,7 +29,7 @@ public:
 
 private slots:
     void onMessage(TelegramBotUpdate update);
-    void cleanupRetrieveTxs();
+    void cleanupRetrieveTxs(bool cleanAll);
 
 private:
     QString readFileToString(const QString &filePath);

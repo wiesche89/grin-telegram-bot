@@ -98,11 +98,11 @@ int main(int argc, char *argv[])
             QCoreApplication::quit();
         }
 
-        // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
-        // if (!tippingWorker->init()) {
-        //     qDebug()<<"Tipping Worker init failed!";
-        //     QCoreApplication::quit();
-        // }
+        TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        if (!tippingWorker->init()) {
+            qDebug()<<"Tipping Worker init failed!";
+            QCoreApplication::quit();
+        }
 
         GateIoWorker *gateIoWorker = new GateIoWorker(bot,settings);
         if (!gateIoWorker->init()) {
