@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
 
         /// following commands exists
         /*
-        GGC commands
         start - introduction
         address - get slatepack address
         donate - donate instruction
@@ -67,8 +66,6 @@ int main(int argc, char *argv[])
         orderbook - current orderbook
         chart - chart 4h USDT
         history - last 10 trades USDT
-
-        Tipping commands
         deposit - example /deposit 10
         withdraw - example /withdraw 10
         tip - tipping Grins to other user example /tip @user 10

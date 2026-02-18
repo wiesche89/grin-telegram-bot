@@ -940,7 +940,8 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminamount
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminamount")) {
+        QStringList adminParts = message.text.split(' ', Qt::SkipEmptyParts);
+        if (!adminParts.isEmpty() && adminParts[0] == "/adminamount") {
             QString info;
             WalletInfo walletInfo;
             {

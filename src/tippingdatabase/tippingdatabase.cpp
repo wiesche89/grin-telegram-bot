@@ -74,6 +74,18 @@ bool TippingDatabase::ensureTables()
         return false;
     }
 
+    const char *pendingSQL = "CREATE TABLE IF NOT EXISTS pending_deposits ("
+                             "slate_id TEXT PRIMARY KEY,"
+                             "user_id TEXT NOT NULL,"
+                             "amount INTEGER NOT NULL,"
+                             "chat_id INTEGER,"
+                             "first_name TEXT,"
+                             "created_at INTEGER NOT NULL)";
+    if (!m_query->exec(pendingSQL)) {
+        qWarning() << "Failed to create pending deposits table:" << m_query->lastError().text();
+        return false;
+    }
+
     return true;
 }
 
@@ -138,4 +150,62 @@ bool TippingDatabase::setBalance(const QString &userId, int balance)
     m_query->addBindValue(userId);
     m_query->addBindValue(balance);
     return m_query->exec();
+}
+
+bool TippingDatabase::insertPendingDeposit(const PendingDepositRecord &deposit)
+{
+    if (!m_query) return false;
+    m_query->prepare("REPLACE INTO pending_deposits (slate_id, user_id, amount, chat_id, first_name, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+    m_query->addBindValue(deposit.slateId);
+    m_query->addBindValue(deposit.userId);
+    m_query->addBindValue(deposit.amount);
+    m_query->addBindValue(deposit.chatId);
+    m_query->addBindValue(deposit.firstName);
+    m_query->addBindValue(QDateTime::currentSecsSinceEpoch());
+    return m_query->exec();
+}
+
+bool TippingDatabase::removePendingDeposit(const QString &slateId)
+{
+    if (!m_query) return false;
+    m_query->prepare("DELETE FROM pending_deposits WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    return m_query->exec();
+}
+
+QList<PendingDepositRecord> TippingDatabase::pendingDeposits()
+{
+    QList<PendingDepositRecord> list;
+    if (!m_query) return list;
+    m_query->prepare("SELECT slate_id, user_id, amount, chat_id, first_name FROM pending_deposits");
+    if (!m_query->exec()) {
+        return list;
+    }
+
+    while (m_query->next()) {
+        PendingDepositRecord record;
+        record.slateId = m_query->value(0).toString();
+        record.userId = m_query->value(1).toString();
+        record.amount = m_query->value(2).toInt();
+        record.chatId = m_query->value(3).toLongLong();
+        record.firstName = m_query->value(4).toString();
+        list.append(record);
+    }
+    return list;
+}
+
+bool TippingDatabase::pendingDeposit(const QString &slateId, PendingDepositRecord &deposit)
+{
+    if (!m_query) return false;
+    m_query->prepare("SELECT user_id, amount, chat_id, first_name FROM pending_deposits WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    if (!m_query->exec() || !m_query->next()) {
+        return false;
+    }
+    deposit.slateId = slateId;
+    deposit.userId = m_query->value(0).toString();
+    deposit.amount = m_query->value(1).toInt();
+    deposit.chatId = m_query->value(2).toLongLong();
+    deposit.firstName = m_query->value(3).toString();
+    return true;
 }

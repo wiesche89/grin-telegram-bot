@@ -8,6 +8,16 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QString>
+#include <QList>
+
+struct PendingDepositRecord
+{
+    QString slateId;
+    QString userId;
+    qlonglong chatId;
+    QString firstName;
+    int amount;
+};
 
 class TippingDatabase : public QObject
 {
@@ -22,6 +32,10 @@ public:
     int getBalance(const QString &userId);
     bool updateBalance(const QString &userId, int amountDelta);
     bool setBalance(const QString &userId, int balance);
+    bool insertPendingDeposit(const PendingDepositRecord &deposit);
+    bool removePendingDeposit(const QString &slateId);
+    QList<PendingDepositRecord> pendingDeposits();
+    bool pendingDeposit(const QString &slateId, PendingDepositRecord &deposit);
 
 private:
     QSqlDatabase m_db;
