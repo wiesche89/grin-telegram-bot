@@ -179,36 +179,78 @@ cd grin-telegram-bot/
 
 ---
 
-### 5. Build Using Docker Compose
+### 5. Build & Run with Docker Compose (Mainnet / Testnet)
+
+This repository contains **two** compose files:
+
+- `docker-compose.yml` → **Mainnet**
+- `docker-compose-testnet.yml` → **Testnet**
+
+> Note: Both compose files use the same `container_name` (`grin-telegram-bot-container`).  
+> Run **either mainnet or testnet**, not both at the same time (unless you change the container name and ports).
+
+#### Mainnet: build + start
 
 ```bash
-sudo docker-compose build
+sudo docker compose -f docker-compose.yml up -d --build
 ```
 
-### 6. Run Using Docker Compose
+View logs:
+
 ```bash
-sudo docker-compose up -d
+sudo docker logs -f grin-telegram-bot-container
 ```
 
-### 7. Get Container id
+Stop:
+
 ```bash
-sudo docker container ls
+sudo docker compose -f docker-compose.yml down
 ```
 
-### 8. Go into Docker logs (first 3 letter)
+#### Testnet: build + start
+
 ```bash
-sudo docker logs -f <container id>
+sudo docker compose -f docker-compose-testnet.yml up -d --build
 ```
 
-
-# Extract `database.db` from Docker (Snap-based)
-
-To extract the `database.db` file from a Snap-based Docker container and move it to your home directory, execute the following in one go:
+View logs:
 
 ```bash
-sudo -i && \
-cd /tmp/snap-private-tmp/snap.docker/tmp && \
-sudo docker cp grin-telegram-bot-container:/opt/grin-telegram-bot/etc/database/database.db /tmp/ && \
-sudo mv /tmp/snap-private-tmp/snap.docker/tmp/database.db /home/grin/ && \
-chown grin:grin /home/grin/database.db && \
-ls -lh /home/grin/database.db
+sudo docker logs -f grin-telegram-bot-container
+```
+
+Stop:
+
+```bash
+sudo docker compose -f docker-compose-testnet.yml down
+```
+
+#### Persistent data directory
+
+Both compose files bind-mount the same host directory:
+
+- Host: `~/grin-telegram-bot-data`
+- Container: `/opt/grin-telegram-bot/data`
+
+Expected structure inside `~/grin-telegram-bot-data`:
+
+```
+.grin/
+  main/   (mainnet wallet + config)
+  test/   (testnet wallet + config)
+.wallet/
+  password.txt
+etc/
+  database/database.db
+  messages/start.txt
+  messages/donate.txt
+  messages/faucet.txt
+  settings.ini
+```
+
+Tip: message templates can be copied from `deploy/etc/messages/` into your data directory:
+
+```bash
+mkdir -p ~/grin-telegram-bot-data/etc/messages
+cp -av ./deploy/etc/messages/. ~/grin-telegram-bot-data/etc/messages/
+```

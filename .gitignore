@@ -1,3 +1,43 @@
+# =========================
+# Runtime / Wallet Data
+# =========================
 .wallet/
 .grin/
+
+# =========================
+# Build artifacts
+# =========================
 build/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# =========================
+# Windows binaries & DLLs
+# =========================
+*.dll
+*.exe
+*.pdb
+
+# =========================
+# Deploy runtime folders
+# =========================
+deploy/main/
+deploy/test/
+
+# =========================
+# Qt Creator / VS / IDE
+# =========================
+*.user
+*.pro.user
+*.autosave
+*.log
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
