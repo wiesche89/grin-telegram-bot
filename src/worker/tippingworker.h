@@ -13,8 +13,6 @@
 #include "result.h"
 #include "slate.h"
 #include "tippingdatabase.h"
-#include "blackjackgame.h"
-
 class TippingWorker : public QObject
 {
     Q_OBJECT
@@ -32,14 +30,10 @@ private:
     QString handleDeposit(const QString &user, int amount);
     QString handleWithdraw(const QString &user, int amount);
     QString handleTip(const QString &fromUser, const QString &toUser, int amount);
-    QString handleBlackjackRequest(const QString &fromUser, const QString &toUser, int amount);
-    QString makeGameKey(const QString &user1, const QString &user2);
 
     TelegramBot *m_bot;
     QSettings *m_settings;
     TippingDatabase *m_db;
-    QMap<QString, BlackjackGame *> m_activeGames;
-    bool isPlayerInGame(const QString &user) const;
     void sendUserMessage(QString user, QString content);
 };
 

@@ -68,6 +68,12 @@ int main(int argc, char *argv[])
         chart - chart 4h USDT
         history - last 10 trades USDT
 
+        Tipping commands
+        deposit - example /deposit 10
+        withdraw - example /withdraw 10
+        tip - tipping Grins to other user example /tip @user 10
+        balance - shows your balance
+
         Admin commands
         adminenabledisabledeposits - enable/disable deposits
         adminenabledisablewithdrawals - enable/disable withdrawals
@@ -76,17 +82,7 @@ int main(int argc, char *argv[])
         adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
         adminapprovedwithdrawalamount - set the approved withdrawal amount
         adminamount - get account amounts
-
-        Tipping commands
-        deposit - example /deposit 10
-        withdraw - example /withdraw 10
-        tip - tipping Grins to other user example /tip @user 10
-        blackjack - start BlackJack game with other user /blackjack @user 10
-        hit - command blackjack
-        stand - command blackjack
-        balance - shows your balance
-        cancelgame - cancel current game
-        games - list all active games
+        admincleanup - cleanup txs
         */
 
         // Bot - Instance

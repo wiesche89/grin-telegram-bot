@@ -107,7 +107,6 @@ SOURCES += \
   src/api/wallet/attributes/walletconfig.cpp \
   src/api/wallet/attributes/walletinfo.cpp \
   src/dexdatabase/dexdatabase.cpp \
-  src/games/blackjackgame.cpp \
   src/gateio/gateioclient.cpp \
   src/ggcdatabase/ggcdatabasemanager.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
@@ -194,7 +193,6 @@ HEADERS += \
   src/api/wallet/foreign/walletforeignapi.h \
   src/api/wallet/owner/walletownerapi.h \
   src/dexdatabase/dexdatabase.h \
-  src/games/blackjackgame.h \
   src/gateio/gateioclient.h \
   src/ggcdatabase/ggcdatabasemanager.h \
   src/grinwalletmanager/grinwalletmanager.h \
