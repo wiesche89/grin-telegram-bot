@@ -37,6 +37,11 @@ private:
 
     Result<QString> handleSlateS1State(Slate slate, TelegramBotMessage message);
     Result<QString> handleSlateI1State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateS2State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateS3State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateI2State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateI3State(Slate slate, TelegramBotMessage message);
+
     QString downloadFileToQString(const QUrl &url);
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);

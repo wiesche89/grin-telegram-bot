@@ -293,6 +293,123 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
+    // S2 File
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.document.fileName.endsWith("S2.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get S3 Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateS2State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // send file S3
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString path = file.filePath; // e.g., "documents/1234-5678.S2.slatepack"
+        QString baseName = QFileInfo(path).baseName(); // "1234-5678.S2"
+        QString filename = baseName.section('.', 0, 0); // "1234-5678"
+
+        if (filename.isEmpty()) {
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        sendUserMessage(message, "transaction finalized and broadcast, the following message contains your S3 slatepack file!", false);
+
+        m_bot->sendDocument(filename + ".S3.slatepack",
+                            id,
+                            QVariant(msg.toUtf8() + "\n"),
+                            "",
+                            0,
+                            TelegramBot::NoFlag,
+                            TelegramKeyboardRequest(),
+                            nullptr);
+
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // S3 File
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.document.fileName.endsWith("S3.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // handle S3
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateS3State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        sendUserMessage(message, msg, false);
+        return;
+    }
+
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
     // I1 File
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.document.fileName.endsWith("I1.slatepack")) {
@@ -362,6 +479,122 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
+    // I2 File
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.document.fileName.endsWith("I2.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get I3 Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateI2State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // send file I3
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString path = file.filePath; // e.g., "documents/1234-5678.I2.slatepack"
+        QString baseName = QFileInfo(path).baseName(); // "1234-5678.I2"
+        QString filename = baseName.section('.', 0, 0); // "1234-5678"
+
+        if (filename.isEmpty()) {
+            sendUserMessage(message, QString("filename could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        sendUserMessage(message, "transaction finalized and broadcast, the following message contains your I3 slatepack file!", false);
+
+        m_bot->sendDocument(filename + ".I3.slatepack",
+                            id,
+                            QVariant(msg.toUtf8() + "\n"),
+                            "",
+                            0,
+                            TelegramBot::NoFlag,
+                            TelegramKeyboardRequest(),
+                            nullptr);
+
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // I3 File
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (message.document.fileName.endsWith("I3.slatepack")) {
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // TelegramBotFile - This object represents a file ready to be downloaded.
+        // The file can be downloaded via the link https://api.telegram.org/file/bot<token>/<file_path>.
+        // It is guaranteed that the link will be valid for at least 1 hour. When the link expires,
+        // a new one can be requested by calling getFile. Maximum file size to download is 20 MB
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        TelegramBotFile file = m_bot->getFile(message.document.fileId);
+        QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
+        QString slatepack = downloadFileToQString(QUrl(link));
+
+        if (slatepack.isEmpty()) {
+            sendUserMessage(message, QString("Slatepack could not be extracted from the file: " + file.filePath), false);
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // get Slate from Slatepack
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        Slate slate;
+        {
+            Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
+            if (!res.unwrapOrLog(slate)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        // handle I3
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        QString msg;
+        {
+            Result<QString> res = handleSlateI3State(slate, message);
+            if (!res.unwrapOrLog(msg)) {
+                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                return;
+            }
+        }
+
+        sendUserMessage(message, msg, false);
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
@@ -393,11 +626,30 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         } else if (state == SlateState::S2) {
             // S2 - Standard: Receiver added Outputs, Nonce, PartialSig
             qDebug() << "Slate state: S2 (Standard Recipient Response)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: S2 (Standard Recipient Response)", false);
+
+            QString msg;
+            {
+                Result<QString> res = handleSlateS2State(slate, message);
+                if (!res.unwrapOrLog(msg)) {
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                    return;
+                }
+                sendUserMessage(message, "transaction finalized and broadcast", false);
+                sendUserMessage(message, msg, true);
+            }
         } else if (state == SlateState::S3) {
             // S3 - Standard: Slate complete, ready to post
             qDebug() << "Slate state: S3 (Standard Finalized)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: S3 (Standard Finalized)", false);
+
+            QString msg;
+            {
+                Result<QString> res = handleSlateS3State(slate, message);
+                if (!res.unwrapOrLog(msg)) {
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                    return;
+                }
+                sendUserMessage(message, msg, false);
+            }
         } else if (state == SlateState::I1) {
             // I1 - Invoice: Payee initiates transaction
             qDebug() << "Slate state: I1 (Invoice Payee Init)";
@@ -419,11 +671,30 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         } else if (state == SlateState::I2) {
             // I2 - Invoice: Payer added Inputs, Change and Signature
             qDebug() << "Slate state: I2 (Invoice Payer Response)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: I2 (Invoice Payer Response)", false);
+
+            QString msg;
+            {
+                Result<QString> res = handleSlateI2State(slate, message);
+                if (!res.unwrapOrLog(msg)) {
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                    return;
+                }
+                sendUserMessage(message, "transaction finalized and broadcast", false);
+                sendUserMessage(message, msg, true);
+            }
         } else if (state == SlateState::I3) {
             // I3 - Invoice: Slate complete, ready to post
             qDebug() << "Slate state: I3 (Invoice Finalized)";
-            sendUserMessage(message, "function currently not implemented!\nSlate state: I3 (Invoice Finalized)", false);
+
+            QString msg;
+            {
+                Result<QString> res = handleSlateI3State(slate, message);
+                if (!res.unwrapOrLog(msg)) {
+                    sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+                    return;
+                }
+                sendUserMessage(message, msg, false);
+            }
         } else {
             // Unknown or unsupported Slate state
             qWarning() << "Unknown Slate-State!";
@@ -897,6 +1168,104 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     qDebug() << "insert faucet: " << m_dbManager->insertFaucet(f);
 
     return slatepack;
+}
+
+/**
+ * @brief GgcWorker::handleSlateS2State
+ * @param slate
+ * @return
+ */
+Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage message)
+{
+    qDebug() << "finalize standard slate (S2) from" << message.from.firstName << ":" << slate.amt();
+
+    Slate slate3;
+    {
+        Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
+        if (!res.unwrapOrLog(slate3)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+    }
+
+    bool posted = false;
+    {
+        Result<bool> res = m_walletOwnerApi->postTx(slate3, false);
+        if (!res.unwrapOrLog(posted)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+        qDebug() << "postTx result:" << posted;
+    }
+
+    QString slatepack;
+    {
+        Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate3, QJsonArray(), 0);
+        if (!res.unwrapOrLog(slatepack)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+    }
+
+    return slatepack;
+}
+
+/**
+ * @brief GgcWorker::handleSlateS3State
+ * @param slate
+ * @return
+ */
+Result<QString> GgcWorker::handleSlateS3State(Slate slate, TelegramBotMessage message)
+{
+    Q_UNUSED(slate);
+    qDebug() << "received S3 slate from" << message.from.firstName;
+    return QString("Slate state S3 acknowledged. Nothing more to do.");
+}
+
+/**
+ * @brief GgcWorker::handleSlateI2State
+ * @param slate
+ * @return
+ */
+Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage message)
+{
+    qDebug() << "finalize invoice slate (I2) from" << message.from.firstName << ":" << slate.amt();
+
+    Slate slate3;
+    {
+        Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
+        if (!res.unwrapOrLog(slate3)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+    }
+
+    bool posted = false;
+    {
+        Result<bool> res = m_walletOwnerApi->postTx(slate3, false);
+        if (!res.unwrapOrLog(posted)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+        qDebug() << "postTx result:" << posted;
+    }
+
+    QString slatepack;
+    {
+        Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate3, QJsonArray(), 0);
+        if (!res.unwrapOrLog(slatepack)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+    }
+
+    return slatepack;
+}
+
+/**
+ * @brief GgcWorker::handleSlateI3State
+ * @param slate
+ * @return
+ */
+Result<QString> GgcWorker::handleSlateI3State(Slate slate, TelegramBotMessage message)
+{
+    Q_UNUSED(slate);
+    qDebug() << "received I3 slate from" << message.from.firstName;
+    return QString("Slate state I3 acknowledged. Nothing more to do.");
 }
 
 /**
