@@ -98,7 +98,7 @@ bool GrinWalletManager::startWallet()
     #endif
 
     QString net = qEnvironmentVariable("GRIN_CHAIN_TYPE");
-    qDebug()<<"net:"<<net;
+
     if(net == "testnet")
     {
         m_walletProcess->start(program, {"--testnet","owner_api", "--run_foreign"});

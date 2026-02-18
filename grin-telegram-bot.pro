@@ -29,7 +29,6 @@ INCLUDEPATH += \
   src/api/node/owner \
   src/api/wallet/owner \
   src/telegrambot \
-  src/tradeogre \
   src/tippingdatabase \
   src/grinwalletmanager \
   src/ggcdatabase \
@@ -118,9 +117,6 @@ SOURCES += \
   src/telegrambot/modules/sslserver/sslserver.cpp \
   src/telegrambot/telegrambot.cpp \
   src/tippingdatabase/tippingdatabase.cpp \
-  src/tradeogre/tradeogreprivateapi.cpp \
-  src/tradeogre/tradeogrepublicapi.cpp \
-  src/tradeogre/tradeogrewebsocketapi.cpp \
   src/util/jsonutil.cpp \
   src/api/wallet/foreign/walletforeignapi.cpp \
   src/api/wallet/owner/walletownerapi.cpp \
@@ -131,8 +127,7 @@ SOURCES += \
   src/worker/dexworker.cpp \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
-  src/worker/tippingworker.cpp \
-  src/worker/tradeogreworker.cpp
+  src/worker/tippingworker.cpp
 
 # .h
 HEADERS += \
@@ -211,9 +206,6 @@ HEADERS += \
   src/telegrambot/telegramdatainterface.h \
   src/telegrambot/telegramdatastructs.h \
   src/tippingdatabase/tippingdatabase.h \
-  src/tradeogre/tradeogreprivateapi.h \
-  src/tradeogre/tradeogrepublicapi.h \
-  src/tradeogre/tradeogrewebsocketapi.h \
   src/util/jsonutil.h \
   3rdParty/secp256k1/include/secp256k1.h \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \
@@ -226,8 +218,7 @@ HEADERS += \
   src/worker/dexworker.h \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \
-  src/worker/tippingworker.h \
-  src/worker/tradeogreworker.h
+  src/worker/tippingworker.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1

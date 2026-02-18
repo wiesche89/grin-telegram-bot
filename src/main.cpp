@@ -4,7 +4,6 @@
 #include "grinwalletmanager.h"
 #include "ggcworker.h"
 #include "tippingworker.h"
-#include "tradeogreworker.h"
 #include "gateioworker.h"
 
 /**
@@ -98,12 +97,6 @@ int main(int argc, char *argv[])
             qDebug()<<"GGC Worker init failed!";
             QCoreApplication::quit();
         }
-
-        // TradeOgreWorker *tradeOgreWorker = new TradeOgreWorker(bot,settings);
-        // if (!tradeOgreWorker->init()) {
-        //     qDebug()<<"Tradeogre Worker init failed!";
-        //     QCoreApplication::quit();
-        // }
 
         // TippingWorker *tippingWorker = new TippingWorker(bot,settings);
         // if (!tippingWorker->init()) {
