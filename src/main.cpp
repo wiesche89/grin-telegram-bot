@@ -6,6 +6,7 @@
 #include "tippingworker.h"
 #include "gateioworker.h"
 #include "messagehub.h"
+#include "api/wallet/owner/walletownerapi.h"
 
 /**
  * @brief main
@@ -86,13 +87,20 @@ int main(int argc, char *argv[])
         // Bot - Instance
         TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
 
-        GgcWorker *ggcWorker = new GgcWorker(bot,settings);
+        WalletOwnerApi *walletOwnerApi = new WalletOwnerApi(settings->value("wallet/ownerUrl").toString(),
+                                                            settings->value("wallet/user").toString(),
+                                                            settings->value("wallet/apiSecret").toString(),
+                                                            bot);
+        walletOwnerApi->initSecureApi();
+        walletOwnerApi->openWallet("", settings->value("wallet/password").toString());
+
+        GgcWorker *ggcWorker = new GgcWorker(bot,settings,walletOwnerApi);
         if (!ggcWorker->init()) {
             qDebug()<<"GGC Worker init failed!";
             QCoreApplication::quit();
         }
 
-        TippingWorker *tippingWorker = new TippingWorker(bot,settings);
+        TippingWorker *tippingWorker = new TippingWorker(bot,settings,walletOwnerApi);
         if (!tippingWorker->init()) {
             qDebug()<<"Tipping Worker init failed!";
             QCoreApplication::quit();

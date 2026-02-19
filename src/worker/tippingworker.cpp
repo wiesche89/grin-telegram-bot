@@ -10,11 +10,11 @@
 #include <QList>
 #include "txlogentry.h"
 
-TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings) :
+TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
     m_bot(bot),
     m_settings(settings),
     m_db(nullptr),
-    m_walletOwnerApi(nullptr),
+    m_walletOwnerApi(walletOwnerApi),
     tippingAccountLabel("tipping"),
     walletPassword("test"),
     m_pendingDepositTimer(nullptr)
@@ -37,15 +37,13 @@ bool TippingWorker::init()
     m_db = new TippingDatabase(dbPath, this);
     m_db->initialize();
 
-    m_walletOwnerApi = new WalletOwnerApi(m_settings->value("wallet/ownerUrl").toString(),
-                                          m_settings->value("wallet/user").toString(),
-                                          m_settings->value("wallet/apiSecret").toString());
-
     walletPassword = m_settings->value("wallet/password").toString();
     tippingAccountLabel = "tipping";
 
-    m_walletOwnerApi->initSecureApi();
-    m_walletOwnerApi->openWallet("", walletPassword);
+    if (!m_walletOwnerApi) {
+        qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
 
     if (!ensureTippingAccount()) {
         qWarning() << "Tipping account preparation failed";
@@ -164,6 +162,11 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
 
 bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
 {
+    if (!activateTippingWalletAccount()) {
+        sendUserMessage(message, "Wallet account could not be activated.", false);
+        return true;
+    }
+
     TelegramBotFile file = m_bot->getFile(message.document.fileId);
     QString link = "https://api.telegram.org/file/bot" + m_settings->value("bot/token").toString() + "/" + file.filePath;
     QString slatepack = downloadFileToQString(QUrl(link));
@@ -222,6 +225,11 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
 
 bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QString &text)
 {
+    if (!activateTippingWalletAccount()) {
+        sendUserMessage(message, "Wallet account could not be activated.", false);
+        return true;
+    }
+
     Slate slate;
     Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(text);
     if (!res.unwrapOrLog(slate)) {
@@ -334,6 +342,10 @@ QString TippingWorker::handleTip(const QString &fromId, const QString &fromLabel
 
 QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
 {
+    if (!activateTippingWalletAccount()) {
+        return "Wallet account could not be activated.";
+    }
+
     QList<TxLogEntry> txList;
     Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
 
@@ -470,6 +482,10 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
 
 Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessage message)
 {
+    if (!activateTippingWalletAccount()) {
+        return Error(ErrorType::Unknown, "Wallet account could not be activated.");
+    }
+
     Slate finalized;
     {
         qDebug() << "handleSlateI2State: finalizing deposit slate for" << message.from.firstName;
@@ -584,12 +600,7 @@ bool TippingWorker::ensureTippingAccount()
         }
     }
 
-    Result<bool> activateRes = m_walletOwnerApi->setActiveAccount(tippingAccountLabel);
-    bool ok = false;
-    if (!activateRes.unwrapOrLog(ok)) {
-        return false;
-    }
-    return ok;
+    return activateTippingWalletAccount();
 }
 
 Result<WalletInfo> TippingWorker::fetchAccountSummary(const QString &accountLabel)
@@ -604,6 +615,32 @@ Result<WalletInfo> TippingWorker::fetchAccountSummary(const QString &accountLabe
     }
 
     return m_walletOwnerApi->retrieveSummaryInfo(true, 1);
+}
+
+bool TippingWorker::activateWalletAccount(const QString &accountLabel)
+{
+    if (!m_walletOwnerApi) {
+        qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
+
+    Result<bool> res = m_walletOwnerApi->setActiveAccount(accountLabel);
+    bool activated = false;
+    if (!res.unwrapOrLog(activated)) {
+        qWarning() << "Failed to activate wallet account" << accountLabel << ":" << res.errorMessage();
+        return false;
+    }
+
+    if (!activated) {
+        qWarning() << "Wallet account activation returned false for" << accountLabel;
+    }
+
+    return activated;
+}
+
+bool TippingWorker::activateTippingWalletAccount()
+{
+    return activateWalletAccount(tippingAccountLabel);
 }
 
 QString TippingWorker::formatWalletSummary(const WalletInfo &walletInfo) const
@@ -691,6 +728,11 @@ bool TippingWorker::isAdmin(qlonglong id)
 
 void TippingWorker::checkPendingDeposits()
 {
+    if (!activateTippingWalletAccount()) {
+        qWarning() << "checkPendingDeposits: wallet account could not be activated";
+        return;
+    }
+
     QList<PendingDepositRecord> pendingList = m_db->pendingDeposits();
     if (pendingList.isEmpty()) {
         return;

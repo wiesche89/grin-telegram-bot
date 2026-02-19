@@ -6,6 +6,7 @@
 #include <QCoreApplication>
 #include <QTemporaryFile>
 #include <QProcessEnvironment>
+#include <QtGlobal>
 
 #include "telegrambot.h"
 #include "ggcdatabasemanager.h"
@@ -13,6 +14,7 @@
 #include "walletownerapi.h"
 #include "walletforeignapi.h"
 #include "nodeforeignapi.h"
+#include "account.h"
 
 #include "slate.h"
 #include "walletinfo.h"
@@ -24,7 +26,7 @@ class GgcWorker : public QObject
     Q_OBJECT
 
 public:
-    GgcWorker(TelegramBot *bot, QSettings *settings);
+    GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi);
     bool init();
     void handleUpdate(TelegramBotUpdate update);
 
@@ -42,6 +44,9 @@ private:
     Result<QString> handleSlateI2State(Slate slate, TelegramBotMessage message);
     Result<QString> handleSlateI3State(Slate slate, TelegramBotMessage message);
 
+    bool activateWalletAccount(const QString &accountLabel = "default");
+
+
     QString downloadFileToQString(const QUrl &url);
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain);
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
@@ -54,6 +59,7 @@ private:
     NodeForeignApi *m_nodeForeignApi;
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
+    QString m_defaultAccountLabel;
     QSettings *m_settings;
     qlonglong m_faucetAmount;
 

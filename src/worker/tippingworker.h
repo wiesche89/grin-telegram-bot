@@ -26,7 +26,7 @@ class TippingWorker : public QObject
     Q_OBJECT
 
 public:
-    TippingWorker(TelegramBot *bot, QSettings *settings);
+    TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi);
     bool init();
     bool handleUpdate(TelegramBotUpdate update);
 
@@ -68,6 +68,8 @@ private:
     QHash<QString, PendingWithdrawRecord> m_pendingWithdraws;
 
     void sendUserMessage(QString user, QString content);
+    bool activateWalletAccount(const QString &accountLabel);
+    bool activateTippingWalletAccount();
 };
 #endif // TIPPINGWORKER_H
 

@@ -3,12 +3,12 @@
 /**
  * @brief GgcWorker::GgcWorker
  */
-GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings) :
+GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
     m_dbManager(nullptr),
     m_bot(bot),
     m_nodeOwnerApi(nullptr),
     m_nodeForeignApi(nullptr),
-    m_walletOwnerApi(nullptr),
+    m_walletOwnerApi(walletOwnerApi),
     m_walletForeignApi(nullptr),
     m_settings(settings),
     m_faucetAmount(1000000000)
@@ -47,13 +47,15 @@ bool GgcWorker::init()
     // need to check connection/online
     m_nodeForeignApi->getVersion();
 
-    // Wallet Owner Api Instance
-    m_walletOwnerApi = new WalletOwnerApi(m_settings->value("wallet/ownerUrl").toString(),
-                                          m_settings->value("wallet/user").toString(),
-                                          m_settings->value("wallet/apiSecret").toString());
+    if (!m_walletOwnerApi) {
+        qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
 
-    m_walletOwnerApi->initSecureApi();
-    m_walletOwnerApi->openWallet("", m_settings->value("wallet/password").toString());
+    if (!activateWalletAccount()) {
+        qWarning() << "Could not activate ggc account";
+        return false;
+    }
 
     //scan whole wallet
     // if (!scanWallet()) {
@@ -112,6 +114,11 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
 {
     // only handle Messages
     if (update->type != TelegramBotMessageType::Message) {
+        return;
+    }
+
+    if (!activateWalletAccount()) {
+        qWarning() << "Default wallet account could not be activated";
         return;
     }
 
@@ -1074,6 +1081,9 @@ Result<QString> GgcWorker::handleSlateS1State(Slate slate, TelegramBotMessage me
     /// Debugging
     ///---------------------------------------------------------------------------------------------------------------------------
     qDebug() << "donate " << message.from.firstName << " :" << slate.amt();
+    if (!activateWalletAccount()) {
+        return Error(ErrorType::Unknown, "Wallet account could not be activated.");
+    }
 
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Handling receiveTx
@@ -1120,6 +1130,9 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     /// Debugging
     ///---------------------------------------------------------------------------------------------------------------------------
     qDebug() << "faucet " << message.from.firstName << " :" << slate.amt();
+    if (!activateWalletAccount()) {
+        return Error(ErrorType::Unknown, "Wallet account could not be activated.");
+    }
 
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Check functions
@@ -1217,6 +1230,9 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
 Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage message)
 {
     qDebug() << "finalize standard slate (S2) from" << message.from.firstName << ":" << slate.amt();
+    if (!activateWalletAccount()) {
+        return Error(ErrorType::Unknown, "Wallet account could not be activated.");
+    }
 
     Slate slate3;
     {
@@ -1266,6 +1282,9 @@ Result<QString> GgcWorker::handleSlateS3State(Slate slate, TelegramBotMessage me
 Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage message)
 {
     qDebug() << "finalize invoice slate (I2) from" << message.from.firstName << ":" << slate.amt();
+    if (!activateWalletAccount()) {
+        return Error(ErrorType::Unknown, "Wallet account could not be activated.");
+    }
 
     Slate slate3;
     {
@@ -1317,11 +1336,37 @@ Result<QString> GgcWorker::handleSlateI3State(Slate slate, TelegramBotMessage me
     return QString("Slate state I3 acknowledged. Nothing more to do.");
 }
 
+bool GgcWorker::activateWalletAccount(const QString &accountLabel)
+{
+    if (!m_walletOwnerApi) {
+        qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
+
+    Result<bool> res = m_walletOwnerApi->setActiveAccount(accountLabel);
+    bool activated = false;
+    if (!res.unwrapOrLog(activated)) {
+        qWarning() << "Failed to activate wallet account" << accountLabel << ":" << res.errorMessage();
+        return false;
+    }
+
+    if (!activated) {
+        qWarning() << "Wallet account activation returned false for" << accountLabel;
+    }
+
+    return activated;
+}
+
 /**
  * @brief GgcWorker::outputRetrieveTxs
  */
 void GgcWorker::cleanupRetrieveTxs(bool cleanAll)
 {
+    if (!activateWalletAccount()) {
+        qWarning() << "cleanupRetrieveTxs: wallet account could not be activated";
+        return;
+    }
+
     QList<TxLogEntry> txList;
     {
         Result<QList<TxLogEntry> > res = m_walletOwnerApi->retrieveTxs(true, 0, "");

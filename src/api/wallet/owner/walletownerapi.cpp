@@ -854,7 +854,10 @@ Result<bool> WalletOwnerApi::setActiveAccount(QString label)
     params["token"] = QString(m_openWalletToken.toHex());
     params["label"] = label;
 
-    auto res = JsonUtil::extractOkValue(postEncrypted("set_active_account", params));
+    QJsonObject obj = postEncrypted("set_active_account", params);
+    qDebug()<<"Accounting json: "<<obj;
+
+    auto res = JsonUtil::extractOkValue(obj);
     QJsonValue OkVal;
 
     if (!res.unwrapOrLog(OkVal)) {
