@@ -19,6 +19,14 @@ struct PendingDepositRecord
     int amount;
 };
 
+struct PendingWithdrawRecord
+{
+    QString slateId;
+    QString userId;
+    int amount;
+    qlonglong createdAt;
+};
+
 class TippingDatabase : public QObject
 {
     Q_OBJECT
@@ -36,6 +44,11 @@ public:
     bool removePendingDeposit(const QString &slateId);
     QList<PendingDepositRecord> pendingDeposits();
     bool pendingDeposit(const QString &slateId, PendingDepositRecord &deposit);
+
+    bool insertPendingWithdraw(const PendingWithdrawRecord &withdraw);
+    bool removePendingWithdraw(const QString &slateId);
+    QList<PendingWithdrawRecord> pendingWithdrawals();
+    bool pendingWithdraw(const QString &slateId, PendingWithdrawRecord &withdraw);
 
 private:
     QSqlDatabase m_db;

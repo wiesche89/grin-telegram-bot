@@ -126,7 +126,8 @@ SOURCES += \
   src/worker/dexworker.cpp \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
-  src/worker/tippingworker.cpp
+  src/worker/tippingworker.cpp \
+  src/worker/messagehub.cpp
 
 # .h
 HEADERS += \
@@ -216,7 +217,8 @@ HEADERS += \
   src/worker/dexworker.h \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \
-  src/worker/tippingworker.h
+  src/worker/tippingworker.h \
+  src/worker/messagehub.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1

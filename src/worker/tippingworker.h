@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QDebug>
+#include <QHash>
 #include <QUrl>
 
 #include "telegrambot.h"
@@ -20,11 +21,6 @@
 #include "account.h"
 #include "inittxargs.h"
 
-struct PendingWithdraw {
-    QString slateId;
-    int amount;
-};
-
 class TippingWorker : public QObject
 {
     Q_OBJECT
@@ -32,15 +28,15 @@ class TippingWorker : public QObject
 public:
     TippingWorker(TelegramBot *bot, QSettings *settings);
     bool init();
+    bool handleUpdate(TelegramBotUpdate update);
 
 private slots:
-    void onMessage(TelegramBotUpdate update);
     void checkPendingDeposits();
 
 private:
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain = false);
-    void handleSlatepackDocument(TelegramBotMessage &message);
-    void handleSlatepackText(TelegramBotMessage &message, const QString &text);
+    bool handleSlatepackDocument(TelegramBotMessage &message);
+    bool handleSlatepackText(TelegramBotMessage &message, const QString &text);
 
     QString handleDepositCommand(const QString &senderId, int amount, TelegramBotMessage message);
     QString handleWithdrawCommand(const QString &senderId, int amount, TelegramBotMessage message);
@@ -53,7 +49,7 @@ private:
     void sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel);
     bool ensureTippingAccount();
     Result<QString> createInvoiceSlatepack(qlonglong nanogrin, QString &slateId);
-    Result<QString> createSendSlatepack(qlonglong nanogrin);
+    Result<QString> createSendSlatepack(qlonglong nanogrin, const QString &senderId);
     Result<QString> handleSlateS2State(Slate slate, TelegramBotMessage message);
     Result<QString> handleSlateI2State(Slate slate, TelegramBotMessage message);
     qlonglong slateToGrin(const Slate &slate) const;
@@ -69,7 +65,7 @@ private:
     QString tippingAccountLabel;
     QString walletPassword;
     QTimer *m_pendingDepositTimer;
-    QHash<QString, PendingWithdraw> m_pendingWithdraws;
+    QHash<QString, PendingWithdrawRecord> m_pendingWithdraws;
 
     void sendUserMessage(QString user, QString content);
 };

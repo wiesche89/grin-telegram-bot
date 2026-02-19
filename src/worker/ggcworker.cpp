@@ -88,8 +88,6 @@ bool GgcWorker::init()
         success = false;
     }
 
-    // Set Slot to bot message
-    connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
 
     // Helper transactions cleanup
     QTimer *cleanupTimer = new QTimer(this);
@@ -107,10 +105,10 @@ bool GgcWorker::init()
 }
 
 /**
- * @brief GgcWorker::onMessage
+ * @brief GgcWorker::handleUpdate
  * @param update
  */
-void GgcWorker::onMessage(TelegramBotUpdate update)
+void GgcWorker::handleUpdate(TelegramBotUpdate update)
 {
     // only handle Messages
     if (update->type != TelegramBotMessageType::Message) {
@@ -607,6 +605,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
+        qDebug()<<"message: "<<message.text;
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
@@ -617,6 +616,7 @@ void GgcWorker::onMessage(TelegramBotUpdate update)
         }
 
         SlateState state = Slate::slateStateFromString(slate.sta());
+        qDebug()<<"state: "<<slate.sta();
 
         if (state == SlateState::S1) {
             // S1 - Standard: Sender created Slate with Inputs, Change, Nonce, Excess
@@ -1424,11 +1424,10 @@ void GgcWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString cont
     m_bot->sendMessage(message.chat.id,
                        msg,
                        0,
-                       TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,
-                       TelegramKeyboardRequest(),
-                       nullptr);
+                      TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,
+                      TelegramKeyboardRequest(),
+                      nullptr);
 }
-
 
 /**
  * @brief GgcWorker::scanWallet

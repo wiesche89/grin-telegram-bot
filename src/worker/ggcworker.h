@@ -26,9 +26,9 @@ class GgcWorker : public QObject
 public:
     GgcWorker(TelegramBot *bot, QSettings *settings);
     bool init();
+    void handleUpdate(TelegramBotUpdate update);
 
 private slots:
-    void onMessage(TelegramBotUpdate update);
     void cleanupRetrieveTxs(bool cleanAll);
 
 private:

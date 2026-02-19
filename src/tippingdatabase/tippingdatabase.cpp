@@ -86,6 +86,16 @@ bool TippingDatabase::ensureTables()
         return false;
     }
 
+    const char *pendingWithdrawsSQL = "CREATE TABLE IF NOT EXISTS pending_withdrawals ("
+                                       "slate_id TEXT PRIMARY KEY,"
+                                       "user_id TEXT NOT NULL,"
+                                       "amount INTEGER NOT NULL,"
+                                       "created_at INTEGER NOT NULL)";
+    if (!m_query->exec(pendingWithdrawsSQL)) {
+        qWarning() << "Failed to create pending withdrawals table:" << m_query->lastError().text();
+        return false;
+    }
+
     return true;
 }
 
@@ -207,5 +217,59 @@ bool TippingDatabase::pendingDeposit(const QString &slateId, PendingDepositRecor
     deposit.amount = m_query->value(1).toInt();
     deposit.chatId = m_query->value(2).toLongLong();
     deposit.firstName = m_query->value(3).toString();
+    return true;
+}
+
+bool TippingDatabase::insertPendingWithdraw(const PendingWithdrawRecord &withdraw)
+{
+    if (!m_query) return false;
+    m_query->prepare("REPLACE INTO pending_withdrawals (slate_id, user_id, amount, created_at) VALUES (?, ?, ?, ?)");
+    m_query->addBindValue(withdraw.slateId);
+    m_query->addBindValue(withdraw.userId);
+    m_query->addBindValue(withdraw.amount);
+    m_query->addBindValue(withdraw.createdAt);
+    return m_query->exec();
+}
+
+bool TippingDatabase::removePendingWithdraw(const QString &slateId)
+{
+    if (!m_query) return false;
+    m_query->prepare("DELETE FROM pending_withdrawals WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    return m_query->exec();
+}
+
+QList<PendingWithdrawRecord> TippingDatabase::pendingWithdrawals()
+{
+    QList<PendingWithdrawRecord> list;
+    if (!m_query) return list;
+    m_query->prepare("SELECT slate_id, user_id, amount, created_at FROM pending_withdrawals");
+    if (!m_query->exec()) {
+        return list;
+    }
+
+    while (m_query->next()) {
+        PendingWithdrawRecord record;
+        record.slateId = m_query->value(0).toString();
+        record.userId = m_query->value(1).toString();
+        record.amount = m_query->value(2).toInt();
+        record.createdAt = m_query->value(3).toLongLong();
+        list.append(record);
+    }
+    return list;
+}
+
+bool TippingDatabase::pendingWithdraw(const QString &slateId, PendingWithdrawRecord &withdraw)
+{
+    if (!m_query) return false;
+    m_query->prepare("SELECT user_id, amount, created_at FROM pending_withdrawals WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    if (!m_query->exec() || !m_query->next()) {
+        return false;
+    }
+    withdraw.slateId = slateId;
+    withdraw.userId = m_query->value(0).toString();
+    withdraw.amount = m_query->value(1).toInt();
+    withdraw.createdAt = m_query->value(2).toLongLong();
     return true;
 }

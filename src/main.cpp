@@ -5,6 +5,7 @@
 #include "ggcworker.h"
 #include "tippingworker.h"
 #include "gateioworker.h"
+#include "messagehub.h"
 
 /**
  * @brief main
@@ -103,6 +104,7 @@ int main(int argc, char *argv[])
             QCoreApplication::quit();
         }
 
+        new MessageHub(bot, tippingWorker, ggcWorker, bot);
         bot->startMessagePulling();
 
     });
