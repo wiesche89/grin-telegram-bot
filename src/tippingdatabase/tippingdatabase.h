@@ -40,8 +40,8 @@ struct PendingWithdrawConfirmationRecord
 struct TxLedgerEntry
 {
     qlonglong timestamp;
-    QString fromUser;
-    QString toUser;
+    QString fromUserId;
+    QString toUserId;
     int amount;
     QString type;
     QString reference;
@@ -75,6 +75,10 @@ public:
     QList<PendingWithdrawConfirmationRecord> pendingWithdrawConfirmations();
 
     QList<TxLedgerEntry> ledgerEntries(int limit = 20);
+
+    bool ensureUserRecord(const QString &userId, const QString &username);
+    QString userIdByUsername(const QString &username);
+    QString usernameByUserId(const QString &userId);
 
 private:
     QSqlDatabase m_db;

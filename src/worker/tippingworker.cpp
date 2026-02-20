@@ -125,8 +125,12 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     const QStringList parts = text.split(' ', Qt::SkipEmptyParts);
     if (parts.isEmpty()) return false;
 
-    const QString cmd = parts[0];
     const QString senderId = QString::number(message.from.id);
+    if (!senderId.isEmpty() && !message.from.username.isEmpty()) {
+        m_db->ensureUserRecord(senderId, message.from.username);
+    }
+
+    const QString cmd = parts[0];
     const QString sender = userLabel(message);
 
     if (cmd == "/tipping") {
@@ -195,14 +199,37 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
             return true;
         }
         QString toUser = parts[1];
-        if (toUser.startsWith("@")) toUser = toUser.mid(1);
+        if (toUser.startsWith("@")) {
+            toUser = toUser.mid(1);
+        }
         bool ok;
         int amount = parts[2].toInt(&ok);
         if (!ok || amount <= 0) {
             sendUserMessage(message, "Please provide a positive amount.", false);
             return true;
         }
-        sendUserMessage(message, handleTip(senderId, sender, toUser, amount), false);
+        QString recipientId = resolveRecipientId(toUser, message);
+        if (recipientId.isEmpty()) {
+            sendUserMessage(message,
+                            "I could not resolve that recipient. Ask them to send /tipping so I can learn their ID, then try again.",
+                            false);
+            return true;
+        }
+        QString recipientLabel = m_db->usernameByUserId(recipientId);
+        if (recipientLabel.isEmpty()) {
+            recipientLabel = toUser;
+        }
+        QString displayRecipient;
+        if (!recipientLabel.isEmpty()) {
+            displayRecipient = recipientLabel.startsWith("@") ? recipientLabel : QString("@%1").arg(recipientLabel);
+        } else {
+            displayRecipient = recipientId;
+        }
+
+        m_db->updateBalance(senderId, -amount);
+        m_db->updateBalance(recipientId, amount);
+        m_db->recordTransaction(senderId, recipientId, amount, "tip", displayRecipient);
+        sendUserMessage(message, QString("%1 GRIN sent to %2.").arg(amount).arg(displayRecipient), false);
         return true;
     }
 
@@ -497,8 +524,15 @@ QString TippingWorker::handleLedgerCommand(const QString &senderId, const QStrin
     for (const TxLedgerEntry &entry : entries) {
         QDateTime ts = QDateTime::fromSecsSinceEpoch(entry.timestamp);
         QString time = ts.toString("yyyy-MM-dd hh:mm:ss");
-        QString from = entry.fromUser.isEmpty() ? "system" : entry.fromUser;
-        QString to = entry.toUser.isEmpty() ? "system" : entry.toUser;
+        QString from = entry.fromUserId.isEmpty() ? "system" : m_db->usernameByUserId(entry.fromUserId);
+        if (from.isEmpty()) {
+            from = entry.fromUserId.isEmpty() ? "system" : entry.fromUserId;
+        }
+
+        QString to = entry.toUserId.isEmpty() ? "system" : m_db->usernameByUserId(entry.toUserId);
+        if (to.isEmpty()) {
+            to = entry.toUserId.isEmpty() ? "system" : entry.toUserId;
+        }
         QString amount = QString::number(entry.amount);
         QString line = QString("%1 | %2 GRIN | %3 -> %4 | %5")
                        .arg(time)
@@ -1082,4 +1116,47 @@ void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString 
                        TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,
                        TelegramKeyboardRequest(),
                        nullptr);
+}
+
+QString TippingWorker::resolveRecipientId(const QString &target, const TelegramBotMessage &message) const
+{
+    QString normalized = target.trimmed();
+    if (normalized.startsWith("@")) {
+        normalized = normalized.mid(1);
+    }
+
+    if (normalized.isEmpty()) {
+        for (const TelegramBotMessageEntity &entity : message.entities) {
+            if (entity.type == "text_mention" && entity.user.id != 0) {
+                return QString::number(entity.user.id);
+            }
+        }
+        return {};
+    }
+
+    bool ok = false;
+    qlonglong numericId = normalized.toLongLong(&ok);
+    if (ok) {
+        return normalized;
+    }
+
+    QString foundId = m_db->userIdByUsername(normalized);
+    if (!foundId.isEmpty()) {
+        return foundId;
+    }
+
+    for (const TelegramBotMessageEntity &entity : message.entities) {
+        if (entity.type == "text_mention" && entity.user.id != 0) {
+            QString entityText = message.text.mid(entity.offset, entity.length);
+            QString stripped = entityText.trimmed();
+            if (stripped.startsWith("@")) {
+                stripped = stripped.mid(1);
+            }
+            if (!stripped.isEmpty() && stripped.compare(normalized, Qt::CaseInsensitive) == 0) {
+                return QString::number(entity.user.id);
+            }
+        }
+    }
+
+    return {};
 }

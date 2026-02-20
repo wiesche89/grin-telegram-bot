@@ -74,6 +74,14 @@ bool TippingDatabase::ensureTables()
         return false;
     }
 
+    const char *usersSQL = "CREATE TABLE IF NOT EXISTS users ("
+                           "user_id TEXT PRIMARY KEY,"
+                           "username TEXT)";
+    if (!m_query->exec(usersSQL)) {
+        qWarning() << "Failed to create users table:" << m_query->lastError().text();
+        return false;
+    }
+
     const char *pendingSQL = "CREATE TABLE IF NOT EXISTS pending_deposits ("
                              "slate_id TEXT PRIMARY KEY,"
                              "user_id TEXT NOT NULL,"
@@ -148,14 +156,56 @@ QList<TxLedgerEntry> TippingDatabase::ledgerEntries(int limit)
     while (m_query->next()) {
         TxLedgerEntry entry;
         entry.timestamp = m_query->value(0).toLongLong();
-        entry.fromUser = m_query->value(1).toString();
-        entry.toUser = m_query->value(2).toString();
+        entry.fromUserId = m_query->value(1).toString();
+        entry.toUserId = m_query->value(2).toString();
         entry.amount = m_query->value(3).toInt();
         entry.type = m_query->value(4).toString();
         entry.reference = m_query->value(5).toString();
         entries.append(entry);
     }
     return entries;
+}
+
+bool TippingDatabase::ensureUserRecord(const QString &userId, const QString &username)
+{
+    if (!m_query || userId.isEmpty() || username.isEmpty()) {
+        return false;
+    }
+
+    m_query->prepare("REPLACE INTO users (user_id, username) VALUES (?, ?)");
+    m_query->addBindValue(userId);
+    m_query->addBindValue(username);
+    return m_query->exec();
+}
+
+QString TippingDatabase::userIdByUsername(const QString &username)
+{
+    if (!m_query || username.isEmpty()) {
+        return {};
+    }
+
+    m_query->prepare("SELECT user_id FROM users WHERE lower(username) = lower(?)");
+    m_query->addBindValue(username);
+    if (m_query->exec() && m_query->next()) {
+        return m_query->value(0).toString();
+    }
+
+    return {};
+}
+
+QString TippingDatabase::usernameByUserId(const QString &userId)
+{
+    if (!m_query || userId.isEmpty()) {
+        return {};
+    }
+
+    m_query->prepare("SELECT username FROM users WHERE user_id = ?");
+    m_query->addBindValue(userId);
+    if (m_query->exec() && m_query->next()) {
+        return m_query->value(0).toString();
+    }
+
+    return {};
 }
 
 /**

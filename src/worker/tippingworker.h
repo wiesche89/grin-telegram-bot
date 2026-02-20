@@ -62,6 +62,7 @@ private:
 
     QString readFileToString(const QString &filePath);
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
+    QString resolveRecipientId(const QString &target, const TelegramBotMessage &message) const;
 
     TelegramBot *m_bot;
     QSettings *m_settings;
