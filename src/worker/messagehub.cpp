@@ -17,20 +17,25 @@ MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker
 
 void MessageHub::onBotMessage(TelegramBotUpdate update)
 {
-
-        qDebug()<<"from: "<<update->message->from.firstName<<"  "<<update->message->text;
-
     if (!update || update.isNull()) {
+        qDebug() << "MessageHub::onBotMessage - empty update";
         return;
     }
 
+    if (!update->message) {
+        qDebug() << "MessageHub::onBotMessage - update without message, type" << update->type;
+        return;
+    }
+
+    qDebug() << "MessageHub::onBotMessage - from:" << update->message->from.firstName << update->message->text;
+
     if (m_tippingWorker && m_tippingWorker->handleUpdate(update)) {
-        qDebug()<<"m_tippingWorker handle message";
+        qDebug() << "MessageHub::onBotMessage - tipping worker handled update";
         return;
     }
 
     if (m_ggcWorker) {
-        qDebug()<<"message go to ggcworker";
+        qDebug() << "MessageHub::onBotMessage - handing over to GGC worker";
         m_ggcWorker->handleUpdate(update);
     }
 }

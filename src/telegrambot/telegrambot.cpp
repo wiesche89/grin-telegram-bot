@@ -895,6 +895,9 @@ void TelegramBot::startMessagePulling(uint timeout, uint limit, TelegramPollMess
     this->deleteWebhookResult();
 
     // build url params
+    long effectiveOffset = offset ? offset : this->updateId;
+    qDebug() << "TelegramBot::startMessagePulling - timeout" << timeout << "limit" << limit
+             << "offset" << effectiveOffset << "messageTypes" << static_cast<int>(messageTypes);
     this->pullParams.clear();
     if (offset) {
         this->pullParams.addQueryItem("offset", QString::number(offset));
@@ -961,6 +964,8 @@ void TelegramBot::pull()
         return;
     }
 
+    //qDebug() << "TelegramBot::pull - issuing getUpdates with" << this->pullParams.toString();
+
     // cleanup
     if (this->replyPull) {
         this->replyPull->deleteLater();
@@ -976,12 +981,29 @@ void TelegramBot::pull()
  */
 void TelegramBot::handlePullResponse()
 {
-    // qDebug()<<Q_FUNC_INFO <<" ";
+    if (!this->replyPull) {
+        qDebug() << "TelegramBot::handlePullResponse - missing reply, scheduling next pull";
+        QTimer::singleShot(1000, this, &TelegramBot::pull);
+        return;
+    }
+
     // remove update id from request
     this->pullParams.removeQueryItem("offset");
 
+    QNetworkReply::NetworkError networkError = this->replyPull->error();
+    if (networkError != QNetworkReply::NoError) {
+        qDebug() << "TelegramBot::handlePullResponse - network error" << networkError
+                 << this->replyPull->errorString();
+        if (this->updateId) {
+            this->pullParams.addQueryItem("offset", QString::number(this->updateId + 1));
+        }
+        QTimer::singleShot(1000, this, &TelegramBot::pull);
+        return;
+    }
+
     // parse response
     QByteArray data = this->replyPull->readAll();
+    //qDebug() << "TelegramBot::handlePullResponse - received" << data.size() << "bytes";
     this->parseMessage(data);
 
     // add update id to request
