@@ -96,6 +96,18 @@ bool TippingDatabase::ensureTables()
         return false;
     }
 
+    const char *pendingWithdrawConfirmationsSQL = "CREATE TABLE IF NOT EXISTS pending_withdraw_confirmations ("
+                                                  "slate_id TEXT PRIMARY KEY,"
+                                                  "user_id TEXT NOT NULL,"
+                                                  "chat_id INTEGER,"
+                                                  "first_name TEXT,"
+                                                  "amount INTEGER NOT NULL,"
+                                                  "created_at INTEGER NOT NULL)";
+    if (!m_query->exec(pendingWithdrawConfirmationsSQL)) {
+        qWarning() << "Failed to create pending withdraw confirmations table:" << m_query->lastError().text();
+        return false;
+    }
+
     return true;
 }
 
@@ -272,4 +284,47 @@ bool TippingDatabase::pendingWithdraw(const QString &slateId, PendingWithdrawRec
     withdraw.amount = m_query->value(1).toInt();
     withdraw.createdAt = m_query->value(2).toLongLong();
     return true;
+}
+
+bool TippingDatabase::insertPendingWithdrawConfirmation(const PendingWithdrawConfirmationRecord &confirmation)
+{
+    if (!m_query) return false;
+    m_query->prepare("REPLACE INTO pending_withdraw_confirmations (slate_id, user_id, chat_id, first_name, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+    m_query->addBindValue(confirmation.slateId);
+    m_query->addBindValue(confirmation.userId);
+    m_query->addBindValue(confirmation.chatId);
+    m_query->addBindValue(confirmation.firstName);
+    m_query->addBindValue(confirmation.amount);
+    m_query->addBindValue(confirmation.createdAt);
+    return m_query->exec();
+}
+
+bool TippingDatabase::removePendingWithdrawConfirmation(const QString &slateId)
+{
+    if (!m_query) return false;
+    m_query->prepare("DELETE FROM pending_withdraw_confirmations WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    return m_query->exec();
+}
+
+QList<PendingWithdrawConfirmationRecord> TippingDatabase::pendingWithdrawConfirmations()
+{
+    QList<PendingWithdrawConfirmationRecord> list;
+    if (!m_query) return list;
+    m_query->prepare("SELECT slate_id, user_id, chat_id, first_name, amount, created_at FROM pending_withdraw_confirmations");
+    if (!m_query->exec()) {
+        return list;
+    }
+
+    while (m_query->next()) {
+        PendingWithdrawConfirmationRecord record;
+        record.slateId = m_query->value(0).toString();
+        record.userId = m_query->value(1).toString();
+        record.chatId = m_query->value(2).toLongLong();
+        record.firstName = m_query->value(3).toString();
+        record.amount = m_query->value(4).toInt();
+        record.createdAt = m_query->value(5).toLongLong();
+        list.append(record);
+    }
+    return list;
 }

@@ -50,7 +50,7 @@ private:
     bool ensureTippingAccount();
     Result<QString> createInvoiceSlatepack(qlonglong nanogrin, QString &slateId);
     Result<QString> createSendSlatepack(qlonglong nanogrin, const QString &senderId);
-    Result<QString> handleSlateS2State(Slate slate, TelegramBotMessage message);
+    Result<QString> handleSlateS2State(Slate slate, TelegramBotMessage message, const PendingWithdrawRecord &pendingWithdraw);
     Result<QString> handleSlateI2State(Slate slate, TelegramBotMessage message);
     qlonglong slateToGrin(const Slate &slate) const;
     QString userLabel(const TelegramBotMessage &message) const;
@@ -70,6 +70,7 @@ private:
     void sendUserMessage(QString user, QString content);
     bool activateWalletAccount(const QString &accountLabel);
     bool activateTippingWalletAccount();
+    void checkPendingWithdrawConfirmations();
 };
 #endif // TIPPINGWORKER_H
 

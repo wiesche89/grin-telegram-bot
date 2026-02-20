@@ -75,6 +75,8 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     TelegramBotMessage &message = *update->message;
     QString text = message.text.trimmed();
 
+    qDebug()<<"Anfrage: "<<text;
+
     if (!message.document.fileId.isEmpty() && !message.document.fileName.isEmpty()) {
         return handleSlatepackDocument(message);
     }
@@ -206,7 +208,8 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
             qDebug() << "handleSlatepackDocument: ignoring S2 slate" << slateId << "not pending withdraw";
             return false;
         }
-        Result<QString> result = handleSlateS2State(slate, message);
+        PendingWithdrawRecord pending = m_pendingWithdraws.value(slateId);
+        Result<QString> result = handleSlateS2State(slate, message, pending);
         QString info;
         if (!result.unwrapOrLog(info)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
@@ -214,8 +217,19 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
         }
         sendUserMessage(message, QString("Withdraw completed: %1").arg(info), false);
         m_pendingWithdraws.remove(slateId);
-        if (!slateId.isEmpty() && !m_db->removePendingWithdraw(slateId)) {
-            qWarning() << "Failed to remove pending withdraw" << slateId;
+        if (!slateId.isEmpty()) {
+            PendingWithdrawConfirmationRecord confirmation{slateId,
+                                                         pending.userId,
+                                                         message.chat.id,
+                                                         message.from.firstName,
+                                                         pending.amount,
+                                                         QDateTime::currentSecsSinceEpoch()};
+            if (!m_db->insertPendingWithdrawConfirmation(confirmation)) {
+                qWarning() << "Failed to persist pending withdraw confirmation" << slateId;
+            }
+            if (!m_db->removePendingWithdraw(slateId)) {
+                qWarning() << "Failed to remove pending withdraw" << slateId;
+            }
         }
         return true;
     }
@@ -260,7 +274,8 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
             qDebug() << "handleSlatepackText: ignoring S2 slate" << slateId << "not pending withdraw";
             return false;
         }
-        Result<QString> result = handleSlateS2State(slate, message);
+        PendingWithdrawRecord pending = m_pendingWithdraws.value(slateId);
+        Result<QString> result = handleSlateS2State(slate, message, pending);
         QString info;
         if (!result.unwrapOrLog(info)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
@@ -268,8 +283,19 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
         }
         sendUserMessage(message, QString("Withdraw completed: %1").arg(info), false);
         m_pendingWithdraws.remove(slateId);
-        if (!slateId.isEmpty() && !m_db->removePendingWithdraw(slateId)) {
-            qWarning() << "Failed to remove pending withdraw" << slateId;
+        if (!slateId.isEmpty()) {
+            PendingWithdrawConfirmationRecord confirmation{slateId,
+                                                         pending.userId,
+                                                         message.chat.id,
+                                                         message.from.firstName,
+                                                         pending.amount,
+                                                         QDateTime::currentSecsSinceEpoch()};
+            if (!m_db->insertPendingWithdrawConfirmation(confirmation)) {
+                qWarning() << "Failed to persist pending withdraw confirmation" << slateId;
+            }
+            if (!m_db->removePendingWithdraw(slateId)) {
+                qWarning() << "Failed to remove pending withdraw" << slateId;
+            }
         }
         return true;
     }
@@ -461,6 +487,15 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
         return slateResult.error();
     }
 
+    {
+        Result<bool> lockResult = m_walletOwnerApi->txLockOutputs(slate);
+        bool locked = false;
+        if (!lockResult.unwrapOrLog(locked)) {
+            return lockResult.error();
+        }
+        qDebug() << "createSendSlatepack: txLockOutputs" << locked;
+    }
+
     QString slateId = slate.id();
     int amountGrin = static_cast<int>(nanogrin / 1000000000LL);
     if (!slateId.isEmpty()) {
@@ -530,7 +565,7 @@ Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessag
     return QString("%1 GRIN deposit received. Waiting for confirmations before crediting.").arg(displayAmount);
 }
 
-Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessage message)
+Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessage message, const PendingWithdrawRecord &pendingWithdraw)
 {
     if (!ensureTippingAccount()) {
         return Error(ErrorType::Unknown, "Tipping account not available.");
@@ -541,6 +576,7 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
         qDebug() << "handleSlateS2State: finalizing withdraw slate for" << message.from.firstName;
         Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
         if (!res.unwrapOrLog(finalized)) {
+            qDebug()<<"error finalize!";
             return res.error();
         }
         qDebug() << "handleSlateS2State: finalizeTx success, slate amount" << finalized.amt();
@@ -556,12 +592,15 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
     }
 
     qlonglong nanogrin = slateToGrin(finalized);
-    int grinAmount = static_cast<int>(nanogrin / 1000000000LL);
-    QString user = userLabel(message);
-    if (!m_db->updateBalance(user, -grinAmount)) {
+    int grinAmount = pendingWithdraw.amount;
+    if (grinAmount <= 0) {
+        grinAmount = static_cast<int>(nanogrin / 1000000000LL);
+    }
+    QString userId = pendingWithdraw.userId.isEmpty() ? userLabel(message) : pendingWithdraw.userId;
+    if (!m_db->updateBalance(userId, -grinAmount)) {
         return Error(ErrorType::Unknown, "Error deducting from account.");
     }
-    m_db->recordTransaction(user, "", grinAmount, "withdraw");
+    m_db->recordTransaction(userId, "", grinAmount, "withdraw");
 
     return QString("%1 GRIN withdrawn.").arg(grinAmount);
 }
@@ -798,6 +837,66 @@ void TippingWorker::checkPendingDeposits()
                 qWarning() << "Failed to remove pending deposit" << slateId;
             } else {
                 qDebug() << "checkPendingDeposits: removed pending deposit" << slateId;
+            }
+            break;
+        }
+    }
+    checkPendingWithdrawConfirmations();
+}
+
+void TippingWorker::checkPendingWithdrawConfirmations()
+{
+    if (!activateTippingWalletAccount()) {
+        qWarning() << "checkPendingWithdrawConfirmations: wallet account could not be activated";
+        return;
+    }
+
+    QList<PendingWithdrawConfirmationRecord> pendingList = m_db->pendingWithdrawConfirmations();
+    if (pendingList.isEmpty()) {
+        return;
+    }
+
+    QList<TxLogEntry> txList;
+    Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
+    if (!res.unwrapOrLog(txList)) {
+        qWarning() << "checkPendingWithdrawConfirmations: retrieveTxs failed -" << res.errorMessage();
+        return;
+    }
+
+    for (const PendingWithdrawConfirmationRecord &pending : pendingList) {
+        for (const TxLogEntry &entry : txList) {
+            if (entry.txSlateId().isNull()) {
+                continue;
+            }
+
+            QString strSlate = entry.txSlateId().toString().replace("{", "").replace("}", "");
+            if (strSlate != pending.slateId) {
+                continue;
+            }
+
+            if (!entry.confirmed()) {
+                qDebug() << "checkPendingWithdrawConfirmations: tx" << entry.id() << "not confirmed yet for slate" << pending.slateId;
+                continue;
+            }
+
+            QString reply = QString("%1 GRIN withdraw confirmed on the blockchain (tx id %2).")
+                            .arg(pending.amount)
+                            .arg(entry.id());
+            QString msg;
+            if (!pending.firstName.isEmpty()) {
+                msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
+            } else {
+                msg = reply;
+            }
+            m_bot->sendMessage(pending.chatId,
+                               msg,
+                               0,
+                               TelegramBot::NoFlag,
+                               TelegramKeyboardRequest(),
+                               nullptr);
+
+            if (!m_db->removePendingWithdrawConfirmation(pending.slateId)) {
+                qWarning() << "Failed to remove pending withdraw confirmation" << pending.slateId;
             }
             break;
         }

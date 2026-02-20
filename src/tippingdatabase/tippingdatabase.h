@@ -27,6 +27,16 @@ struct PendingWithdrawRecord
     qlonglong createdAt;
 };
 
+struct PendingWithdrawConfirmationRecord
+{
+    QString slateId;
+    QString userId;
+    qlonglong chatId;
+    QString firstName;
+    int amount;
+    qlonglong createdAt;
+};
+
 class TippingDatabase : public QObject
 {
     Q_OBJECT
@@ -49,6 +59,10 @@ public:
     bool removePendingWithdraw(const QString &slateId);
     QList<PendingWithdrawRecord> pendingWithdrawals();
     bool pendingWithdraw(const QString &slateId, PendingWithdrawRecord &withdraw);
+
+    bool insertPendingWithdrawConfirmation(const PendingWithdrawConfirmationRecord &confirmation);
+    bool removePendingWithdrawConfirmation(const QString &slateId);
+    QList<PendingWithdrawConfirmationRecord> pendingWithdrawConfirmations();
 
 private:
     QSqlDatabase m_db;
