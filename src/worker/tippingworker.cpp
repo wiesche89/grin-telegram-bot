@@ -110,8 +110,6 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     TelegramBotMessage &message = *update->message;
     QString text = normalizeCommandText(message.text);
 
-    qDebug()<<"Anfrage: "<<text;
-
     if (!message.document.fileId.isEmpty() && !message.document.fileName.isEmpty()) {
         return handleSlatepackDocument(message);
     }
@@ -130,6 +128,27 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     const QString cmd = parts[0];
     const QString senderId = QString::number(message.from.id);
     const QString sender = userLabel(message);
+
+    if (cmd == "/tipping") {
+        QString path;
+        QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+        if (dataDir.isEmpty()) {
+            path = QCoreApplication::applicationDirPath() + "/etc/messages/tipping.txt";
+        } else {
+            path = QDir(dataDir).filePath("etc/messages/tipping.txt");
+        }
+
+        qDebug()<<path;
+
+        QString content = readFileToString(path);
+        if (content.isEmpty()) {
+            content = "The tipping guide is currently unavailable. Please try again later.";
+        }
+
+        sendUserMarkdownMessage(message, content, false);
+        return true;
+    }
 
     if (cmd == "/adminamounts") {
         if (!isAdmin(message.from.id)) {
@@ -190,6 +209,11 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     if (cmd == "/balance") {
         int bal = m_db->getBalance(senderId);
         sendUserMessage(message, QString("Your current balance: %1 GRIN").arg(bal), false);
+        return true;
+    }
+
+    if (cmd == "/ledger") {
+        sendUserMessage(message, handleLedgerCommand(senderId, sender), false);
         return true;
     }
 
@@ -455,6 +479,39 @@ QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
 
     QString header = QString("Open transactions (%1):").arg(lines.size());
     lines.prepend(header);
+    return lines.join("\n");
+}
+
+QString TippingWorker::handleLedgerCommand(const QString &senderId, const QString &senderLabel)
+{
+    Q_UNUSED(senderId);
+    Q_UNUSED(senderLabel);
+
+    QList<TxLedgerEntry> entries = m_db->ledgerEntries(20);
+    if (entries.isEmpty()) {
+        return "No ledger entries available yet.";
+    }
+
+    QStringList lines;
+    lines << QString("Ledger-Verlauf (letzte %1 Einträge):").arg(entries.size());
+    for (const TxLedgerEntry &entry : entries) {
+        QDateTime ts = QDateTime::fromSecsSinceEpoch(entry.timestamp);
+        QString time = ts.toString("yyyy-MM-dd hh:mm:ss");
+        QString from = entry.fromUser.isEmpty() ? "system" : entry.fromUser;
+        QString to = entry.toUser.isEmpty() ? "system" : entry.toUser;
+        QString amount = QString::number(entry.amount);
+        QString line = QString("%1 | %2 GRIN | %3 -> %4 | %5")
+                       .arg(time)
+                       .arg(amount)
+                       .arg(from)
+                       .arg(to)
+                       .arg(entry.type);
+        if (!entry.reference.isEmpty()) {
+            line += QString(" (%1)").arg(entry.reference);
+        }
+        lines << line;
+    }
+
     return lines.join("\n");
 }
 
@@ -992,6 +1049,37 @@ void TippingWorker::sendUserMessage(TelegramBotMessage message, QString content,
                        msg,
                        0,
                        TelegramBot::NoFlag,
+                       TelegramKeyboardRequest(),
+                       nullptr);
+}
+
+QString TippingWorker::readFileToString(const QString &filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open tipping guide:" << file.errorString();
+        return {};
+    }
+
+    QTextStream in(&file);
+    QString content = in.readAll();
+    file.close();
+    return content;
+}
+
+void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain)
+{
+    QString msg;
+    if (plain) {
+        msg = content;
+    } else {
+        msg = QString("Hi " + message.from.firstName + ",\n" + content);
+    }
+
+    m_bot->sendMessage(message.chat.id,
+                       msg,
+                       0,
+                       TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,
                        TelegramKeyboardRequest(),
                        nullptr);
 }

@@ -11,6 +11,8 @@
 #include <QDebug>
 #include <QHash>
 #include <QUrl>
+#include <QFile>
+#include <QTextStream>
 
 #include "telegrambot.h"
 #include "result.h"
@@ -42,6 +44,7 @@ private:
     QString handleWithdrawCommand(const QString &senderId, int amount, TelegramBotMessage message);
     QString handleTip(const QString &fromId, const QString &fromLabel, const QString &toUser, int amount);
     QString handleOpenTransactionsCommand(const QString &sender);
+    QString handleLedgerCommand(const QString &senderId, const QString &senderLabel);
     QString handleAdminAmountsCommand();
     bool isAdmin(qlonglong id);
     Result<WalletInfo> fetchAccountSummary(const QString &accountLabel);
@@ -56,6 +59,9 @@ private:
     QString userLabel(const TelegramBotMessage &message) const;
 
     QString downloadFileToQString(const QUrl &url);
+
+    QString readFileToString(const QString &filePath);
+    void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
 
     TelegramBot *m_bot;
     QSettings *m_settings;

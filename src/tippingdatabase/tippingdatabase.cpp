@@ -133,6 +133,31 @@ bool TippingDatabase::recordTransaction(const QString &fromUser, const QString &
     return m_query->exec();
 }
 
+QList<TxLedgerEntry> TippingDatabase::ledgerEntries(int limit)
+{
+    QList<TxLedgerEntry> entries;
+    if (!m_query) return entries;
+
+    m_query->prepare("SELECT timestamp, from_user, to_user, amount, type, reference "
+                     "FROM ledger ORDER BY timestamp DESC LIMIT ?");
+    m_query->addBindValue(limit);
+    if (!m_query->exec()) {
+        return entries;
+    }
+
+    while (m_query->next()) {
+        TxLedgerEntry entry;
+        entry.timestamp = m_query->value(0).toLongLong();
+        entry.fromUser = m_query->value(1).toString();
+        entry.toUser = m_query->value(2).toString();
+        entry.amount = m_query->value(3).toInt();
+        entry.type = m_query->value(4).toString();
+        entry.reference = m_query->value(5).toString();
+        entries.append(entry);
+    }
+    return entries;
+}
+
 /**
  * @brief TippingDatabase::getBalance
  * @param userId

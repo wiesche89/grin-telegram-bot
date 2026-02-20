@@ -1,0 +1,20 @@
+# Grin Tipping Guide
+
+## Overview
+This helper account lets you collect and send small GRIN amounts via the bot. Funds stay on-chain in the tipping wallet, and every command uses Slatepack for secure transfers.
+
+## Basic flow
+1. Use `/deposit <amount>` to request a Slatepack invoice for your deposit.
+2. Pay the generated invoice with your wallet and wait for the confirmation message.
+3. Transfer tips by running `/tip @username <amount>` once your balance is sufficient.
+4. Withdraw any remaining GRIN with `/withdraw <amount>`.
+
+## Useful commands
+- `/balance` shows your current GRIN balance in the tipping wallet.
+- `/ledger` lists the last outgoing and incoming tips.
+- `/opentxs` reports any pending slatepack transactions still waiting for a response.
+- `/adminamounts` is restricted to bot admins and summarizes deposit limits.
+
+## Tips
+- Always send Slatepack data as text or documents; the bot will detect the BEGINSLATEPACK/ENDSLATEPACK block automatically.
+- Keep the bot token private and never paste the Slatepack into public chats.

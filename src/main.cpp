@@ -56,22 +56,24 @@ int main(int argc, char *argv[])
 
         /// following commands exists
         /*
-        start - introduction
-        address - get slatepack address
-        donate - donate instruction
-        donatepack - bot initiate donation
-        faucet - use faucet
-        faucetpack - bot initiate faucet
-        rewindhash - get rewindhash
-        scanrewindhash - scan current rewindhash
-        price - price USDT
-        orderbook - current orderbook
-        chart - chart 4h USDT
-        history - last 10 trades USDT
-        deposit - example /deposit 10
-        withdraw - example /withdraw 10
-        tip - tipping Grins to other user example /tip @user 10
-        balance - shows your balance
+start - introduction
+address - get slatepack address
+donate - donate instruction
+donatepack - bot initiate donation
+faucet - use faucet
+faucetpack - bot initiate faucet
+rewindhash - get rewindhash
+scanrewindhash - scan current rewindhash
+price - price USDT
+orderbook - current orderbook
+chart - chart 4h USDT
+history - last 10 trades USDT
+deposit - example /deposit 10
+withdraw - example /withdraw 10
+tip - tipping Grins to other user example /tip @user 10
+tipping - info about tipping function
+ledger - shows outgoing incoming tips
+balance - shows your balance
 
         Admin commands
         adminenabledisabledeposits - enable/disable deposits

@@ -37,6 +37,16 @@ struct PendingWithdrawConfirmationRecord
     qlonglong createdAt;
 };
 
+struct TxLedgerEntry
+{
+    qlonglong timestamp;
+    QString fromUser;
+    QString toUser;
+    int amount;
+    QString type;
+    QString reference;
+};
+
 class TippingDatabase : public QObject
 {
     Q_OBJECT
@@ -63,6 +73,8 @@ public:
     bool insertPendingWithdrawConfirmation(const PendingWithdrawConfirmationRecord &confirmation);
     bool removePendingWithdrawConfirmation(const QString &slateId);
     QList<PendingWithdrawConfirmationRecord> pendingWithdrawConfirmations();
+
+    QList<TxLedgerEntry> ledgerEntries(int limit = 20);
 
 private:
     QSqlDatabase m_db;

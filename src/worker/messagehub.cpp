@@ -17,6 +17,9 @@ MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker
 
 void MessageHub::onBotMessage(TelegramBotUpdate update)
 {
+
+        qDebug()<<"from: "<<update->message->from.firstName<<"  "<<update->message->text;
+
     if (!update || update.isNull()) {
         return;
     }
