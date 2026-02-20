@@ -10,6 +10,41 @@
 #include <QList>
 #include "txlogentry.h"
 
+namespace {
+QString requiredBotMention()
+{
+    return qEnvironmentVariable("GRIN_CHAIN_TYPE") == "testnet" ? "@grin_mw_test_bot" : "@grin_mw_bot";
+}
+
+QString normalizeCommandText(const QString &text)
+{
+    QString normalized = text.trimmed();
+    if (!normalized.startsWith('/')) {
+        return normalized;
+    }
+
+    int firstSpace = normalized.indexOf(' ');
+    QString firstToken = (firstSpace == -1) ? normalized : normalized.left(firstSpace);
+    int atIndex = firstToken.indexOf('@');
+    if (atIndex == -1) {
+        return normalized;
+    }
+
+    QString mention = firstToken.mid(atIndex);
+    if (mention.compare(requiredBotMention(), Qt::CaseInsensitive) != 0) {
+        return QString();
+    }
+
+    QString cleaned = firstToken.left(atIndex);
+    if (cleaned.isEmpty()) {
+        return normalized;
+    }
+
+    QString remainder = (firstSpace == -1) ? QString() : normalized.mid(firstSpace);
+    return cleaned + remainder;
+}
+}
+
 TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
     m_bot(bot),
     m_settings(settings),
@@ -73,12 +108,16 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     }
 
     TelegramBotMessage &message = *update->message;
-    QString text = message.text.trimmed();
+    QString text = normalizeCommandText(message.text);
 
     qDebug()<<"Anfrage: "<<text;
 
     if (!message.document.fileId.isEmpty() && !message.document.fileName.isEmpty()) {
         return handleSlatepackDocument(message);
+    }
+
+    if (text.isEmpty()) {
+        return false;
     }
 
     if (text.contains("BEGINSLATEPACK") && text.contains("ENDSLATEPACK")) {

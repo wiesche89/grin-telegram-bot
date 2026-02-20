@@ -1,5 +1,42 @@
 #include "ggcworker.h"
 
+namespace {
+QString requiredBotMention()
+{
+    const QString mention = qEnvironmentVariable("GRIN_CHAIN_TYPE") == "testnet" ? "@grin_mw_test_bot"
+                                                                                 : "@grin_mw_bot";
+    return mention;
+}
+
+QString normalizeCommandText(const QString &text)
+{
+    QString normalized = text.trimmed();
+    if (!normalized.startsWith('/')) {
+        return normalized;
+    }
+
+    int firstSpace = normalized.indexOf(' ');
+    QString firstToken = (firstSpace == -1) ? normalized : normalized.left(firstSpace);
+    int atIndex = firstToken.indexOf('@');
+    if (atIndex == -1) {
+        return normalized;
+    }
+
+    QString mention = firstToken.mid(atIndex);
+    if (mention.compare(requiredBotMention(), Qt::CaseInsensitive) != 0) {
+        return QString();
+    }
+
+    QString cleaned = firstToken.left(atIndex);
+    if (cleaned.isEmpty()) {
+        return normalized;
+    }
+
+    QString remainder = (firstSpace == -1) ? QString() : normalized.mid(firstSpace);
+    return cleaned + remainder;
+}
+}
+
 /**
  * @brief GgcWorker::GgcWorker
  */
@@ -125,11 +162,15 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // simplify message access
     TelegramBotMessage &message = *update->message;
     qlonglong id = message.chat.id;
+    QString text = normalizeCommandText(message.text);
+    if (text.isEmpty()) {
+        return;
+    }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command start
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/start")) {
+    if (text.contains("/start")) {
 
         QString path;
         QString dataDir = qEnvironmentVariable("DATA_DIR");
@@ -149,7 +190,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command address
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/address")) {
+    if (text.contains("/address")) {
         QString str;
         {
             Result<QString> res = m_walletOwnerApi->getSlatepackAddress(0);
@@ -166,8 +207,8 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command donatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.startsWith("/donatepack")) {
-        QStringList parts = message.text.split(" ", Qt::SkipEmptyParts);
+    if (text.startsWith("/donatepack")) {
+        QStringList parts = text.split(" ", Qt::SkipEmptyParts);
 
         //Partsize size must 2
         if (parts.size() == 2) {
@@ -213,7 +254,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command donate
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/donate")) {
+    if (text.contains("/donate")) {
         // enable
         if (m_settings->value("admin/enableDisableDeposits").toInt() == 1) {
             QString path;
@@ -611,7 +652,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("BEGINSLATEPACK") && message.text.contains("ENDSLATEPACK")) {
+    if (text.contains("BEGINSLATEPACK") && text.contains("ENDSLATEPACK")) {
         qDebug()<<"message: "<<message.text;
         Slate slate;
         {
@@ -723,7 +764,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command faucetpack
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/faucetpack")) {
+    if (text.contains("/faucetpack")) {
 
         QString response;
         InitTxArgs args;
@@ -800,7 +841,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command faucet
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/faucet")) {
+    if (text.contains("/faucet")) {
         QString path;
         QString dataDir = qEnvironmentVariable("DATA_DIR");
 
@@ -819,7 +860,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command scanrewindhash
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/scanrewindhash")) {
+    if (text.contains("/scanrewindhash")) {
         RewindHash rewindHash;
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
@@ -852,7 +893,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     // command rewindhash
     // ------------------------------------------------------------------------------------------------------------------------------------------
-    if (message.text.contains("/rewindhash")) {
+    if (text.contains("/rewindhash")) {
         RewindHash rewindHash;
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
@@ -875,7 +916,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminenabledisabledeposits
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminenabledisabledeposits")) {
+        if (text.contains("/adminenabledisabledeposits")) {
             QString txt;
             int currentState = m_settings->value("admin/enableDisableDeposits").toInt();
 
@@ -895,7 +936,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminenabledisablewithdrawals
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminenabledisablewithdrawals")) {
+        if (text.contains("/adminenabledisablewithdrawals")) {
             QString txt;
             int currentState = m_settings->value("admin/enableDisableWithdrawals").toInt();
 
@@ -915,7 +956,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminupdateresponsemessage
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminupdateresponsemessage")) {
+        if (text.contains("/adminupdateresponsemessage")) {
             sendUserMessage(message, "function currently not implemented!", false);
             return;
         }
@@ -923,7 +964,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminrequirednumberofresponse
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminrequirednumberofresponse")) {
+        if (text.contains("/adminrequirednumberofresponse")) {
             sendUserMessage(message, "function currently not implemented!", false);
             return;
         }
@@ -931,7 +972,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminprofilrequirementswithdrawl
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminprofilrequirementswithdrawl")) {
+        if (text.contains("/adminprofilrequirementswithdrawl")) {
             sendUserMessage(message, "function currently not implemented!", false);
             return;
         }
@@ -939,7 +980,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminapprovedwithdrawalamount
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminapprovedwithdrawalamount")) {
+        if (text.contains("/adminapprovedwithdrawalamount")) {
             sendUserMessage(message, "function currently not implemented!", false);
             return;
         }
@@ -947,7 +988,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminamount
         // --------------------------------------------------------------------------------------------------------------------------------------
-        QStringList adminParts = message.text.split(' ', Qt::SkipEmptyParts);
+            QStringList adminParts = text.split(' ', Qt::SkipEmptyParts);
         if (!adminParts.isEmpty() && adminParts[0] == "/adminamount") {
             QString info;
             WalletInfo walletInfo;
@@ -975,7 +1016,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminfaucet
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/adminfaucet")) {
+        if (text.contains("/adminfaucet")) {
             QList<Faucet> list = m_dbManager->getAllFaucetAmountForToday();
 
             QString result;
@@ -999,7 +1040,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command admindonate
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/admindonate")) {
+        if (text.contains("/admindonate")) {
             QList<Donate> list = m_dbManager->getAllDonate();
 
             QString result;
@@ -1020,7 +1061,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         // command admincleanup
         // --------------------------------------------------------------------------------------------------------------------------------------
-        if (message.text.contains("/admincleanup")) {
+        if (text.contains("/admincleanup")) {
             cleanupRetrieveTxs(true);
             sendUserMessage(message, "cleanup success!", true);
         }
