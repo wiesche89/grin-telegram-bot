@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QStringList>
 #include <QList>
+#include <cmath>
 #include "txlogentry.h"
 
 namespace {
@@ -42,6 +43,60 @@ QString normalizeCommandText(const QString &text)
 
     QString remainder = (firstSpace == -1) ? QString() : normalized.mid(firstSpace);
     return cleaned + remainder;
+}
+
+constexpr qlonglong nanogrinPerGrin = 1000000000LL;
+
+QString formatGrin(qlonglong nanogrin)
+{
+    bool negative = nanogrin < 0;
+    qlonglong absolute = negative ? -nanogrin : nanogrin;
+    qlonglong whole = absolute / nanogrinPerGrin;
+    qlonglong fraction = absolute % nanogrinPerGrin;
+
+    QString result = QString::number(whole);
+    if (fraction != 0) {
+        QString fractional = QString::number(fraction).rightJustified(9, '0');
+        while (fractional.endsWith('0')) {
+            fractional.chop(1);
+        }
+        result += QString(".%1").arg(fractional);
+    }
+
+    if (negative) {
+        result.prepend("-");
+    }
+
+    return result;
+}
+
+bool parseTipAmount(const QString &input, qlonglong &nanogrin, QString &errorMessage)
+{
+    QString trimmed = input.trimmed();
+    if (trimmed.isEmpty()) {
+        errorMessage = QString("Please provide a valid tip amount. You entered: %1").arg(input);
+        return false;
+    }
+
+    if (trimmed.contains(',')) {
+        errorMessage = QString("Please use a dot as decimal separator. You entered: %1").arg(input);
+        return false;
+    }
+
+    bool ok = false;
+    double value = trimmed.toDouble(&ok);
+    if (!ok || !std::isfinite(value)) {
+        errorMessage = QString("Please enter a numeric tip amount. You entered: %1").arg(input);
+        return false;
+    }
+
+    if (value < 0.1) {
+        errorMessage = QString("Minimum tip is 0.1 GRIN. You entered: %1").arg(input);
+        return false;
+    }
+
+    nanogrin = static_cast<qlonglong>(value * nanogrinPerGrin + 0.5);
+    return true;
 }
 }
 
@@ -156,40 +211,71 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
 
     if (cmd == "/adminamounts") {
         if (!isAdmin(message.from.id)) {
-            sendUserMessage(message, "You are not authorized to run this command.", false);
+            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false);
             return true;
         }
-        sendUserMessage(message, handleAdminAmountsCommand(), false);
+        sendUserDirectMessage(senderId, handleAdminAmountsCommand(), false);
+        return true;
+    }
+
+    if (cmd == "/adminbalance") {
+        if (!isAdmin(message.from.id)) {
+            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false);
+            return true;
+        }
+        QList<BalanceRecord> balances = m_db->listBalances();
+        if (balances.isEmpty()) {
+            sendUserDirectMessage(senderId, "No balances available yet.", false);
+            return true;
+        }
+        QStringList lines;
+        lines << QString("Balances (%1 entries):").arg(balances.size());
+        for (const BalanceRecord &entry : balances) {
+            QString label = m_db->usernameByUserId(entry.userId);
+            if (label.isEmpty()) {
+                label = entry.userId;
+            } else if (!label.startsWith("@")) {
+                label = QString("@%1").arg(label);
+            }
+            lines << QString("%1: %2 GRIN").arg(label).arg(formatGrin(entry.balance));
+        }
+        sendUserDirectMessage(senderId, lines.join("\n"), false);
         return true;
     }
 
     if (cmd == "/deposit") {
         if (parts.size() != 2) {
-            sendUserMessage(message, "Usage: /deposit <amount in GRIN>", false);
+            sendUserDirectMessage(senderId, "Usage: /deposit <amount in GRIN>", false);
             return true;
         }
         bool ok;
         int amount = parts[1].toInt(&ok);
         if (!ok || amount <= 0) {
-            sendUserMessage(message, "Please provide a positive amount.", false);
+            sendUserDirectMessage(senderId, "Please provide a positive amount.", false);
             return true;
         }
-        sendUserMessage(message, handleDepositCommand(senderId, amount, message), false);
+        QString depositResponse = handleDepositCommand(senderId, amount, message);
+        if (!depositResponse.isEmpty()) {
+            sendUserDirectMessage(senderId, depositResponse, false);
+        }
         return true;
     }
 
     if (cmd == "/withdraw") {
         if (parts.size() != 2) {
-            sendUserMessage(message, "Usage: /withdraw <amount in GRIN>", false);
+            sendUserDirectMessage(senderId, "Usage: /withdraw <amount in GRIN>", false);
             return true;
         }
         bool ok;
         int amount = parts[1].toInt(&ok);
         if (!ok || amount <= 0) {
-            sendUserMessage(message, "Please provide a positive amount.", false);
+            sendUserDirectMessage(senderId, "Please provide a positive amount.", false);
             return true;
         }
-        sendUserMessage(message, handleWithdrawCommand(senderId, amount, message), false);
+        QString withdrawResponse = handleWithdrawCommand(senderId, amount, message);
+        if (!withdrawResponse.isEmpty()) {
+            sendUserDirectMessage(senderId, withdrawResponse, false);
+        }
         return true;
     }
 
@@ -202,12 +288,14 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         if (toUser.startsWith("@")) {
             toUser = toUser.mid(1);
         }
-        bool ok;
-        int amount = parts[2].toInt(&ok);
-        if (!ok || amount <= 0) {
-            sendUserMessage(message, "Please provide a positive amount.", false);
+
+        qlonglong tipNanogrin = 0;
+        QString tipError;
+        if (!parseTipAmount(parts[2], tipNanogrin, tipError)) {
+            sendUserMessage(message, tipError, false);
             return true;
         }
+
         QString recipientId = resolveRecipientId(toUser, message);
         if (recipientId.isEmpty()) {
             sendUserMessage(message,
@@ -215,6 +303,12 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
                             false);
             return true;
         }
+
+        if (recipientId == senderId) {
+            sendUserMessage(message, "You cannot tip yourself.", false);
+            return true;
+        }
+
         QString recipientLabel = m_db->usernameByUserId(recipientId);
         if (recipientLabel.isEmpty()) {
             recipientLabel = toUser;
@@ -226,26 +320,41 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
             displayRecipient = recipientId;
         }
 
-        m_db->updateBalance(senderId, -amount);
-        m_db->updateBalance(recipientId, amount);
-        m_db->recordTransaction(senderId, recipientId, amount, "tip", displayRecipient);
-        sendUserMessage(message, QString("%1 GRIN sent to %2.").arg(amount).arg(displayRecipient), false);
+        if (m_db->getBalance(senderId) < tipNanogrin) {
+            sendUserMessage(message, "Insufficient balance.", false);
+            return true;
+        }
+
+        if (!m_db->updateBalance(senderId, -tipNanogrin)) {
+            sendUserMessage(message, "Insufficient balance.", false);
+            return true;
+        }
+
+        if (!m_db->updateBalance(recipientId, tipNanogrin)) {
+            qWarning() << "Failed to credit tip recipient" << recipientId;
+            // rollback sender balance
+            m_db->updateBalance(senderId, tipNanogrin);
+            sendUserMessage(message, "Unable to credit recipient; tip cancelled.", false);
+            return true;
+        }
+        m_db->recordTransaction(senderId, recipientId, tipNanogrin, "tip", displayRecipient);
+        sendUserMessage(message, QString("%1 GRIN sent to %2.").arg(formatGrin(tipNanogrin)).arg(displayRecipient), false, false);
         return true;
     }
 
     if (cmd == "/balance") {
-        int bal = m_db->getBalance(senderId);
-        sendUserMessage(message, QString("Your current balance: %1 GRIN").arg(bal), false);
+        qlonglong bal = m_db->getBalance(senderId);
+        sendUserDirectMessage(senderId, QString("Your current balance: %1 GRIN").arg(formatGrin(bal)), false);
         return true;
     }
 
     if (cmd == "/ledger") {
-        sendUserMessage(message, handleLedgerCommand(senderId, sender), false);
+        sendUserDirectMessage(senderId, handleLedgerCommand(senderId, sender), false);
         return true;
     }
 
     if (cmd == "/opentxs") {
-        sendUserMessage(message, handleOpenTransactionsCommand(sender), false);
+        sendUserDirectMessage(senderId, handleOpenTransactionsCommand(sender), false);
         return true;
     }
 
@@ -396,7 +505,7 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
 QString TippingWorker::handleDepositCommand(const QString &senderId, int amount, TelegramBotMessage message)
 {
     Q_UNUSED(senderId);
-    qlonglong nanogrin = qlonglong(amount) * 1000000000LL;
+    qlonglong nanogrin = qlonglong(amount) * nanogrinPerGrin;
     QString slateId;
     Result<QString> res = createInvoiceSlatepack(nanogrin, slateId);
     QString slatepack;
@@ -404,56 +513,43 @@ QString TippingWorker::handleDepositCommand(const QString &senderId, int amount,
         return QString("Error creating deposit slatepack: %1").arg(res.errorMessage());
     }
 
-    sendSlatepackMessage(message, slatepack, "I1");
     if (!slateId.isEmpty()) {
         PendingDepositRecord pending;
         pending.slateId = slateId;
         pending.userId = senderId;
         pending.chatId = message.chat.id;
         pending.firstName = message.from.firstName;
-        pending.amount = amount;
+        pending.amount = nanogrin;
         if (!m_db->insertPendingDeposit(pending)) {
             qWarning() << "Failed to store pending deposit for slate" << slateId;
         }
-        qDebug() << "Deposit command stored pending slate" << slateId << "for" << pending.userId << "amount" << pending.amount;
+        qDebug() << "Deposit command stored pending slate" << slateId << "for" << pending.userId << "amount" << formatGrin(pending.amount);
+    sendSlatepackMessage(message, slatepack, "I1", true);
     }
-    return QString("The following file contains your Slatepack (I1).\nSend the completed Slatepack file (I2) back or paste it as text.\nInvoice for %1 GRIN has been created. Follow the instructions.").arg(amount);
+    else
+    {
+        sendUserMarkdownMessage(message,"Error with slatepack creation (deposit)! Please contact admin",false,true);
+    }
+    Q_UNUSED(amount);
+    return QString();
 }
 
 QString TippingWorker::handleWithdrawCommand(const QString &senderId, int amount, TelegramBotMessage message)
 {
-    if (m_db->getBalance(senderId) < amount) {
+    qlonglong amountNano = qlonglong(amount) * nanogrinPerGrin;
+    if (m_db->getBalance(senderId) < amountNano) {
         return "Insufficient balance.";
     }
 
-    qlonglong nanogrin = qlonglong(amount) * 1000000000LL;
-    Result<QString> res = createSendSlatepack(nanogrin, senderId);
+    Result<QString> res = createSendSlatepack(amountNano, senderId);
     QString slatepack;
     if (!res.unwrapOrLog(slatepack)) {
         return QString("Error creating withdraw slatepack: %1").arg(res.errorMessage());
     }
 
-    sendSlatepackMessage(message, slatepack, "S1");
-    return QString("The following file contains your Slatepack (S1).\nSend the completed Slatepack file (S2) back or paste it as text.\nA send transaction for %1 GRIN has been prepared. Follow the instructions.").arg(amount);
-}
-
-QString TippingWorker::handleTip(const QString &fromId, const QString &fromLabel, const QString &toUser, int amount)
-{
-    if (!fromLabel.isEmpty() && fromLabel == toUser) {
-        return "You cannot tip yourself.";
-    }
-    if (toUser == fromId) {
-        return "You cannot tip yourself.";
-    }
-
-    if (m_db->getBalance(fromId) < amount) {
-        return "Insufficient balance.";
-    }
-
-    m_db->updateBalance(fromId, -amount);
-    m_db->updateBalance(toUser, amount);
-    m_db->recordTransaction(fromId, toUser, amount, "tip");
-    return QString("%1 GRIN sent to @%2.").arg(amount).arg(toUser);
+    sendSlatepackMessage(message, slatepack, "S1", true);
+    Q_UNUSED(amount);
+    return QString();
 }
 
 QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
@@ -479,7 +575,7 @@ QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
             }
 
             quint64 amount = (entry.txType() == "TxSent") ? entry.amountDebited() : entry.amountCredited();
-            qlonglong grinAmount = static_cast<qlonglong>(amount / 1000000000LL);
+            QString grinAmount = formatGrin(static_cast<qlonglong>(amount));
             QString slateId = entry.txSlateId().isNull() ? QStringLiteral("-") : entry.txSlateId().toString();
             QString timestamp = entry.creationTs().toString("yyyy-MM-dd hh:mm:ss");
             QString direction = (entry.txType() == "TxSent") ? "Sent" : "Received";
@@ -496,7 +592,7 @@ QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
     if (!pendingList.isEmpty()) {
         for (const PendingDepositRecord &pending : pendingList) {
             QString name = pending.firstName.isEmpty() ? pending.userId : pending.firstName;
-            lines << QString("Pending deposit %1 GRIN for %2 (slate %3)").arg(pending.amount).arg(name).arg(pending.slateId);
+            lines << QString("Pending deposit %1 GRIN for %2 (slate %3)").arg(formatGrin(pending.amount)).arg(name).arg(pending.slateId);
         }
     }
 
@@ -533,7 +629,7 @@ QString TippingWorker::handleLedgerCommand(const QString &senderId, const QStrin
         if (to.isEmpty()) {
             to = entry.toUserId.isEmpty() ? "system" : entry.toUserId;
         }
-        QString amount = QString::number(entry.amount);
+        QString amount = formatGrin(entry.amount);
         QString line = QString("%1 | %2 GRIN | %3 -> %4 | %5")
                        .arg(time)
                        .arg(amount)
@@ -549,17 +645,34 @@ QString TippingWorker::handleLedgerCommand(const QString &senderId, const QStrin
     return lines.join("\n");
 }
 
-void TippingWorker::sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel)
+void TippingWorker::sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel, bool sendToUserChat)
 {
-    QString fileName = QString("%1.%2.slatepack").arg(userLabel(message)).arg(stateLabel);
-    m_bot->sendDocument(fileName,
-                        message.chat.id,
-                        QVariant(slatepack.toUtf8() + "\n"),
-                        "",
-                        0,
-                        TelegramBot::NoFlag,
-                        TelegramKeyboardRequest(),
-                        nullptr);
+    QString trimmed = slatepack.trimmed();
+    if (trimmed.isEmpty()) {
+        return;
+    }
+
+    const int chunkSize = 3800;
+    int totalParts = (trimmed.size() + chunkSize - 1) / chunkSize;
+    int part = 1;
+    while (part <= totalParts) {
+        QString chunk = trimmed.mid((part - 1) * chunkSize, chunkSize);
+        QString header;
+        if (totalParts > 1) {
+            header = QString("Slatepack (%1) part %2/%3. Copy the text below and send the completed slatepack back when ready.")
+                         .arg(stateLabel)
+                         .arg(part)
+                         .arg(totalParts);
+        } else {
+            header = QString("Slatepack (%1). Copy the text below and send the completed slatepack back when ready.").arg(stateLabel);
+        }
+
+        qDebug() << "sendSlatepackMessage chunk" << part << "of" << totalParts << "size" << chunk.size();
+
+        sendUserMessage(message, header, true, sendToUserChat);
+        sendUserMessage(message, chunk, true, sendToUserChat);
+        ++part;
+    }
 }
 
 Result<QString> TippingWorker::createInvoiceSlatepack(qlonglong nanogrin, QString &slateId)
@@ -627,14 +740,13 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
     }
 
     QString slateId = slate.id();
-    int amountGrin = static_cast<int>(nanogrin / 1000000000LL);
     if (!slateId.isEmpty()) {
-        PendingWithdrawRecord pending{slateId, senderId, amountGrin, QDateTime::currentSecsSinceEpoch()};
+        PendingWithdrawRecord pending{slateId, senderId, nanogrin, QDateTime::currentSecsSinceEpoch()};
         m_pendingWithdraws.insert(slateId, pending);
         if (!m_db->insertPendingWithdraw(pending)) {
             qWarning() << "createSendSlatepack: failed to persist pending withdraw" << slateId;
         }
-        qDebug() << "createSendSlatepack: stored pending withdraw" << slateId << "amount" << amountGrin;
+        qDebug() << "createSendSlatepack: stored pending withdraw" << slateId << "amount" << formatGrin(nanogrin);
     }
 
     Result<QString> slatepackResult = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
@@ -678,7 +790,6 @@ Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessag
 
     QString slateId = finalized.id();
     qlonglong nanogrin = slateToGrin(finalized);
-    int computedAmount = static_cast<int>(nanogrin / 1000000000LL);
 
     PendingDepositRecord pending;
     bool hasPending = false;
@@ -686,13 +797,13 @@ Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessag
         hasPending = m_db->pendingDeposit(slateId, pending);
     }
 
-    int displayAmount = hasPending ? pending.amount : computedAmount;
+    qlonglong displayAmount = hasPending ? pending.amount : nanogrin;
 
     if (displayAmount <= 0) {
         return Error(ErrorType::Unknown, "Deposit amount missing.");
     }
 
-    return QString("%1 GRIN deposit received. Waiting for confirmations before crediting.").arg(displayAmount);
+    return QString("%1 GRIN deposit received. Waiting for confirmations before crediting.").arg(formatGrin(displayAmount));
 }
 
 Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessage message, const PendingWithdrawRecord &pendingWithdraw)
@@ -722,9 +833,9 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
     }
 
     qlonglong nanogrin = slateToGrin(finalized);
-    int grinAmount = pendingWithdraw.amount;
+    qlonglong grinAmount = pendingWithdraw.amount;
     if (grinAmount <= 0) {
-        grinAmount = static_cast<int>(nanogrin / 1000000000LL);
+        grinAmount = nanogrin;
     }
     QString userId = pendingWithdraw.userId.isEmpty() ? userLabel(message) : pendingWithdraw.userId;
     if (!m_db->updateBalance(userId, -grinAmount)) {
@@ -732,7 +843,7 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
     }
     m_db->recordTransaction(userId, "", grinAmount, "withdraw");
 
-    return QString("%1 GRIN withdrawn.").arg(grinAmount);
+    return QString("%1 GRIN withdrawn.").arg(formatGrin(grinAmount));
 }
 
 qlonglong TippingWorker::slateToGrin(const Slate &slate) const
@@ -936,10 +1047,10 @@ void TippingWorker::checkPendingDeposits()
                 continue;
             }
 
-            int creditedAmount = pending.amount;
+            qlonglong creditedAmount = pending.amount;
             quint64 amountNano = entry.amountCredited() > 0 ? entry.amountCredited() : entry.amountDebited();
             if (amountNano > 0) {
-                creditedAmount = static_cast<int>(amountNano / 1000000000LL);
+                creditedAmount = static_cast<qlonglong>(amountNano);
             }
             if (creditedAmount <= 0) {
                 creditedAmount = pending.amount;
@@ -949,19 +1060,14 @@ void TippingWorker::checkPendingDeposits()
             m_db->updateBalance(pending.userId, creditedAmount);
             m_db->recordTransaction("", pending.userId, creditedAmount, "deposit");
 
-            QString reply = QString("%1 GRIN deposit confirmed and credited to your balance.").arg(creditedAmount);
+            QString reply = QString("%1 GRIN deposit confirmed and credited to your balance.").arg(formatGrin(creditedAmount));
             QString msg;
             if (!pending.firstName.isEmpty()) {
                 msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
             } else {
                 msg = reply;
             }
-            m_bot->sendMessage(pending.chatId,
-                               msg,
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
+            sendUserDirectMessage(pending.userId, msg, true);
 
             if (!m_db->removePendingDeposit(slateId)) {
                 qWarning() << "Failed to remove pending deposit" << slateId;
@@ -1010,7 +1116,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
             }
 
             QString reply = QString("%1 GRIN withdraw confirmed on the blockchain (tx id %2).")
-                            .arg(pending.amount)
+                            .arg(formatGrin(pending.amount))
                             .arg(entry.id());
             QString msg;
             if (!pending.firstName.isEmpty()) {
@@ -1018,12 +1124,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
             } else {
                 msg = reply;
             }
-            m_bot->sendMessage(pending.chatId,
-                               msg,
-                               0,
-                               TelegramBot::NoFlag,
-                               TelegramKeyboardRequest(),
-                               nullptr);
+            sendUserDirectMessage(pending.userId, msg, true);
 
             if (!m_db->removePendingWithdrawConfirmation(pending.slateId)) {
                 qWarning() << "Failed to remove pending withdraw confirmation" << pending.slateId;
@@ -1070,7 +1171,29 @@ void TippingWorker::sendUserMessage(QString user, QString content)
     qDebug() << "Message to " << user << ": " << content;
 }
 
-void TippingWorker::sendUserMessage(TelegramBotMessage message, QString content, bool plain)
+void TippingWorker::sendUserDirectMessage(const QString &userId, QString content, bool plain)
+{
+    if (userId.isEmpty()) {
+        return;
+    }
+
+    bool ok = false;
+    qlonglong chatId = userId.toLongLong(&ok);
+    if (!ok) {
+        qWarning() << "Invalid userId for direct message:" << userId;
+        return;
+    }
+
+    QVariant chatVar = QVariant::fromValue(chatId);
+    m_bot->sendMessage(chatVar,
+                       content,
+                       0,
+                       TelegramBot::NoFlag,
+                       TelegramKeyboardRequest(),
+                       nullptr);
+}
+
+void TippingWorker::sendUserMessage(TelegramBotMessage message, QString content, bool plain, bool sendToUserChat)
 {
     QString msg;
     if (plain) {
@@ -1079,7 +1202,8 @@ void TippingWorker::sendUserMessage(TelegramBotMessage message, QString content,
         msg = QString("Hi " + message.from.firstName + ",\n" + content);
     }
 
-    m_bot->sendMessage(message.chat.id,
+    QVariant chatId = sendToUserChat ? QVariant::fromValue(message.from.id) : QVariant::fromValue(message.chat.id);
+    m_bot->sendMessage(chatId,
                        msg,
                        0,
                        TelegramBot::NoFlag,
@@ -1101,7 +1225,7 @@ QString TippingWorker::readFileToString(const QString &filePath)
     return content;
 }
 
-void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain)
+void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain, bool sendToUserChat)
 {
     QString msg;
     if (plain) {
@@ -1110,7 +1234,8 @@ void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString 
         msg = QString("Hi " + message.from.firstName + ",\n" + content);
     }
 
-    m_bot->sendMessage(message.chat.id,
+    QVariant chatId = sendToUserChat ? QVariant::fromValue(message.from.id) : QVariant::fromValue(message.chat.id);
+    m_bot->sendMessage(chatId,
                        msg,
                        0,
                        TelegramBot::Markdown | TelegramBot::DisableWebPagePreview,

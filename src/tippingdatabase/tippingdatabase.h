@@ -16,14 +16,14 @@ struct PendingDepositRecord
     QString userId;
     qlonglong chatId;
     QString firstName;
-    int amount;
+    qlonglong amount;
 };
 
 struct PendingWithdrawRecord
 {
     QString slateId;
     QString userId;
-    int amount;
+    qlonglong amount;
     qlonglong createdAt;
 };
 
@@ -33,7 +33,7 @@ struct PendingWithdrawConfirmationRecord
     QString userId;
     qlonglong chatId;
     QString firstName;
-    int amount;
+    qlonglong amount;
     qlonglong createdAt;
 };
 
@@ -42,9 +42,15 @@ struct TxLedgerEntry
     qlonglong timestamp;
     QString fromUserId;
     QString toUserId;
-    int amount;
+    qlonglong amount;
     QString type;
     QString reference;
+};
+
+struct BalanceRecord
+{
+    QString userId;
+    qlonglong balance;
 };
 
 class TippingDatabase : public QObject
@@ -56,10 +62,10 @@ public:
     ~TippingDatabase();
 
     bool initialize();
-    bool recordTransaction(const QString &fromUser, const QString &toUser, int amount, const QString &type, const QString &reference = QString());
-    int getBalance(const QString &userId);
-    bool updateBalance(const QString &userId, int amountDelta);
-    bool setBalance(const QString &userId, int balance);
+    bool recordTransaction(const QString &fromUser, const QString &toUser, qlonglong amount, const QString &type, const QString &reference = QString());
+    qlonglong getBalance(const QString &userId);
+    bool updateBalance(const QString &userId, qlonglong amountDelta);
+    bool setBalance(const QString &userId, qlonglong balance);
     bool insertPendingDeposit(const PendingDepositRecord &deposit);
     bool removePendingDeposit(const QString &slateId);
     QList<PendingDepositRecord> pendingDeposits();
@@ -79,6 +85,7 @@ public:
     bool ensureUserRecord(const QString &userId, const QString &username);
     QString userIdByUsername(const QString &username);
     QString usernameByUserId(const QString &userId);
+    QList<BalanceRecord> listBalances();
 
 private:
     QSqlDatabase m_db;

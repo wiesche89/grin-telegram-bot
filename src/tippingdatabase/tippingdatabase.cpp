@@ -128,7 +128,7 @@ bool TippingDatabase::ensureTables()
  * @param reference
  * @return
  */
-bool TippingDatabase::recordTransaction(const QString &fromUser, const QString &toUser, int amount, const QString &type, const QString &reference)
+bool TippingDatabase::recordTransaction(const QString &fromUser, const QString &toUser, qlonglong amount, const QString &type, const QString &reference)
 {
     m_query->prepare("INSERT INTO ledger (timestamp, from_user, to_user, amount, type, reference) "
                      "VALUES (?, ?, ?, ?, ?, ?)");
@@ -158,7 +158,7 @@ QList<TxLedgerEntry> TippingDatabase::ledgerEntries(int limit)
         entry.timestamp = m_query->value(0).toLongLong();
         entry.fromUserId = m_query->value(1).toString();
         entry.toUserId = m_query->value(2).toString();
-        entry.amount = m_query->value(3).toInt();
+        entry.amount = m_query->value(3).toLongLong();
         entry.type = m_query->value(4).toString();
         entry.reference = m_query->value(5).toString();
         entries.append(entry);
@@ -213,12 +213,12 @@ QString TippingDatabase::usernameByUserId(const QString &userId)
  * @param userId
  * @return
  */
-int TippingDatabase::getBalance(const QString &userId)
+qlonglong TippingDatabase::getBalance(const QString &userId)
 {
     m_query->prepare("SELECT balance FROM balances WHERE user_id = ?");
     m_query->addBindValue(userId);
     if (m_query->exec() && m_query->next()) {
-        return m_query->value(0).toInt();
+        return m_query->value(0).toLongLong();
     }
     return 0;
 }
@@ -229,10 +229,14 @@ int TippingDatabase::getBalance(const QString &userId)
  * @param amountDelta
  * @return
  */
-bool TippingDatabase::updateBalance(const QString &userId, int amountDelta)
+bool TippingDatabase::updateBalance(const QString &userId, qlonglong amountDelta)
 {
-    int current = getBalance(userId);
-    return setBalance(userId, current + amountDelta);
+    qlonglong current = getBalance(userId);
+    qlonglong next = current + amountDelta;
+    if (next < 0) {
+        return false;
+    }
+    return setBalance(userId, next);
 }
 
 /**
@@ -241,7 +245,7 @@ bool TippingDatabase::updateBalance(const QString &userId, int amountDelta)
  * @param balance
  * @return
  */
-bool TippingDatabase::setBalance(const QString &userId, int balance)
+bool TippingDatabase::setBalance(const QString &userId, qlonglong balance)
 {
     m_query->prepare("REPLACE INTO balances (user_id, balance) VALUES (?, ?)");
     m_query->addBindValue(userId);
@@ -283,7 +287,7 @@ QList<PendingDepositRecord> TippingDatabase::pendingDeposits()
         PendingDepositRecord record;
         record.slateId = m_query->value(0).toString();
         record.userId = m_query->value(1).toString();
-        record.amount = m_query->value(2).toInt();
+        record.amount = m_query->value(2).toLongLong();
         record.chatId = m_query->value(3).toLongLong();
         record.firstName = m_query->value(4).toString();
         list.append(record);
@@ -301,7 +305,7 @@ bool TippingDatabase::pendingDeposit(const QString &slateId, PendingDepositRecor
     }
     deposit.slateId = slateId;
     deposit.userId = m_query->value(0).toString();
-    deposit.amount = m_query->value(1).toInt();
+    deposit.amount = m_query->value(1).toLongLong();
     deposit.chatId = m_query->value(2).toLongLong();
     deposit.firstName = m_query->value(3).toString();
     return true;
@@ -339,7 +343,7 @@ QList<PendingWithdrawRecord> TippingDatabase::pendingWithdrawals()
         PendingWithdrawRecord record;
         record.slateId = m_query->value(0).toString();
         record.userId = m_query->value(1).toString();
-        record.amount = m_query->value(2).toInt();
+        record.amount = m_query->value(2).toLongLong();
         record.createdAt = m_query->value(3).toLongLong();
         list.append(record);
     }
@@ -356,7 +360,7 @@ bool TippingDatabase::pendingWithdraw(const QString &slateId, PendingWithdrawRec
     }
     withdraw.slateId = slateId;
     withdraw.userId = m_query->value(0).toString();
-    withdraw.amount = m_query->value(1).toInt();
+    withdraw.amount = m_query->value(1).toLongLong();
     withdraw.createdAt = m_query->value(2).toLongLong();
     return true;
 }
@@ -397,8 +401,27 @@ QList<PendingWithdrawConfirmationRecord> TippingDatabase::pendingWithdrawConfirm
         record.userId = m_query->value(1).toString();
         record.chatId = m_query->value(2).toLongLong();
         record.firstName = m_query->value(3).toString();
-        record.amount = m_query->value(4).toInt();
+        record.amount = m_query->value(4).toLongLong();
         record.createdAt = m_query->value(5).toLongLong();
+        list.append(record);
+    }
+    return list;
+}
+
+QList<BalanceRecord> TippingDatabase::listBalances()
+{
+    QList<BalanceRecord> list;
+    if (!m_query) return list;
+
+    m_query->prepare("SELECT user_id, balance FROM balances ORDER BY balance DESC, user_id ASC");
+    if (!m_query->exec()) {
+        return list;
+    }
+
+    while (m_query->next()) {
+        BalanceRecord record;
+        record.userId = m_query->value(0).toString();
+        record.balance = m_query->value(1).toLongLong();
         list.append(record);
     }
     return list;

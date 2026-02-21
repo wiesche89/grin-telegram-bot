@@ -36,20 +36,19 @@ private slots:
     void checkPendingDeposits();
 
 private:
-    void sendUserMessage(TelegramBotMessage message, QString content, bool plain = false);
+    void sendUserMessage(TelegramBotMessage message, QString content, bool plain = false, bool sendToUserChat = true);
     bool handleSlatepackDocument(TelegramBotMessage &message);
     bool handleSlatepackText(TelegramBotMessage &message, const QString &text);
 
     QString handleDepositCommand(const QString &senderId, int amount, TelegramBotMessage message);
     QString handleWithdrawCommand(const QString &senderId, int amount, TelegramBotMessage message);
-    QString handleTip(const QString &fromId, const QString &fromLabel, const QString &toUser, int amount);
     QString handleOpenTransactionsCommand(const QString &sender);
     QString handleLedgerCommand(const QString &senderId, const QString &senderLabel);
     QString handleAdminAmountsCommand();
     bool isAdmin(qlonglong id);
     Result<WalletInfo> fetchAccountSummary(const QString &accountLabel);
     QString formatWalletSummary(const WalletInfo &walletInfo) const;
-    void sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel);
+    void sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel, bool sendToUserChat = true);
     bool ensureTippingAccount();
     Result<QString> createInvoiceSlatepack(qlonglong nanogrin, QString &slateId);
     Result<QString> createSendSlatepack(qlonglong nanogrin, const QString &senderId);
@@ -61,7 +60,7 @@ private:
     QString downloadFileToQString(const QUrl &url);
 
     QString readFileToString(const QString &filePath);
-    void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
+    void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain, bool sendToUserChat = true);
     QString resolveRecipientId(const QString &target, const TelegramBotMessage &message) const;
 
     TelegramBot *m_bot;
@@ -78,6 +77,7 @@ private:
     bool activateWalletAccount(const QString &accountLabel);
     bool activateTippingWalletAccount();
     void checkPendingWithdrawConfirmations();
+    void sendUserDirectMessage(const QString &userId, QString content, bool plain = false);
 };
 #endif // TIPPINGWORKER_H
 
