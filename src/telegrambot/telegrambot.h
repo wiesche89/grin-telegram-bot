@@ -189,6 +189,7 @@ private slots:
 
     // webhook functions
     void handleServerWebhookResponse(HttpServerRequest request, HttpServerResponse response);
+    void checkWebhookHealth();
 
 private:
     // call Api Helpers
@@ -228,6 +229,9 @@ private:
         QDelegate<bool(TelegramBotUpdate)> delegate;
     };
     QList<MessageRoute *> messageRoutes;
+    QTimer *m_webhookHealthTimer = nullptr;
+    bool m_webhookFallbackTriggered = false;
+    qint32 m_lastWebhookErrorDate = 0;
 };
 
 /*

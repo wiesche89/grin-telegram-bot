@@ -60,6 +60,10 @@ TelegramBot::TelegramBot(QString apikey, QObject *parent) : QObject(parent),
     apiKey(apikey)
 {
     // qDebug()<<Q_FUNC_INFO <<" ";
+    this->m_webhookHealthTimer = new QTimer(this);
+    this->m_webhookHealthTimer->setInterval(30 * 1000);
+    connect(this->m_webhookHealthTimer, &QTimer::timeout, this, &TelegramBot::checkWebhookHealth);
+    this->m_webhookHealthTimer->start();
 }
 
 /**
@@ -1249,6 +1253,40 @@ void TelegramBot::handleServerWebhookResponse(HttpServerRequest request, HttpSer
 
     // reply to server with status OK
     response->status = HttpServerResponsePrivate::OK;
+}
+
+void TelegramBot::checkWebhookHealth()
+{
+    if (this->m_webhookFallbackTriggered) {
+        return;
+    }
+
+    TelegramBotWebHookInfo info = this->getWebhookInfo();
+    qDebug() << "TelegramBot::checkWebhookHealth - webhook" << info.url
+             << "lastErrorDate" << info.lastErrorDate
+             << "lastErrorMessage" << info.lastErrorMessage
+             << "pendingUpdates" << info.pendingUpdateCount;
+
+    if (info.url.isEmpty()) {
+        return;
+    }
+
+    if (info.lastErrorMessage.isEmpty()) {
+        return;
+    }
+
+    if (info.lastErrorDate <= this->m_lastWebhookErrorDate) {
+        return;
+    }
+
+    this->m_lastWebhookErrorDate = info.lastErrorDate;
+    qDebug() << "TelegramBot::checkWebhookHealth - detected webhook error, switching to polling";
+    this->deleteWebhook();
+    this->startMessagePulling();
+    this->m_webhookFallbackTriggered = true;
+    if (this->m_webhookHealthTimer) {
+        this->m_webhookHealthTimer->stop();
+    }
 }
 
 template<typename T>
