@@ -88,6 +88,7 @@ struct TelegramBotWebHookInfo : public TelegramBotObject {
     QString lastErrorMessage;
     qint32 maxConnections;
     QList<QString> allowedUpdates;
+    QString ipAddress;
 
     TelegramBotWebHookInfo(QJsonObject object)
     {
@@ -104,6 +105,7 @@ struct TelegramBotWebHookInfo : public TelegramBotObject {
         JsonHelperT<QString>::jsonPathGet(object, "last_error_message", this->lastErrorMessage, false);
         JsonHelperT<qint32>::jsonPathGet(object, "max_connections", this->maxConnections, false);
         JsonHelperT<QString>::jsonPathGetArray(object, "allowed_updates", this->allowedUpdates, false);
+        JsonHelperT<QString>::jsonPathGet(object, "ip_address", this->ipAddress, false);
     }
 };
 

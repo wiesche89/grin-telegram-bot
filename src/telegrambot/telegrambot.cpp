@@ -1,3 +1,5 @@
+#include <cstdio>
+#include <QMetaObject>
 #include "telegrambot.h"
 
 QMap<qint16, HttpServer *> TelegramBot::webHookWebServers = QMap<qint16, HttpServer *>();
@@ -1035,6 +1037,11 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
     // try to acquire httpServer
     HttpServer *httpServer = 0;
     QSslCertificate cert;
+    auto mark = [](const char *msg) {
+        fprintf(stderr, "[WEBHOOK] %s\n", msg);
+        fflush(stderr);
+    };
+    mark("A: entering setHttpServerWebhook");
     if (this->webHookWebServers.contains(port)) {
         // if existing webhook contains not the same privateKey, inform user and exit
         if (this->webHookWebServers.find(port).value()->isSamePrivateKey(pathPrivateKey)) {
@@ -1056,7 +1063,7 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
     else {
         // create new http server and register it for auto scope deletion if an error occours
         std::unique_ptr<HttpServer> scopedHttpServer = std::make_unique<HttpServer>();
-        HttpServer *httpServer = scopedHttpServer.get();
+        httpServer = scopedHttpServer.get();
 
         // handle certificates
         cert = httpServer->addCert(pathCert);
@@ -1072,22 +1079,29 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
         }
 
         // permit only telegram connections
-        httpServer->addWhiteListHostSubnet("149.154.164.0/22");
+        httpServer->addWhiteListHostSubnet("149.154.160.0/20");
+        httpServer->addWhiteListHostSubnet("91.108.4.0/22");
 
         // start listener
         if (!httpServer->listen(QHostAddress::Any, port)) {
+            qCritical() << "Webhook listen failed:" << httpServer->errorString();
             EXIT_FAILED("TelegramBot::setHttpServerWebhook - Cannot listen on port %i, webhook installation failed...", port)
         }
+        qInfo() << "Webhook listening on" << httpServer->serverAddress() << httpServer->serverPort();
+        mark("D: after listen()");
 
         // everything is okay, so register http server
         this->webHookWebServers.insert(port, scopedHttpServer.release());
     }
+
+    mark("B: after cert/key set");
 
     // simplify data
     QString host = cert.subjectInfo(QSslCertificate::CommonName).first();
 
     // add rewrite rule
     httpServer->addRewriteRule(host, "/" + this->apiKey, {this, &TelegramBot::handleServerWebhookResponse});
+    mark("C: after route registration");
 
     // build server webhook request
     QUrlQuery query;
@@ -1130,7 +1144,17 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
     QHttpMultiPart *multiPart = this->createUploadFile("certificate", "cert.pem", certContent);
 
     // call api
-    return this->callApiJson("setWebhook", query, multiPart).value("result").toBool();
+    QJsonObject apiResponse = this->callApiJson("setWebhook", query, multiPart);
+    bool result = apiResponse.value("result").toBool();
+    if (!result) {
+        QString description = apiResponse.value("description").toString();
+        qWarning() << "Telegram setWebhook failed:" << description;
+        mark("E: after callApiJson (failed)");
+    } else {
+        mark("E: after callApiJson (succeeded)");
+    }
+    mark("F: leaving setHttpServerWebhook");
+    return result;
 }
 
 /**
@@ -1249,7 +1273,12 @@ void TelegramBot::handleServerWebhookResponse(HttpServerRequest request, HttpSer
 {
     // qDebug()<<Q_FUNC_INFO <<" ";
     // parse response
-    this->parseMessage(request->content, true);
+    QByteArray payload = request->content;
+    qInfo() << "[WEBHOOK] handler received" << payload.size() << "bytes from" << request->headers.value("Host");
+    QMetaObject::invokeMethod(this, [this, payload]() mutable {
+        QByteArray data = payload;
+        this->parseMessage(data, true);
+    }, Qt::QueuedConnection);
 
     // reply to server with status OK
     response->status = HttpServerResponsePrivate::OK;
@@ -1263,9 +1292,12 @@ void TelegramBot::checkWebhookHealth()
 
     TelegramBotWebHookInfo info = this->getWebhookInfo();
     qDebug() << "TelegramBot::checkWebhookHealth - webhook" << info.url
+             << "ipAddress" << info.ipAddress
              << "lastErrorDate" << info.lastErrorDate
              << "lastErrorMessage" << info.lastErrorMessage
-             << "pendingUpdates" << info.pendingUpdateCount;
+             << "pendingUpdates" << info.pendingUpdateCount
+             << "maxConnections" << info.maxConnections
+             << "allowedUpdates" << info.allowedUpdates;
 
     if (info.url.isEmpty()) {
         return;

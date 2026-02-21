@@ -2,6 +2,7 @@
 #define HTTPSERVER_H
 
 #include <QObject>
+#include <QHostAddress>
 #include <QNetworkRequest>
 #include <QSharedPointer>
 #include <QMap>
@@ -210,11 +211,15 @@ class HttpServer : public SSLServer
     Q_OBJECT
 public:
     HttpServer(QObject *parent = 0);
+    bool listen(const QHostAddress &address = QHostAddress::Any, quint16 port = 0);
     void addRewriteRule(QString host, QString path, QDelegate<void(HttpServerRequest, HttpServerResponse)> delegate);
 
 private:
     void handleNewConnection();
     void handleNewData();
+
+    void sendMinimal200Response(QTcpSocket *socket);
+    static const QByteArray minimal200Answer;
 
     // Helper
     bool parseRequest(QTcpSocket &device, HttpServerRequest &request);

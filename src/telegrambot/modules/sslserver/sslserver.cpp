@@ -156,7 +156,7 @@ void SSLServer::incomingConnection(qintptr socketDescriptor)
     // create ssl connection
     QSslSocket *sslSocket = new QSslSocket(this);
     QObject::connect(sslSocket, &QSslSocket::disconnected, sslSocket, &QSslSocket::deleteLater);
-    QObject::connect(sslSocket, SIGNAL(error(QAbstractSocket::SocketError)), sslSocket, SLOT(deleteLater()));
+    QObject::connect(sslSocket, &QSslSocket::errorOccurred, sslSocket, &QSslSocket::deleteLater);
     if (sslSocket->setSocketDescriptor(socketDescriptor) && this->isConnectionAllowed(sslSocket)) {
         QObject::connect(sslSocket, &QSslSocket::encrypted, this, &SSLServer::connectionReady);
         sslSocket->setPeerVerifyMode(QSslSocket::VerifyNone);

@@ -1,4 +1,15 @@
+#include <cstdio>
+#include <QDateTime>
+#include <QDebug>
 #include "httpserver.h"
+
+const QByteArray HttpServer::minimal200Answer = QByteArrayLiteral(
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 2\r\n"
+    "Connection: close\r\n"
+    "\r\n"
+    "OK");
 
 /**
  * @brief HttpServer::HttpServer
@@ -7,6 +18,18 @@
 HttpServer::HttpServer(QObject *parent) : SSLServer(parent)
 {
     QObject::connect(this, &HttpServer::connectionReady, this, &HttpServer::handleNewConnection);
+}
+
+bool HttpServer::listen(const QHostAddress &address, quint16 port)
+{
+    auto mark = [](const char *msg) {
+        fprintf(stderr, "[WEBHOOK] %s\n", msg);
+        fflush(stderr);
+    };
+    mark("HttpServer::listen start");
+    bool ok = SSLServer::listen(address, port);
+    mark("HttpServer::listen end");
+    return ok;
 }
 
 /**
@@ -50,66 +73,73 @@ void HttpServer::handleNewData()
         return;
     }
 
+    QString peerIp = socket->peerAddress().toString();
+    QString method = request->method;
+    QString path = request->url;
+    auto sanitizePath = [](const QString &input) {
+        if (input.isEmpty()) {
+            return input;
+        }
+        QString trimmed = input;
+        if (!trimmed.startsWith('/')) {
+            trimmed.prepend('/');
+        }
+        QStringList segments = trimmed.split('/', Qt::SkipEmptyParts);
+        if (segments.isEmpty()) {
+            return trimmed;
+        }
+        if (segments.first().contains(':')) {
+            segments[0] = QStringLiteral("<webhook>");
+        }
+        QString sanitized = '/' + segments.join('/');
+        if (trimmed.endsWith('/') && !sanitized.endsWith('/')) {
+            sanitized += '/';
+        }
+        return sanitized;
+    };
+    QString safePath = sanitizePath(path);
+    qint64 bodyLength = request->content.size();
+    qInfo() << "[WEBHOOK] IN" << peerIp << method << safePath << "len=" << bodyLength;
+
+    qint64 t0 = QDateTime::currentMSecsSinceEpoch();
+    this->sendMinimal200Response(socket);
+    qint64 duration = QDateTime::currentMSecsSinceEpoch() - t0;
+    qInfo() << "[WEBHOOK] OUT 200 in" << duration << "ms";
+
     // remove pending request
     this->pendingRequests.remove(socket);
 
-    // exit if we have no route for host
-    if (!this->rewriteRules.contains(request->host)) {
-        return;
+    QString routeHost = request->host;
+    if (!this->rewriteRules.contains(routeHost)) {
+        if (this->rewriteRules.isEmpty()) {
+            qWarning() << "[WEBHOOK] No route for host" << request->host << "original" << request->headers.value("Host");
+            return;
+        }
+        routeHost = this->rewriteRules.begin().key();
+        qInfo() << "[WEBHOOK] Falling back to webhook host" << routeHost;
     }
 
     // invoke routes
     HttpServerResponse response(new HttpServerResponsePrivate);
-    auto &hostRoutes = this->rewriteRules.find(request->host).value();
+    auto &hostRoutes = this->rewriteRules.find(routeHost).value();
     for (auto itr = hostRoutes.begin(); itr != hostRoutes.end(); itr++) {
         if (itr.key().startsWith(request->url)) {
             itr.value().invoke(request, response);
         }
     }
 
-    // exit if user don't want to send a response back
-    if (!response->status) {
+    if (response->status) {
+        qInfo() << "[WEBHOOK] Handler status" << (qint32)response->status;
+    }
+}
+
+void HttpServer::sendMinimal200Response(QTcpSocket *socket)
+{
+    if (!socket) {
         return;
     }
-
-    // build response
-    QByteArray responseContent;
-    responseContent += (response->version.isEmpty() ? QByteArray("HTTP/1.1") : response->version.toUtf8());
-    responseContent += " "; // Leerzeichen als QByteArray
-
-    // Status-Zeile
-    responseContent += QByteArray::number((qint32)response->status);
-    responseContent += " ";
-    responseContent += response->StatusNames.value((qint32)response->status, QString()).toUtf8();
-    responseContent += "\r\n";
-
-    // add headers
-    qint64 contentLength = 0;
-    for (auto itr = response->headers.begin(); itr != response->headers.end(); ++itr) {
-        if (itr.key().toLower() == "content-length") {
-            contentLength = itr.value().toLongLong();
-        }
-        // Header-Key und Value in UTF-8 wandeln
-        responseContent += itr.key().toUtf8();
-        responseContent += ": ";
-        responseContent += itr.value().toUtf8();
-        responseContent += "\r\n";
-    }
-
-
-    // add content length if not available
-    if (contentLength && !response->content.isEmpty()) {
-        responseContent += "Content-Length: " + QByteArray::number(contentLength) + "\r\n";
-    }
-    responseContent += "\r\n";
-
-    // add content
-    if (!response->content.isEmpty()) {
-        responseContent += response->content;
-    }
-
-    // send response
-    socket->write(responseContent);
+    socket->write(this->minimal200Answer);
+    socket->disconnectFromHost();
 }
 
 /**
@@ -194,7 +224,12 @@ bool HttpServer::parseRequest(QTcpSocket &device, HttpServerRequest &request)
     }
 
     // demoralize data
-    request->host = request->headers.value("Host");
+    QString hostHeader = request->headers.value("Host");
+    int colonPos = hostHeader.indexOf(':');
+    if (colonPos != -1) {
+        hostHeader = hostHeader.left(colonPos);
+    }
+    request->host = hostHeader;
 
     // if we are done return true, otherwise false
     return request->parseState == HttpServerRequestPrivate::Done;
