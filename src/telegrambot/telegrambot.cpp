@@ -5,9 +5,23 @@
 #include <QIODevice>
 #include <QMetaObject>
 #include <QTextStream>
+#include <QUrl>
 #include "telegrambot.h"
 
 QMap<qint16, HttpServer *> TelegramBot::webHookWebServers = QMap<qint16, HttpServer *>();
+
+static QString sanitizeWebhookUrl(const QString &url)
+{
+    if (url.isEmpty()) {
+        return url;
+    }
+    QUrl parsed(url);
+    if (!parsed.isValid()) {
+        return url;
+    }
+    parsed.setPath("/<webhook>");
+    return parsed.toString(QUrl::StripTrailingSlash);
+}
 
 static QStringList loadTelegramCidrs()
 {
@@ -1335,7 +1349,7 @@ void TelegramBot::checkWebhookHealth()
     }
 
     TelegramBotWebHookInfo info = this->getWebhookInfo();
-    qDebug() << "TelegramBot::checkWebhookHealth - webhook" << info.url
+    qDebug() << "TelegramBot::checkWebhookHealth - webhook" << sanitizeWebhookUrl(info.url)
              << "ipAddress" << info.ipAddress
              << "lastErrorDate" << info.lastErrorDate
              << "lastErrorMessage" << info.lastErrorMessage
