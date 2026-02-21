@@ -142,6 +142,7 @@ bool TippingWorker::init()
 
     m_pendingDepositTimer = new QTimer(this);
     connect(m_pendingDepositTimer, &QTimer::timeout, this, &TippingWorker::checkPendingDeposits);
+    connect(m_pendingDepositTimer, &QTimer::timeout, this, &TippingWorker::checkPendingWithdrawConfirmations);
     m_pendingDepositTimer->start(30 * 1000);
 
     QList<PendingWithdrawRecord> storedWithdraws = m_db->pendingWithdrawals();
@@ -426,8 +427,8 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
             if (!m_db->insertPendingWithdrawConfirmation(confirmation)) {
                 qWarning() << "Failed to persist pending withdraw confirmation" << slateId;
             }
-            if (!m_db->removePendingWithdraw(slateId)) {
-                qWarning() << "Failed to remove pending withdraw" << slateId;
+            if (!m_db->markPendingWithdrawCompleted(slateId)) {
+                qWarning() << "Failed to mark pending withdraw completed" << slateId;
             }
         }
         return true;
@@ -492,8 +493,8 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
             if (!m_db->insertPendingWithdrawConfirmation(confirmation)) {
                 qWarning() << "Failed to persist pending withdraw confirmation" << slateId;
             }
-            if (!m_db->removePendingWithdraw(slateId)) {
-                qWarning() << "Failed to remove pending withdraw" << slateId;
+            if (!m_db->markPendingWithdrawCompleted(slateId)) {
+                qWarning() << "Failed to mark pending withdraw completed" << slateId;
             }
         }
         return true;
@@ -1031,7 +1032,6 @@ void TippingWorker::checkPendingDeposits()
             continue;
         }
 
-        bool credited = false;
         for (const TxLogEntry &entry : txList) {
             if (entry.txSlateId().isNull()) {
                 qDebug()<<"entry.txSlateId().isNull()";
@@ -1078,7 +1078,6 @@ void TippingWorker::checkPendingDeposits()
             break;
         }
     }
-    checkPendingWithdrawConfirmations();
 }
 
 void TippingWorker::checkPendingWithdrawConfirmations()
@@ -1101,6 +1100,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
     }
 
     for (const PendingWithdrawConfirmationRecord &pending : pendingList) {
+        qDebug()<<"pendingList:  "<<pending.firstName<<"   "<<pending.slateId;
         for (const TxLogEntry &entry : txList) {
             if (entry.txSlateId().isNull()) {
                 continue;
@@ -1127,8 +1127,8 @@ void TippingWorker::checkPendingWithdrawConfirmations()
             }
             sendUserDirectMessage(pending.userId, msg, true);
 
-            if (!m_db->removePendingWithdrawConfirmation(pending.slateId)) {
-                qWarning() << "Failed to remove pending withdraw confirmation" << pending.slateId;
+            if (!m_db->markPendingWithdrawConfirmationCompleted(pending.slateId)) {
+                qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
             }
             break;
         }

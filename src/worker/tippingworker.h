@@ -34,6 +34,7 @@ public:
 
 private slots:
     void checkPendingDeposits();
+    void checkPendingWithdrawConfirmations();
 
 private:
     void sendUserMessage(TelegramBotMessage message, QString content, bool plain = false, bool sendToUserChat = true);
@@ -76,7 +77,7 @@ private:
     void sendUserMessage(QString user, QString content);
     bool activateWalletAccount(const QString &accountLabel);
     bool activateTippingWalletAccount();
-    void checkPendingWithdrawConfirmations();
+
     void sendUserDirectMessage(const QString &userId, QString content, bool plain = false);
 };
 #endif // TIPPINGWORKER_H

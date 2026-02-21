@@ -26,6 +26,7 @@ struct PendingWithdrawRecord
     QString userId;
     qlonglong amount;
     qlonglong createdAt;
+    bool completed = false;
 };
 
 struct PendingWithdrawConfirmationRecord
@@ -36,6 +37,7 @@ struct PendingWithdrawConfirmationRecord
     QString firstName;
     qlonglong amount;
     qlonglong createdAt;
+    bool completed = false;
 };
 
 struct TxLedgerEntry
@@ -77,10 +79,12 @@ public:
     bool removePendingWithdraw(const QString &slateId);
     QList<PendingWithdrawRecord> pendingWithdrawals();
     bool pendingWithdraw(const QString &slateId, PendingWithdrawRecord &withdraw);
+    bool markPendingWithdrawCompleted(const QString &slateId);
 
     bool insertPendingWithdrawConfirmation(const PendingWithdrawConfirmationRecord &confirmation);
     bool removePendingWithdrawConfirmation(const QString &slateId);
     QList<PendingWithdrawConfirmationRecord> pendingWithdrawConfirmations();
+    bool markPendingWithdrawConfirmationCompleted(const QString &slateId);
 
     QList<TxLedgerEntry> ledgerEntries(int limit = 20);
 
