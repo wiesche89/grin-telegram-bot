@@ -1,8 +1,48 @@
 #include <cstdio>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QIODevice>
 #include <QMetaObject>
+#include <QTextStream>
 #include "telegrambot.h"
 
 QMap<qint16, HttpServer *> TelegramBot::webHookWebServers = QMap<qint16, HttpServer *>();
+
+static QStringList loadTelegramCidrs()
+{
+    static QStringList cached;
+    static bool attempted = false;
+    if (attempted) {
+        return cached;
+    }
+    attempted = true;
+
+    QString dataDir = qEnvironmentVariable("DATA_DIR");
+    QString path;
+    if (!dataDir.isEmpty()) {
+        path = QDir(dataDir).filePath("etc/telegram_cidrs.txt");
+    } else {
+        path = QDir(QCoreApplication::applicationDirPath()).filePath("etc/telegram_cidrs.txt");
+    }
+
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Unable to open Telegram CIDR file:" << path << file.errorString();
+        return cached;
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith('#')) {
+            continue;
+        }
+        cached << line;
+    }
+    qInfo() << "Loaded" << cached.size() << "Telegram CIDRs from" << path;
+    return cached;
+}
 
 /**
  * @brief TelegramBot::constructInlineMenu
@@ -1079,8 +1119,12 @@ bool TelegramBot::setHttpServerWebhook(qint16 port, QString pathCert, QString pa
         }
 
         // permit only telegram connections
-        httpServer->addWhiteListHostSubnet("149.154.160.0/20");
-        httpServer->addWhiteListHostSubnet("91.108.4.0/22");
+        QStringList cidrs = loadTelegramCidrs();
+        for (const QString &cidr : cidrs) {
+            httpServer->addWhiteListHostSubnet(cidr);
+        }
+        //Home
+        httpServer->addWhiteListHostSubnet("192.168.178.0/24");
 
         // start listener
         if (!httpServer->listen(QHostAddress::Any, port)) {
