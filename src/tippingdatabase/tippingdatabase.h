@@ -17,6 +17,7 @@ struct PendingDepositRecord
     qlonglong chatId;
     QString firstName;
     qlonglong amount;
+    bool completed = false;
 };
 
 struct PendingWithdrawRecord
@@ -70,6 +71,7 @@ public:
     bool removePendingDeposit(const QString &slateId);
     QList<PendingDepositRecord> pendingDeposits();
     bool pendingDeposit(const QString &slateId, PendingDepositRecord &deposit);
+    bool markPendingDepositCompleted(const QString &slateId);
 
     bool insertPendingWithdraw(const PendingWithdrawRecord &withdraw);
     bool removePendingWithdraw(const QString &slateId);

@@ -861,33 +861,35 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // command scanrewindhash
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (text.contains("/scanrewindhash")) {
-        RewindHash rewindHash;
-        {
-            Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
-            if (!res.unwrapOrLog(rewindHash)) {
-                sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
-            } else {
-                ViewWallet viewWallet;
-                {
-                    QString msg;
-                    Result<ViewWallet> res = m_walletOwnerApi->scanRewindHash(rewindHash, 1);
-                    if (!res.unwrapOrLog(viewWallet)) {
-                        msg = QString("Error message: %1").arg(res.errorMessage());
-                    } else {
-                        msg = debugJsonString(viewWallet);
-                        m_bot->sendDocument("ScanRewindHash.json",
-                                            id,
-                                            QVariant(msg.toUtf8()),
-                                            "",
-                                            0,
-                                            TelegramBot::NoFlag,
-                                            TelegramKeyboardRequest(),
-                                            nullptr);
-                    }
-                }
-            }
-        }
-        return;
+        sendUserMessage(message, "function is not available", false);
+
+        // RewindHash rewindHash;
+        // {
+        //     Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
+        //     if (!res.unwrapOrLog(rewindHash)) {
+        //         sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
+        //     } else {
+        //         ViewWallet viewWallet;
+        //         {
+        //             QString msg;
+        //             Result<ViewWallet> res = m_walletOwnerApi->scanRewindHash(rewindHash, 1);
+        //             if (!res.unwrapOrLog(viewWallet)) {
+        //                 msg = QString("Error message: %1").arg(res.errorMessage());
+        //             } else {
+        //                 msg = debugJsonString(viewWallet);
+        //                 m_bot->sendDocument("ScanRewindHash.json",
+        //                                     id,
+        //                                     QVariant(msg.toUtf8()),
+        //                                     "",
+        //                                     0,
+        //                                     TelegramBot::NoFlag,
+        //                                     TelegramKeyboardRequest(),
+        //                                     nullptr);
+        //             }
+        //         }
+        //     }
+        // }
+        // return;
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------------------

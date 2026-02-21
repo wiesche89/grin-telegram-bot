@@ -520,6 +520,7 @@ QString TippingWorker::handleDepositCommand(const QString &senderId, int amount,
         pending.chatId = message.chat.id;
         pending.firstName = message.from.firstName;
         pending.amount = nanogrin;
+        pending.completed = false;
         if (!m_db->insertPendingDeposit(pending)) {
             qWarning() << "Failed to store pending deposit for slate" << slateId;
         }
@@ -1069,10 +1070,10 @@ void TippingWorker::checkPendingDeposits()
             }
             sendUserDirectMessage(pending.userId, msg, true);
 
-            if (!m_db->removePendingDeposit(slateId)) {
-                qWarning() << "Failed to remove pending deposit" << slateId;
+            if (!m_db->markPendingDepositCompleted(slateId)) {
+                qWarning() << "Failed to mark pending deposit completed" << slateId;
             } else {
-                qDebug() << "checkPendingDeposits: removed pending deposit" << slateId;
+                qDebug() << "checkPendingDeposits: marked pending deposit completed" << slateId;
             }
             break;
         }

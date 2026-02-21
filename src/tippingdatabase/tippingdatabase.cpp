@@ -88,11 +88,15 @@ bool TippingDatabase::ensureTables()
                              "amount INTEGER NOT NULL,"
                              "chat_id INTEGER,"
                              "first_name TEXT,"
-                             "created_at INTEGER NOT NULL)";
+                             "created_at INTEGER NOT NULL,"
+                             "completed INTEGER NOT NULL DEFAULT 0)";
     if (!m_query->exec(pendingSQL)) {
         qWarning() << "Failed to create pending deposits table:" << m_query->lastError().text();
         return false;
     }
+
+    // ensure completed column exists for older databases
+    m_query->exec("ALTER TABLE pending_deposits ADD COLUMN completed INTEGER NOT NULL DEFAULT 0");
 
     const char *pendingWithdrawsSQL = "CREATE TABLE IF NOT EXISTS pending_withdrawals ("
                                        "slate_id TEXT PRIMARY KEY,"
@@ -256,13 +260,14 @@ bool TippingDatabase::setBalance(const QString &userId, qlonglong balance)
 bool TippingDatabase::insertPendingDeposit(const PendingDepositRecord &deposit)
 {
     if (!m_query) return false;
-    m_query->prepare("REPLACE INTO pending_deposits (slate_id, user_id, amount, chat_id, first_name, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+    m_query->prepare("REPLACE INTO pending_deposits (slate_id, user_id, amount, chat_id, first_name, created_at, completed) VALUES (?, ?, ?, ?, ?, ?, ?)");
     m_query->addBindValue(deposit.slateId);
     m_query->addBindValue(deposit.userId);
     m_query->addBindValue(deposit.amount);
     m_query->addBindValue(deposit.chatId);
     m_query->addBindValue(deposit.firstName);
     m_query->addBindValue(QDateTime::currentSecsSinceEpoch());
+    m_query->addBindValue(deposit.completed ? 1 : 0);
     return m_query->exec();
 }
 
@@ -278,7 +283,7 @@ QList<PendingDepositRecord> TippingDatabase::pendingDeposits()
 {
     QList<PendingDepositRecord> list;
     if (!m_query) return list;
-    m_query->prepare("SELECT slate_id, user_id, amount, chat_id, first_name FROM pending_deposits");
+    m_query->prepare("SELECT slate_id, user_id, amount, chat_id, first_name, completed FROM pending_deposits WHERE completed = 0");
     if (!m_query->exec()) {
         return list;
     }
@@ -290,6 +295,7 @@ QList<PendingDepositRecord> TippingDatabase::pendingDeposits()
         record.amount = m_query->value(2).toLongLong();
         record.chatId = m_query->value(3).toLongLong();
         record.firstName = m_query->value(4).toString();
+        record.completed = m_query->value(5).toBool();
         list.append(record);
     }
     return list;
@@ -298,7 +304,7 @@ QList<PendingDepositRecord> TippingDatabase::pendingDeposits()
 bool TippingDatabase::pendingDeposit(const QString &slateId, PendingDepositRecord &deposit)
 {
     if (!m_query) return false;
-    m_query->prepare("SELECT user_id, amount, chat_id, first_name FROM pending_deposits WHERE slate_id = ?");
+    m_query->prepare("SELECT user_id, amount, chat_id, first_name, completed FROM pending_deposits WHERE slate_id = ? AND completed = 0");
     m_query->addBindValue(slateId);
     if (!m_query->exec() || !m_query->next()) {
         return false;
@@ -308,7 +314,16 @@ bool TippingDatabase::pendingDeposit(const QString &slateId, PendingDepositRecor
     deposit.amount = m_query->value(1).toLongLong();
     deposit.chatId = m_query->value(2).toLongLong();
     deposit.firstName = m_query->value(3).toString();
+    deposit.completed = m_query->value(4).toBool();
     return true;
+}
+
+bool TippingDatabase::markPendingDepositCompleted(const QString &slateId)
+{
+    if (!m_query) return false;
+    m_query->prepare("UPDATE pending_deposits SET completed = 1 WHERE slate_id = ?");
+    m_query->addBindValue(slateId);
+    return m_query->exec();
 }
 
 bool TippingDatabase::insertPendingWithdraw(const PendingWithdrawRecord &withdraw)
