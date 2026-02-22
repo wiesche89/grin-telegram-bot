@@ -4,6 +4,18 @@
 #include <QStandardPaths>
 #include <QDir>
 
+namespace {
+int mapPriceToCanvasY(double price, double paddedMinPrice, double priceRange, int plotBottom, int plotHeight)
+{
+    if (priceRange == 0.0) {
+        return plotBottom;
+    }
+    double normalized = (price - paddedMinPrice) / priceRange;
+    double canvasY = plotBottom - (normalized * plotHeight);
+    return static_cast<int>(canvasY);
+}
+}
+
 /**
  * @brief GateIoWorker::GateIoWorker
  * @param bot
@@ -296,10 +308,6 @@ QString GateIoWorker::renderChartToFile(const QJsonArray &chart, const QString &
     const int plotWidth = plotRight - plotLeft;
     const int candleWidth = qMax(2, plotWidth / candles.size());
 
-    auto toY = [&](double price) -> int {
-        return plotBottom - ((price - paddedMinPrice) / priceRange) * plotHeight;
-    };
-
     // Frame
     p.setPen(QPen(Qt::white, 1));
     p.drawRect(0, 0, width - 1, height - 1);
@@ -312,7 +320,7 @@ QString GateIoWorker::renderChartToFile(const QJsonArray &chart, const QString &
     p.setFont(QFont("Arial", 9));
     for (int i = 0; i <= ySteps; ++i) {
         double price = paddedMinPrice + (priceRange * i / ySteps);
-        int y = toY(price);
+        int y = mapPriceToCanvasY(price, paddedMinPrice, priceRange, plotBottom, plotHeight);
         p.drawLine(plotLeft - 5, y, plotLeft, y);
         p.drawText(2, y + 4, QString::number(price, 'f', 4));
     }
@@ -333,10 +341,10 @@ QString GateIoWorker::renderChartToFile(const QJsonArray &chart, const QString &
         int x = plotLeft + i * candleWidth;
         int centerX = x + candleWidth / 2;
 
-        int yOpen  = toY(c.open);
-        int yClose = toY(c.close);
-        int yHigh  = toY(c.high);
-        int yLow   = toY(c.low);
+        int yOpen  = mapPriceToCanvasY(c.open, paddedMinPrice, priceRange, plotBottom, plotHeight);
+        int yClose = mapPriceToCanvasY(c.close, paddedMinPrice, priceRange, plotBottom, plotHeight);
+        int yHigh  = mapPriceToCanvasY(c.high, paddedMinPrice, priceRange, plotBottom, plotHeight);
+        int yLow   = mapPriceToCanvasY(c.low, paddedMinPrice, priceRange, plotBottom, plotHeight);
 
         QColor color = (c.close >= c.open) ? QColor("#00FF00") : QColor("#FF4040");
         p.setPen(color);

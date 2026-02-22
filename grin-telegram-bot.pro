@@ -110,6 +110,7 @@ SOURCES += \
   src/gateio/gateioclient.cpp \
   src/ggcdatabase/ggcdatabasemanager.cpp \
   src/grinwalletmanager/grinwalletmanager.cpp \
+  src/logging/logginghandler.cpp \
   src/main.cpp \
   src/telegrambot/jsonhelper.cpp \
   src/telegrambot/modules/httpserver/httpserver.cpp \
@@ -123,6 +124,7 @@ SOURCES += \
   src/ggcdatabase/attributes/donate.cpp \
   src/ggcdatabase/attributes/faucet.cpp \
   src/util/debugutils.cpp \
+  src/worker/alivehandler.cpp \
   src/worker/dexworker.cpp \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
@@ -197,6 +199,7 @@ HEADERS += \
   src/gateio/gateioclient.h \
   src/ggcdatabase/ggcdatabasemanager.h \
   src/grinwalletmanager/grinwalletmanager.h \
+  src/logging/logginghandler.h \
   src/telegrambot/jsonhelper.h \
   src/telegrambot/modules/httpserver/httpserver.h \
   src/telegrambot/modules/sslserver/sslserver.h \
@@ -214,6 +217,7 @@ HEADERS += \
   src/ggcdatabase/attributes/donate.h \
   src/ggcdatabase/attributes/faucet.h \
   src/util/debugutils.h \
+  src/worker/alivehandler.h \
   src/worker/dexworker.h \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \

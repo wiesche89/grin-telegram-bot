@@ -30,8 +30,15 @@ public:
     bool isWalletRunning() const;
 
 private:
+    void logProcessOutput(const QByteArray &data);
     void setupJobObject();
 
+private slots:
+    void handleWalletStandardOutput();
+    void handleWalletStandardError();
+    void monitorWalletProcess();
+
+private:
     QProcess *m_walletProcess;
 
     #ifdef Q_OS_WIN
@@ -39,6 +46,7 @@ private:
     #endif
 
     int m_pid;
+    QTimer *m_monitorTimer;
 };
 
 #endif // GRINWALLETMANAGER_H

@@ -1,4 +1,5 @@
 #include "grinwalletmanager.h"
+#include <QStringList>
 
 /**
  * @brief GrinWalletManager::GrinWalletManager
@@ -7,7 +8,8 @@
 GrinWalletManager::GrinWalletManager(QObject *parent) :
     QObject(parent),
     m_walletProcess(new QProcess(this)),
-    m_pid(-1)
+    m_pid(-1),
+    m_monitorTimer(nullptr)
 {
     #ifdef Q_OS_WIN
     m_jobHandle = nullptr;
@@ -17,21 +19,8 @@ GrinWalletManager::GrinWalletManager(QObject *parent) :
 
     connect(qApp, &QCoreApplication::aboutToQuit, this, &GrinWalletManager::stopWallet);
 
-    connect(m_walletProcess, &QProcess::readyReadStandardOutput, [this]() {
-        QStringList stdOut = QString::fromUtf8(m_walletProcess->readAllStandardOutput()).split("\r\n");
-
-        for (int i = 0; i < stdOut.length(); i++) {
-            qDebug() << stdOut[i];
-        }
-    });
-
-    connect(m_walletProcess, &QProcess::readyReadStandardError, [this]() {
-        QStringList stdOut = QString::fromUtf8(m_walletProcess->readAllStandardOutput()).split("\r\n");
-
-        for (int i = 0; i < stdOut.length(); i++) {
-            qDebug() << stdOut[i];
-        }
-    });
+    connect(m_walletProcess, &QProcess::readyReadStandardOutput, this, &GrinWalletManager::handleWalletStandardOutput);
+    connect(m_walletProcess, &QProcess::readyReadStandardError, this, &GrinWalletManager::handleWalletStandardError);
 }
 
 /**
@@ -50,6 +39,35 @@ GrinWalletManager::~GrinWalletManager()
     // Unter Linux ist kein Handle zu schließen
     qInfo() << "No job object cleanup required on Linux.";
     #endif
+}
+
+void GrinWalletManager::logProcessOutput(const QByteArray &data)
+{
+    const QStringList lines = QString::fromUtf8(data).split("\r\n", Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        qDebug() << line;
+    }
+}
+
+void GrinWalletManager::handleWalletStandardOutput()
+{
+    logProcessOutput(m_walletProcess->readAllStandardOutput());
+}
+
+void GrinWalletManager::handleWalletStandardError()
+{
+    logProcessOutput(m_walletProcess->readAllStandardError());
+}
+
+void GrinWalletManager::monitorWalletProcess()
+{
+    if (m_walletProcess->processId() != m_pid) {
+        qDebug() << "grin-wallet-process was terminated.";
+        if (m_monitorTimer) {
+            m_monitorTimer->stop();
+        }
+        QCoreApplication::quit();
+    }
 }
 
 /**
@@ -147,15 +165,11 @@ bool GrinWalletManager::startWallet()
     m_pid = m_walletProcess->processId();
     qDebug() << "grin-wallet started, PID:" << m_pid;
 
-    QTimer *monitorTimer = new QTimer(this);
-    QObject::connect(monitorTimer, &QTimer::timeout, [&]() {
-        if (m_walletProcess->processId() != m_pid) {
-            qDebug() << "grin-wallet-process was terminated.";
-            monitorTimer->stop();
-            QCoreApplication::quit();
-        }
-    });
-    monitorTimer->start(1000);
+    if (!m_monitorTimer) {
+        m_monitorTimer = new QTimer(this);
+        connect(m_monitorTimer, &QTimer::timeout, this, &GrinWalletManager::monitorWalletProcess);
+    }
+    m_monitorTimer->start(1000);
 
     return true;
 }

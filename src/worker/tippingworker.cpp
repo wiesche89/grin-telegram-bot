@@ -556,6 +556,7 @@ QString TippingWorker::handleWithdrawCommand(const QString &senderId, int amount
 
 QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
 {
+    Q_UNUSED(sender);
     if (!activateTippingWalletAccount()) {
         return "Wallet account could not be activated.";
     }
@@ -1174,6 +1175,7 @@ void TippingWorker::sendUserMessage(QString user, QString content)
 
 void TippingWorker::sendUserDirectMessage(const QString &userId, QString content, bool plain)
 {
+    Q_UNUSED(plain);
     if (userId.isEmpty()) {
         return;
     }
@@ -1261,7 +1263,7 @@ QString TippingWorker::resolveRecipientId(const QString &target, const TelegramB
     }
 
     bool ok = false;
-    qlonglong numericId = normalized.toLongLong(&ok);
+    normalized.toLongLong(&ok);
     if (ok) {
         return normalized;
     }

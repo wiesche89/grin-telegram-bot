@@ -169,11 +169,13 @@ public:
     void stopMessagePulling(bool instantly = false);
 
     // Webhook Functions
-    bool setHttpServerWebhook(qint16 port, QString pathCert, QString pathPrivateKey, int maxConnections = 10,
-                              TelegramPollMessageTypes messageTypes = TelegramPollMessageTypes::All);
+    bool setHttpServerWebhook(qint16 listenPort, QString publicHost, qint16 publicPort, QString scheme = "https",
+                              int maxConnections = 10, TelegramPollMessageTypes messageTypes = TelegramPollMessageTypes::All);
     void deleteWebhook();
     TelegramBotOperationResult deleteWebhookResult();
     TelegramBotWebHookInfo getWebhookInfo();
+    void setWebhookPath(const QString &path);
+    QString webhookPath() const;
 
     // Message Router functions
     void messageRouterRegister(QString startWith, QDelegate<bool(TelegramBotUpdate)> delegate,
@@ -212,6 +214,7 @@ private:
     // global data
     QNetworkAccessManager aManager;
     QString apiKey;
+    QString m_webhookPath;
     long updateId = 0;
 
     // message puller

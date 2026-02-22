@@ -1,7 +1,11 @@
 #include <QApplication>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
+#include <QSettings>
+#include <QTimer>
+#include <QUuid>
 #include <QSslSocket>
 
 #include "grinwalletmanager.h"
@@ -9,56 +13,137 @@
 #include "tippingworker.h"
 #include "gateioworker.h"
 #include "messagehub.h"
+#include "worker/alivehandler.h"
 #include "api/wallet/owner/walletownerapi.h"
+#include "logging/logginghandler.h"
 
-/**
- * @brief main
- * @param argc
- * @param argv
- * @return
- */
-int main(int argc, char *argv[])
+namespace {
+void startBotMessagePulling(TelegramBot *bot)
 {
-    QApplication  a(argc, argv);
+    if (bot) {
+        bot->startMessagePulling();
+    }
+}
 
-    // Manager
-    GrinWalletManager manager;
-    if (!manager.startWallet()) {
-        return -10;
+QString resolveWebhookPath(QSettings *settings, const QString &apiKey)
+{
+    QString configuredPath = settings->value("webhook/path").toString().trimmed();
+    if (!configuredPath.isEmpty()) {
+        qDebug() << "Using webhook path from settings:" << configuredPath;
+        return configuredPath;
     }
 
-    // Start worker, wait x msecs
-    QTimer::singleShot(3000, [&]() {
+    QByteArray seed = apiKey.toUtf8();
+    seed.append(':');
+    seed.append(QUuid::createUuid().toString(QUuid::WithoutBraces).toUtf8());
+    QByteArray hash = QCryptographicHash::hash(seed, QCryptographicHash::Sha256);
+    QString generated = QString::fromUtf8(hash.toHex()).left(32);
 
-        QString settingsPath;
-        QString dataDir;
+    qInfo() << "webhook/path not configured; using generated path:" << generated;
+    qInfo() << "Add 'webhook/path =" << generated << "' to deploy/etc/settings.ini to persist it.";
 
-        dataDir = qEnvironmentVariable("DATA_DIR");
+    return generated;
+}
 
-        // native
-        if (dataDir.isEmpty()) {
-            settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+void initializeBotComponents()
+{
+    QString settingsPath;
+    QString dataDir = qEnvironmentVariable("DATA_DIR");
+
+    if (dataDir.isEmpty()) {
+        settingsPath = QDir(QCoreApplication::applicationDirPath()).filePath("etc/settings.ini");
+    } else {
+        settingsPath = QDir(dataDir).filePath("etc/settings.ini");
+    }
+
+    if (!QFile::exists(settingsPath)) {
+        qWarning() << "Settings file not found:" << settingsPath;
+        QCoreApplication::quit();
+        return;
+    }
+
+    qDebug() << "Settings file found at:" << settingsPath;
+
+    QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+
+    QString botToken = settings->value("bot/token").toString();
+    TelegramBot *bot = new TelegramBot(botToken);
+    QString webhookPath = resolveWebhookPath(settings, botToken);
+    bot->setWebhookPath(webhookPath);
+    qInfo() << "Webhook path configured:" << bot->webhookPath();
+
+    WalletOwnerApi *walletOwnerApi = new WalletOwnerApi(settings->value("wallet/ownerUrl").toString(),
+                                                       settings->value("wallet/user").toString(),
+                                                       settings->value("wallet/apiSecret").toString(),
+                                                       bot);
+    walletOwnerApi->initSecureApi();
+    walletOwnerApi->openWallet("", settings->value("wallet/password").toString());
+
+    GgcWorker *ggcWorker = new GgcWorker(bot, settings, walletOwnerApi);
+    if (!ggcWorker->init()) {
+        qDebug() << "GGC Worker init failed!";
+        QCoreApplication::quit();
+        return;
+    }
+
+    TippingWorker *tippingWorker = new TippingWorker(bot, settings, walletOwnerApi);
+    if (!tippingWorker->init()) {
+        qDebug() << "Tipping Worker init failed!";
+        QCoreApplication::quit();
+        return;
+    }
+
+    GateIoWorker *gateIoWorker = new GateIoWorker(bot, settings);
+    if (!gateIoWorker->init()) {
+        qDebug() << "GateIo Worker init failed!";
+        QCoreApplication::quit();
+        return;
+    }
+
+    new MessageHub(bot, tippingWorker, ggcWorker, bot);
+
+    AliveHandler *aliveHandler = new AliveHandler(bot, settings, bot);
+    aliveHandler->start();
+
+    qInfo() << "QSslSocket::supportsSsl =" << QSslSocket::supportsSsl();
+    qInfo() << "SSL build =" << QSslSocket::sslLibraryBuildVersionString();
+    qInfo() << "SSL runtime =" << QSslSocket::sslLibraryVersionString();
+    qInfo() << "SSL backends =" << QSslSocket::availableBackends();
+    qInfo() << "Active backend =" << QSslSocket::activeBackend();
+
+    bool webhookActive = false;
+    if (settings->value("webhook/enabled").toBool()) {
+        int listenPort = settings->value("webhook/listenPort", settings->value("webhook/port", 8443)).toInt();
+        int publicPort = settings->value("webhook/publicPort", listenPort).toInt();
+        QString publicHost = settings->value("webhook/publicHost").toString().trimmed();
+        QString scheme = settings->value("webhook/scheme", "https").toString().toLower();
+        int maxConnections = settings->value("webhook/maxConnections", 10).toInt();
+        if (maxConnections <= 0) {
+            maxConnections = 10;
         }
-        // docker
-        else
-        {
-            settingsPath = QDir(dataDir).filePath("etc/settings.ini");
-        }
 
-        // check existing Config
-        if (!QFile::exists(settingsPath)) {
-            qWarning() << "Settings file not found:" << settingsPath;
-            QCoreApplication::quit();
+        if (listenPort > 0 && listenPort <= 0xFFFF && publicPort > 0 && publicPort <= 0xFFFF && !publicHost.isEmpty()) {
+            qDebug() << "Trying to enable webhook on port" << listenPort << "public host" << publicHost
+                     << "public port" << publicPort << "scheme" << scheme;
+            webhookActive = bot->setHttpServerWebhook(static_cast<qint16>(listenPort), publicHost,
+                                                      static_cast<qint16>(publicPort), scheme, maxConnections,
+                                                      TelegramBot::TelegramPollMessageTypes::Message);
+            if (!webhookActive) {
+                qWarning() << "Webhook setup failed, falling back to long polling";
+            }
         } else {
-            qDebug() << "Settings file found at:" << settingsPath;
+            qWarning() << "Webhook configuration incomplete or invalid; polling will be used";
         }
+    }
 
-        // instance config
-        QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+    if (!webhookActive) {
+        startBotMessagePulling(bot);
+    }
+}
+}
 
-
-        /// following commands exists
-        /*
+/// following commands exists
+/*
 start - introduction
 address - get slatepack address
 donate - donate instruction
@@ -78,97 +163,37 @@ tipping - info about tipping function
 ledger - shows outgoing incoming tips
 balance - shows your balance
 
-        Admin commands
-        adminenabledisabledeposits - enable/disable deposits
-        adminenabledisablewithdrawals - enable/disable withdrawals
-        adminupdateresponsemessage - update bot response messages templates
-        adminrequirednumberofresponse - set the required number of responses to approve the withdrawal
-        adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
-        adminapprovedwithdrawalamount - set the approved withdrawal amount
-        adminamount - get account amounts
-        admincleanup - cleanup txs
-        */
+Admin commands
+adminenabledisabledeposits - enable/disable deposits
+adminenabledisablewithdrawals - enable/disable withdrawals
+adminupdateresponsemessage - update bot response messages templates
+adminrequirednumberofresponse - set the required number of responses to approve the withdrawal
+adminprofilrequirementswithdrawl - set the profile requirements to approve the withdrawal
+adminapprovedwithdrawalamount - set the approved withdrawal amount
+adminamount - get account amounts
+admincleanup - cleanup txs
+*/
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
+int main(int argc, char *argv[])
+{
+    QApplication  a(argc, argv);
 
-        // Bot - Instance
-        TelegramBot *bot = new TelegramBot(settings->value("bot/token").toString());
+    LoggingHandler loggingHandler;
+    LoggingHandler::installMessageHandler(&loggingHandler);
 
-        WalletOwnerApi *walletOwnerApi = new WalletOwnerApi(settings->value("wallet/ownerUrl").toString(),
-                                                            settings->value("wallet/user").toString(),
-                                                            settings->value("wallet/apiSecret").toString(),
-                                                            bot);
-        walletOwnerApi->initSecureApi();
-        walletOwnerApi->openWallet("", settings->value("wallet/password").toString());
+    // Manager
+    GrinWalletManager manager;
+    if (!manager.startWallet()) {
+        return -10;
+    }
 
-        GgcWorker *ggcWorker = new GgcWorker(bot,settings,walletOwnerApi);
-        if (!ggcWorker->init()) {
-            qDebug()<<"GGC Worker init failed!";
-            QCoreApplication::quit();
-        }
-
-        TippingWorker *tippingWorker = new TippingWorker(bot,settings,walletOwnerApi);
-        if (!tippingWorker->init()) {
-            qDebug()<<"Tipping Worker init failed!";
-            QCoreApplication::quit();
-        }
-
-        GateIoWorker *gateIoWorker = new GateIoWorker(bot,settings);
-        if (!gateIoWorker->init()) {
-            qDebug()<<"GateIo Worker init failed!";
-            QCoreApplication::quit();
-        }
-
-        new MessageHub(bot, tippingWorker, ggcWorker, bot);
-
-        auto startPolling = [&]() {
-            bot->startMessagePulling();
-        };
-
-        QString settingsDir = QFileInfo(settingsPath).absolutePath();
-        auto resolvePath = [&](const QString &value) {
-            if (value.isEmpty()) {
-                return QString();
-            }
-            QFileInfo info(value);
-            if (info.isAbsolute()) {
-                return info.absoluteFilePath();
-            }
-            QDir baseDir(settingsDir);
-            return baseDir.absoluteFilePath(value);
-        };
-
-        qInfo() << "QSslSocket::supportsSsl =" << QSslSocket::supportsSsl();
-        qInfo() << "SSL build =" << QSslSocket::sslLibraryBuildVersionString();
-        qInfo() << "SSL runtime =" << QSslSocket::sslLibraryVersionString();
-        qInfo() << "SSL backends =" << QSslSocket::availableBackends();
-        qInfo() << "Active backend =" << QSslSocket::activeBackend();
-
-        bool webhookActive = false;
-        if (settings->value("webhook/enabled").toBool()) {
-            int portValue = settings->value("webhook/port", 8443).toInt();
-            QString certPath = resolvePath(settings->value("webhook/certificatePath").toString());
-            QString keyPath = resolvePath(settings->value("webhook/privateKeyPath").toString());
-            int maxConnections = settings->value("webhook/maxConnections", 10).toInt();
-            if (maxConnections <= 0) {
-                maxConnections = 10;
-            }
-
-            if (portValue > 0 && portValue <= 0xFFFF && !certPath.isEmpty() && !keyPath.isEmpty()) {
-                qDebug() << "Trying to enable webhook on port" << portValue << "using cert" << certPath << "and key" << keyPath;
-                webhookActive = bot->setHttpServerWebhook(static_cast<qint16>(portValue), certPath, keyPath, maxConnections,
-                                                          TelegramBot::TelegramPollMessageTypes::Message);
-                if (!webhookActive) {
-                    qWarning() << "Webhook setup failed, falling back to long polling";
-                }
-            } else {
-                qWarning() << "Webhook configuration incomplete or invalid; polling will be used";
-            }
-        }
-
-        if (!webhookActive) {
-            startPolling();
-        }
-
-    });
+    // Start worker, wait x msecs
+    QTimer::singleShot(3000, &initializeBotComponents);
 
 
     return a.exec();
