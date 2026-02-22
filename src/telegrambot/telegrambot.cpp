@@ -1119,6 +1119,8 @@ bool TelegramBot::setHttpServerWebhook(qint16 listenPort, QString publicHost, qi
         }
         //Home
         httpServer->addWhiteListHostSubnet("192.168.178.0/24");
+        // Docker bridge (Host/Proxy -> Container)
+        httpServer->addWhiteListHostSubnet("172.17.0.0/16");
 
         // start listener
         if (!httpServer->listen(QHostAddress::Any, listenPort)) {

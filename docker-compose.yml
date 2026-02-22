@@ -16,6 +16,7 @@ services:
     ports:
       - "3415:3415"              # Wallet owner API port
       - "3420:3420"              # Foreign API port (Tor listener, etc.)
+      - "88:88"
     volumes:
       - /home/grin/grin-telegram-bot-data:/opt/grin-telegram-bot/data # Bind Mount persistent
     networks:
