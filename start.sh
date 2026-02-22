@@ -50,13 +50,13 @@ else
 fi
 
 # Wait for Tor/wallet to start
-echo "[INFO] Waiting 30 seconds for Tor/wallet to initialize..."
-sleep 30
+echo "[INFO] Waiting 10 seconds for Tor/wallet to initialize..."
+sleep 10
 
-# Start the Telegram bot with strace
+# Start the Telegram bot (no strace)
 if [ -x ./grin-telegram-bot ]; then
-    echo "[INFO] Starting grin-telegram-bot with strace..."
-    strace -f -o /tmp/grinbot_strace.log ./grin-telegram-bot
+    echo "[INFO] Starting grin-telegram-bot..."
+    ./grin-telegram-bot
 else
     echo "[ERROR] grin-telegram-bot not found or not executable!"
     ls -la .
