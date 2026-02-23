@@ -156,9 +156,9 @@ bool GgcWorker::init()
     }
 
     //scan whole wallet
-    // if (!scanWallet()) {
-    //     success = false;
-    // }
+    if (!scanWallet()) {
+        success = false;
+    }
 
     // Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
