@@ -51,6 +51,7 @@ private:
     QString formatWalletSummary(const WalletInfo &walletInfo) const;
     void sendSlatepackMessage(TelegramBotMessage message, const QString &slatepack, const QString &stateLabel, bool sendToUserChat = true);
     bool ensureTippingAccount();
+    bool resolveTippingAccountLabel();
     Result<QString> createInvoiceSlatepack(qlonglong nanogrin, QString &slateId);
     Result<QString> createSendSlatepack(qlonglong nanogrin, const QString &senderId);
     Result<QString> handleSlateS2State(Slate slate, TelegramBotMessage message, const PendingWithdrawRecord &pendingWithdraw);
@@ -64,12 +65,15 @@ private:
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain, bool sendToUserChat = true);
     QString resolveRecipientId(const QString &target, const TelegramBotMessage &message) const;
 
+    void cleanupRetrieveTxs(bool cleanAll);
+
     TelegramBot *m_bot;
     QSettings *m_settings;
 
     TippingDatabase *m_db;
     WalletOwnerApi *m_walletOwnerApi;
-    QString tippingAccountLabel;
+    QString m_tippingAccountLabel;
+    QString m_tippingAccountPath;
     QString walletPassword;
     QTimer *m_pendingDepositTimer;
     QHash<QString, PendingWithdrawRecord> m_pendingWithdraws;

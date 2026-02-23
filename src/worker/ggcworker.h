@@ -44,7 +44,8 @@ private:
     Result<QString> handleSlateI2State(Slate slate, TelegramBotMessage message);
     Result<QString> handleSlateI3State(Slate slate, TelegramBotMessage message);
 
-    bool activateWalletAccount(const QString &accountLabel = "default");
+    bool activateWalletAccount(const QString &accountLabel = QString());
+    bool resolveAccountLabelFromSettings();
 
 
     QString downloadFileToQString(const QUrl &url);
@@ -59,7 +60,8 @@ private:
     NodeForeignApi *m_nodeForeignApi;
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
-    QString m_defaultAccountLabel;
+    QString m_ggcAccountLabel;
+    QString m_ggcAccountPath;
     QSettings *m_settings;
     qlonglong m_faucetAmount;
 

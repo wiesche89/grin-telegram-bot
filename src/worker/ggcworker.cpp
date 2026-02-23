@@ -1,4 +1,7 @@
 #include "ggcworker.h"
+#include <QByteArray>
+#include <QJsonValue>
+#include <QList>
 
 namespace {
 QString requiredBotMention()
@@ -35,6 +38,57 @@ QString normalizeCommandText(const QString &text)
     QString remainder = (firstSpace == -1) ? QString() : normalized.mid(firstSpace);
     return cleaned + remainder;
 }
+
+QString canonicalizeBipPath(const QString &value)
+{
+    QString normalized = value.trimmed().toLower();
+    if (normalized.isEmpty() || normalized == QStringLiteral("m")) {
+        return QStringLiteral("m");
+    }
+    if (normalized.startsWith(QStringLiteral("m/"))) {
+        return normalized;
+    }
+    return QStringLiteral("m/") + normalized;
+}
+
+QString parseAccountPathHex(const QString &hexPath)
+{
+    QString trimmed = hexPath.trimmed();
+    if (trimmed.isEmpty()) {
+        return QString();
+    }
+
+    QByteArray data = QByteArray::fromHex(trimmed.toLatin1());
+    if (data.isEmpty()) {
+        return QString();
+    }
+
+    quint8 depth = static_cast<quint8>(data[0]);
+    if (depth == 0 || data.size() < 1) {
+        return QStringLiteral("m");
+    }
+
+    if (data.size() < 1 + static_cast<int>(depth) * 4) {
+        return QString();
+    }
+
+    QString result = QStringLiteral("m");
+    int offset = 1;
+    for (int i = 0; i < depth; ++i) {
+        if (offset + 4 > data.size()) {
+            return QString();
+        }
+
+        quint32 index = (static_cast<quint32>(static_cast<uchar>(data[offset])) << 24) |
+                        (static_cast<quint32>(static_cast<uchar>(data[offset + 1])) << 16) |
+                        (static_cast<quint32>(static_cast<uchar>(data[offset + 2])) << 8) |
+                        static_cast<quint32>(static_cast<uchar>(data[offset + 3]));
+        offset += 4;
+        result += QStringLiteral("/") + QString::number(index);
+    }
+
+    return result;
+}
 }
 
 /**
@@ -48,6 +102,8 @@ GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *wall
     m_walletOwnerApi(walletOwnerApi),
     m_walletForeignApi(nullptr),
     m_settings(settings),
+    m_ggcAccountLabel(),
+    m_ggcAccountPath(),
     m_faucetAmount(1000000000)
 {
     QString net = qEnvironmentVariable("GRIN_CHAIN_TYPE");
@@ -86,6 +142,11 @@ bool GgcWorker::init()
 
     if (!m_walletOwnerApi) {
         qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
+
+    if (!resolveAccountLabelFromSettings()) {
+        qWarning() << "Could not resolve GGC account label from settings.";
         return false;
     }
 
@@ -769,7 +830,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString response;
         InitTxArgs args;
         qlonglong amount = 1000000000;
-        args.setSrcAcctName(QJsonValue::Null);
+        args.setSrcAcctName(QJsonValue(m_ggcAccountLabel));
         args.setAmount(amount);
         args.setAmountIncludesFee(QJsonValue::Null);
         args.setMinimumConfirmations(10);
@@ -984,34 +1045,6 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (text.contains("/adminapprovedwithdrawalamount")) {
             sendUserMessage(message, "function currently not implemented!", false);
-            return;
-        }
-
-        // --------------------------------------------------------------------------------------------------------------------------------------
-        // command adminamount
-        // --------------------------------------------------------------------------------------------------------------------------------------
-            QStringList adminParts = text.split(' ', Qt::SkipEmptyParts);
-        if (!adminParts.isEmpty() && adminParts[0] == "/adminamount") {
-            QString info;
-            WalletInfo walletInfo;
-            {
-                Result<WalletInfo> res = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
-                if (!res.unwrapOrLog(walletInfo)) {
-                    info = QString("Error message: %1").arg(res.errorMessage());
-                } else {
-                    info.append("amountAwaitingConfirmation: " + QString::number(walletInfo.amountAwaitingConfirmation()) + "\n");
-                    info.append("amountAwaitingFinalization: " + QString::number(walletInfo.amountAwaitingFinalization()) + "\n");
-                    info.append("amountCurrentlySpendable: " + QString::number(walletInfo.amountCurrentlySpendable()) + "\n");
-                    info.append("amountImmature: " + QString::number(walletInfo.amountImmature()) + "\n");
-                    info.append("amountLocked: " + QString::number(walletInfo.amountLocked()) + "\n");
-                    info.append("amountReverted: " + QString::number(walletInfo.amountReverted()) + "\n");
-                    info.append("lastConfirmedHeight: " + QString::number(walletInfo.lastConfirmedHeight()) + "\n");
-                    info.append("minimumConfirmations: " + QString::number(walletInfo.minimumConfirmations()) + "\n");
-                    info.append("total: " + QString::number(walletInfo.total()) + "\n");
-                }
-            }
-
-            sendUserMessage(message, info, false);
             return;
         }
 
@@ -1379,6 +1412,47 @@ Result<QString> GgcWorker::handleSlateI3State(Slate slate, TelegramBotMessage me
     return QString("Slate state I3 acknowledged. Nothing more to do.");
 }
 
+bool GgcWorker::resolveAccountLabelFromSettings()
+{
+    if (!m_settings) {
+        qWarning() << "GGC Worker: settings not available";
+        return false;
+    }
+    if (!m_walletOwnerApi) {
+        qWarning() << "GGC Worker: wallet owner API not available";
+        return false;
+    }
+
+    m_ggcAccountPath = m_settings->value("wallet/ggcAccountPath").toString().trimmed();
+    if (m_ggcAccountPath.isEmpty()) {
+        m_ggcAccountPath = "m/0/0";
+    }
+
+    Result<QList<Account>> accountRes = m_walletOwnerApi->accounts();
+    QList<Account> accounts;
+    if (!accountRes.unwrapOrLog(accounts)) {
+        qWarning() << "GGC Worker: failed to list wallet accounts:" << accountRes.errorMessage();
+        return false;
+    }
+
+    QString targetPath = canonicalizeBipPath(m_ggcAccountPath);
+    qDebug() << "GGC Worker: searching for canonical path" << targetPath << "raw" << m_ggcAccountPath;
+    for (const Account &account : accounts) {
+        QString accountBipPath = parseAccountPathHex(account.path());
+        QString normalizedAccountPath = accountBipPath.isEmpty() ? QString() : canonicalizeBipPath(accountBipPath);
+        qDebug() << "GGC Worker account" << account.label() << "raw" << account.path()
+                 << "bip" << accountBipPath << "normalized" << normalizedAccountPath;
+        if (!normalizedAccountPath.isEmpty() && !account.label().isEmpty() && normalizedAccountPath == targetPath) {
+            m_ggcAccountLabel = account.label();
+            qDebug() << "GGC Worker: using account label" << m_ggcAccountLabel << "for path" << m_ggcAccountPath;
+            return true;
+        }
+    }
+
+    qWarning() << "GGC Worker: no account matches path" << m_ggcAccountPath;
+    return false;
+}
+
 bool GgcWorker::activateWalletAccount(const QString &accountLabel)
 {
     if (!m_walletOwnerApi) {
@@ -1386,15 +1460,25 @@ bool GgcWorker::activateWalletAccount(const QString &accountLabel)
         return false;
     }
 
-    Result<bool> res = m_walletOwnerApi->setActiveAccount(accountLabel);
+    QString labelToActivate = accountLabel;
+    if (labelToActivate.isEmpty()) {
+        labelToActivate = m_ggcAccountLabel;
+    }
+
+    if (labelToActivate.isEmpty()) {
+        qWarning() << "GGC Worker: no account label configured";
+        return false;
+    }
+
+    Result<bool> res = m_walletOwnerApi->setActiveAccount(labelToActivate);
     bool activated = false;
     if (!res.unwrapOrLog(activated)) {
-        qWarning() << "Failed to activate wallet account" << accountLabel << ":" << res.errorMessage();
+        qWarning() << "Failed to activate wallet account" << labelToActivate << ":" << res.errorMessage();
         return false;
     }
 
     if (!activated) {
-        qWarning() << "Wallet account activation returned false for" << accountLabel;
+        qWarning() << "Wallet account activation returned false for" << labelToActivate;
     }
 
     return activated;

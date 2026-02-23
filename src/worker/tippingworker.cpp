@@ -1,4 +1,6 @@
 #include "tippingworker.h"
+#include <QByteArray>
+#include <QList>
 
 #include <QtGlobal>
 #include <QtNetwork/QNetworkAccessManager>
@@ -7,9 +9,9 @@
 #include <QVariant>
 #include <QJsonArray>
 #include <QStringList>
-#include <QList>
 #include <cmath>
 #include "txlogentry.h"
+#include "debugutils.h"
 
 namespace {
 QString requiredBotMention()
@@ -98,6 +100,57 @@ bool parseTipAmount(const QString &input, qlonglong &nanogrin, QString &errorMes
     nanogrin = static_cast<qlonglong>(value * nanogrinPerGrin + 0.5);
     return true;
 }
+
+QString canonicalizeBipPath(const QString &value)
+{
+    QString normalized = value.trimmed().toLower();
+    if (normalized.isEmpty() || normalized == QStringLiteral("m")) {
+        return QStringLiteral("m");
+    }
+    if (normalized.startsWith(QStringLiteral("m/"))) {
+        return normalized;
+    }
+    return QStringLiteral("m/") + normalized;
+}
+
+QString parseAccountPathHex(const QString &hexPath)
+{
+    QString trimmed = hexPath.trimmed();
+    if (trimmed.isEmpty()) {
+        return QString();
+    }
+
+    QByteArray data = QByteArray::fromHex(trimmed.toLatin1());
+    if (data.isEmpty()) {
+        return QString();
+    }
+
+    quint8 depth = static_cast<quint8>(data[0]);
+    if (depth == 0 || data.size() < 1) {
+        return QStringLiteral("m");
+    }
+
+    if (data.size() < 1 + static_cast<int>(depth) * 4) {
+        return QString();
+    }
+
+    QString result = QStringLiteral("m");
+    int offset = 1;
+    for (int i = 0; i < depth; ++i) {
+        if (offset + 4 > data.size()) {
+            return QString();
+        }
+
+        quint32 index = (static_cast<quint32>(static_cast<uchar>(data[offset])) << 24) |
+                        (static_cast<quint32>(static_cast<uchar>(data[offset + 1])) << 16) |
+                        (static_cast<quint32>(static_cast<uchar>(data[offset + 2])) << 8) |
+                        static_cast<quint32>(static_cast<uchar>(data[offset + 3]));
+        offset += 4;
+        result += QStringLiteral("/") + QString::number(index);
+    }
+
+    return result;
+}
 }
 
 TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
@@ -105,7 +158,8 @@ TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerA
     m_settings(settings),
     m_db(nullptr),
     m_walletOwnerApi(walletOwnerApi),
-    tippingAccountLabel("tipping"),
+    m_tippingAccountLabel(),
+    m_tippingAccountPath(),
     walletPassword("test"),
     m_pendingDepositTimer(nullptr)
 {
@@ -128,10 +182,14 @@ bool TippingWorker::init()
     m_db->initialize();
 
     walletPassword = m_settings->value("wallet/password").toString();
-    tippingAccountLabel = "tipping";
 
     if (!m_walletOwnerApi) {
         qWarning() << "Wallet owner API is not initialized";
+        return false;
+    }
+
+    if (!resolveTippingAccountLabel()) {
+        qWarning() << "Failed to resolve tipping account label from settings.";
         return false;
     }
 
@@ -153,6 +211,11 @@ bool TippingWorker::init()
         m_pendingWithdraws.insert(withdraw.slateId, withdraw);
         qDebug() << "init: restored pending withdraw" << withdraw.slateId << "amount" << withdraw.amount;
     }
+
+    QTimer *cleanupTimer = new QTimer(this);
+    connect(cleanupTimer, &QTimer::timeout, this, [this]() { cleanupRetrieveTxs(false); });
+    cleanupTimer->start(5 * 60 * 1000);
+    cleanupRetrieveTxs(true);
 
     return true;
 }
@@ -708,9 +771,9 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
         return Error(ErrorType::Unknown, "Tipping account could not be activated.");
     }
 
-    qDebug() << "createSendSlatepack: amount (nanogrin)" << nanogrin << "using account" << tippingAccountLabel;
+    qDebug() << "createSendSlatepack: amount (nanogrin)" << nanogrin << "using account" << m_tippingAccountLabel;
     InitTxArgs args;
-    args.setSrcAcctName(tippingAccountLabel);
+    args.setSrcAcctName(m_tippingAccountLabel);
     args.setAmount(nanogrin);
     args.setAmountIncludesFee(QJsonValue::Null);
     args.setMinimumConfirmations(10);
@@ -861,29 +924,49 @@ qlonglong TippingWorker::slateToGrin(const Slate &slate) const
 
 bool TippingWorker::ensureTippingAccount()
 {
-    Result<QList<Account>> res = m_walletOwnerApi->accounts();
-    QList<Account> accounts;
-    if (!res.unwrapOrLog(accounts)) {
+    if (m_tippingAccountLabel.isEmpty()) {
+        qWarning() << "TippingWorker: account label is not configured";
         return false;
     }
 
-    bool found = false;
+    return activateWalletAccount(m_tippingAccountLabel);
+}
+
+bool TippingWorker::resolveTippingAccountLabel()
+{
+    if (!m_settings) {
+        qWarning() << "TippingWorker: settings not available";
+        return false;
+    }
+
+    m_tippingAccountPath = m_settings->value("wallet/tippingAccountPath").toString().trimmed();
+    if (m_tippingAccountPath.isEmpty()) {
+        m_tippingAccountPath = "m/1/0";
+    }
+
+    Result<QList<Account>> accountsRes = m_walletOwnerApi->accounts();
+    QList<Account> accounts;
+    if (!accountsRes.unwrapOrLog(accounts)) {
+        qWarning() << "TippingWorker: failed to list wallet accounts:" << accountsRes.errorMessage();
+        return false;
+    }
+
+    QString targetPath = canonicalizeBipPath(m_tippingAccountPath);
+    qDebug() << "TippingWorker: searching for canonical path" << targetPath << "raw" << m_tippingAccountPath;
     for (const Account &account : accounts) {
-        if (account.label() == tippingAccountLabel) {
-            found = true;
-            break;
+        QString accountBipPath = parseAccountPathHex(account.path());
+        QString normalizedAccountPath = accountBipPath.isEmpty() ? QString() : canonicalizeBipPath(accountBipPath);
+        qDebug() << "TippingWorker account" << account.label() << "raw" << account.path()
+                 << "bip" << accountBipPath << "normalized" << normalizedAccountPath;
+        if (!normalizedAccountPath.isEmpty() && !account.label().isEmpty() && normalizedAccountPath == targetPath) {
+            m_tippingAccountLabel = account.label();
+            qDebug() << "TippingWorker: using label" << m_tippingAccountLabel << "for path" << m_tippingAccountPath;
+            return true;
         }
     }
 
-    if (!found) {
-        Result<QString> createRes = m_walletOwnerApi->createAccountPath(tippingAccountLabel);
-        QString path;
-        if (!createRes.unwrapOrLog(path)) {
-            return false;
-        }
-    }
-
-    return activateTippingWalletAccount();
+    qWarning() << "TippingWorker: no account matches path" << m_tippingAccountPath;
+    return false;
 }
 
 Result<WalletInfo> TippingWorker::fetchAccountSummary(const QString &accountLabel)
@@ -923,7 +1006,7 @@ bool TippingWorker::activateWalletAccount(const QString &accountLabel)
 
 bool TippingWorker::activateTippingWalletAccount()
 {
-    return activateWalletAccount(tippingAccountLabel);
+    return activateWalletAccount(m_tippingAccountLabel);
 }
 
 QString TippingWorker::formatWalletSummary(const WalletInfo &walletInfo) const
@@ -948,44 +1031,34 @@ QString TippingWorker::formatWalletSummary(const WalletInfo &walletInfo) const
 QString TippingWorker::handleAdminAmountsCommand()
 {
     QString info;
-    WalletInfo walletInfo;
-    Result<WalletInfo> tippingSummary = fetchAccountSummary(tippingAccountLabel);
-    if (!tippingSummary.unwrapOrLog(walletInfo)) {
-        QString err = tippingSummary.errorMessage();
-        if (err.contains("no result element", Qt::CaseInsensitive)) {
-            info.append("Tipping summary: Wallet information not available yet. Please try again shortly.\n\n");
-        } else {
-            info.append(QString("Tipping summary error: %1\n\n").arg(err));
-        }
-    } else {
-        info.append("Tipping summary:\n" + formatWalletSummary(walletInfo) + "\n\n");
-    }
-
     QList<Account> accounts;
     Result<QList<Account>> accountsRes = m_walletOwnerApi->accounts();
-    if (accountsRes.unwrapOrLog(accounts)) {
-        QString ggcLabel;
-        for (const Account &account : accounts) {
-            if (account.label() != tippingAccountLabel) {
-                ggcLabel = account.label();
-                break;
-            }
+    if (!accountsRes.unwrapOrLog(accounts)) {
+        return "Unable to list wallet accounts.";
+    }
+
+    for (const Account &account : accounts) {
+        if (account.label().isEmpty()) {
+            continue;
         }
 
-        if (!ggcLabel.isEmpty()) {
-            WalletInfo ggcInfo;
-            Result<WalletInfo> ggcSummary = fetchAccountSummary(ggcLabel);
-            if (!ggcSummary.unwrapOrLog(ggcInfo)) {
-                info.append(QString("GGC summary error: %1\n").arg(ggcSummary.errorMessage()));
-            } else {
-                info.append("GGC summary:\n" + formatWalletSummary(ggcInfo));
-            }
-            m_walletOwnerApi->setActiveAccount(tippingAccountLabel);
+        WalletInfo summary;
+        Result<WalletInfo> accountSummary = fetchAccountSummary(account.label());
+        if (!accountSummary.unwrapOrLog(summary)) {
+            info.append(QString("Account %1 (%2) summary error: %3\n\n")
+                        .arg(account.label(), account.path(), accountSummary.errorMessage()));
         } else {
-            info.append("GGC summary: no additional account found.\n");
+            info.append(QString("Account %1 (%2) summary:\n%3\n\n")
+                        .arg(account.label(), account.path(), formatWalletSummary(summary)));
         }
-    } else {
-        info.append("GGC summary: unable to list accounts.\n");
+    }
+
+    if (!m_tippingAccountLabel.isEmpty()) {
+        m_walletOwnerApi->setActiveAccount(m_tippingAccountLabel);
+    }
+
+    if (info.trimmed().isEmpty()) {
+        return "No wallet account summary available.";
     }
 
     return info.trimmed();
@@ -1132,6 +1205,49 @@ void TippingWorker::checkPendingWithdrawConfirmations()
                 qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
             }
             break;
+        }
+    }
+}
+
+void TippingWorker::cleanupRetrieveTxs(bool cleanAll)
+{
+    if (m_tippingAccountLabel.isEmpty()) {
+        qWarning() << "cleanupRetrieveTxs: tipping account label not configured";
+        return;
+    }
+
+    if (!activateWalletAccount(m_tippingAccountLabel)) {
+        qWarning() << "cleanupRetrieveTxs: wallet account could not be activated";
+        return;
+    }
+
+    QList<TxLogEntry> txList;
+    {
+        Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
+        if (!res.unwrapOrLog(txList)) {
+            qDebug() << QString("Error message: %1").arg(res.errorMessage());
+            return;
+        }
+    }
+
+    for (int i = 0; i < txList.length(); ++i) {
+        if (!txList[i].confirmed() &&
+            (txList[i].txType() == "TxReceived" || txList[i].txType() == "TxSent")) {
+            QDateTime now = QDateTime::currentDateTimeUtc();
+            if (txList[i].creationTs().secsTo(now) > 36000 || cleanAll) {
+                qDebug() << "Tipping cleanup: transaction older than 10 hours";
+                qInfo().noquote() << debugJsonString(txList[i]);
+
+                bool cancelTx = false;
+                {
+                    Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
+                    if (!res.unwrapOrLog(cancelTx)) {
+                        qDebug() << QString("Error message: %1").arg(res.errorMessage());
+                    } else {
+                        qDebug() << "cancelTx =" << cancelTx;
+                    }
+                }
+            }
         }
     }
 }
