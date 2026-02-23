@@ -101,9 +101,9 @@ GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *wall
     m_nodeForeignApi(nullptr),
     m_walletOwnerApi(walletOwnerApi),
     m_walletForeignApi(nullptr),
-    m_settings(settings),
     m_ggcAccountLabel(),
     m_ggcAccountPath(),
+    m_settings(settings),
     m_faucetAmount(1000000000)
 {
     QString net = qEnvironmentVariable("GRIN_CHAIN_TYPE");
@@ -155,9 +155,14 @@ bool GgcWorker::init()
         return false;
     }
 
-    //scan whole wallet
-    if (!scanWallet()) {
-        success = false;
+    bool fullScan = m_settings->value("wallet/fullScan", false).toBool();
+    if (fullScan) {
+        qInfo() << "fullScan enabled; scanning wallet";
+        if (!scanWallet()) {
+            success = false;
+        }
+    } else {
+        qInfo() << "fullScan disabled; skipping wallet scan";
     }
 
     // Wallet Foreign Api Instance
