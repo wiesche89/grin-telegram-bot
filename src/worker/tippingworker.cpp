@@ -12,7 +12,6 @@
 #include <QHash>
 #include <cmath>
 #include "txlogentry.h"
-#include "debugutils.h"
 
 namespace {
 QString requiredBotMention()
@@ -812,11 +811,20 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
 
     QString slateId = slate.id();
     if (!slateId.isEmpty()) {
+        if (!m_db->updateBalance(senderId, -nanogrin)) {
+            qWarning() << "createSendSlatepack: balance reservation failed for" << senderId << "amount" << formatGrin(nanogrin);
+            return Error(ErrorType::Unknown, "Unable to reserve balance for withdraw.");
+        }
+
         PendingWithdrawRecord pending{slateId, senderId, nanogrin, QDateTime::currentSecsSinceEpoch()};
-        m_pendingWithdraws.insert(slateId, pending);
         if (!m_db->insertPendingWithdraw(pending)) {
             qWarning() << "createSendSlatepack: failed to persist pending withdraw" << slateId;
+            m_db->updateBalance(senderId, nanogrin);
+            return Error(ErrorType::Unknown, "Unable to persist withdraw state.");
         }
+
+        m_pendingWithdraws.insert(slateId, pending);
+        m_db->recordTransaction(senderId, "", nanogrin, "withdraw_request");
         qDebug() << "createSendSlatepack: stored pending withdraw" << slateId << "amount" << formatGrin(nanogrin);
     }
 
@@ -909,9 +917,6 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
         grinAmount = nanogrin;
     }
     QString userId = pendingWithdraw.userId.isEmpty() ? userLabel(message) : pendingWithdraw.userId;
-    if (!m_db->updateBalance(userId, -grinAmount)) {
-        return Error(ErrorType::Unknown, "Error deducting from account.");
-    }
     m_db->recordTransaction(userId, "", grinAmount, "withdraw");
 
     return QString("%1 GRIN withdrawn.").arg(formatGrin(grinAmount));
@@ -1179,11 +1184,6 @@ void TippingWorker::checkPendingWithdrawConfirmations()
         return;
     }
 
-    QList<PendingWithdrawConfirmationRecord> pendingList = m_db->pendingWithdrawConfirmations();
-    if (pendingList.isEmpty()) {
-        return;
-    }
-
     QList<TxLogEntry> txList;
     Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
     if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
@@ -1198,6 +1198,50 @@ void TippingWorker::checkPendingWithdrawConfirmations()
             continue;
         }
         txBySlate.insert(slateId, entry);
+    }
+
+    QList<PendingWithdrawRecord> withdrawList = m_db->pendingWithdrawals();
+    qint64 nowSecs = QDateTime::currentSecsSinceEpoch();
+    for (const PendingWithdrawRecord &pending : withdrawList) {
+        if (pending.slateId.isEmpty()) {
+            continue;
+        }
+
+        if (txBySlate.contains(pending.slateId)) {
+            continue;
+        }
+
+        qint64 age = nowSecs - pending.createdAt;
+        constexpr qint64 graceSecs = 60;
+        if (age < graceSecs) {
+            continue;
+        }
+
+        qDebug() << "checkPendingWithdrawConfirmations: withdraw slate" << pending.slateId << "missing; cleaning up after" << age << "s";
+        if (pending.amount > 0 && m_db->updateBalance(pending.userId, pending.amount)) {
+            m_db->recordTransaction("", pending.userId, pending.amount, "withdraw_reverted");
+        } else {
+            qWarning() << "checkPendingWithdrawConfirmations: failed to refund user" << pending.userId << "for slate" << pending.slateId;
+        }
+
+        m_pendingWithdraws.remove(pending.slateId);
+        QString displayName = m_db->usernameByUserId(pending.userId);
+        if (displayName.isEmpty()) {
+            displayName = pending.userId;
+        }
+        QString notice = QString("Hi %1,\nyour withdrawal transaction (%2 GRIN) was pulled back by the wallet. The amount has been re-credited to your balance.")
+                             .arg(displayName)
+                             .arg(formatGrin(pending.amount));
+        sendUserDirectMessage(pending.userId, notice, true);
+
+        if (!m_db->markPendingWithdrawCompleted(pending.slateId)) {
+            qWarning() << "Failed to mark pending withdraw completed" << pending.slateId;
+        }
+    }
+
+    QList<PendingWithdrawConfirmationRecord> pendingList = m_db->pendingWithdrawConfirmations();
+    if (pendingList.isEmpty()) {
+        return;
     }
 
     for (const PendingWithdrawConfirmationRecord &pending : pendingList) {
