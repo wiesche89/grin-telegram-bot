@@ -9,6 +9,7 @@
 #include <QVariant>
 #include <QJsonArray>
 #include <QStringList>
+#include <QHash>
 #include <cmath>
 #include "txlogentry.h"
 #include "debugutils.h"
@@ -151,6 +152,15 @@ QString parseAccountPathHex(const QString &hexPath)
 
     return result;
 }
+}
+
+QString normalizedSlateId(const TxLogEntry &entry)
+{
+    if (entry.txSlateId().isNull()) {
+        return {};
+    }
+    QString slateId = entry.txSlateId().toString();
+    return slateId.remove('{').remove('}');
 }
 
 TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
@@ -1090,61 +1100,74 @@ void TippingWorker::checkPendingDeposits()
     }
 
     qDebug() << "checkPendingDeposits: found" << pendingList.size() << "pending entries";
+
+    QList<TxLogEntry> txList;
+    Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
+    if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
+        qDebug() << "checkPendingDeposits: retrieveTxs failed -" << res.errorMessage();
+        return;
+    }
+
+    QHash<QString, TxLogEntry> txBySlate;
+    for (const TxLogEntry &entry : txList) {
+        QString slateId = normalizedSlateId(entry);
+        if (slateId.isEmpty()) {
+            continue;
+        }
+        txBySlate.insert(slateId, entry);
+    }
+
     for (const PendingDepositRecord &pending : pendingList) {
         const QString &slateId = pending.slateId;
 
-        qDebug() << "checkPendingDeposits: querying txs for slate" << slateId;
-        QList<TxLogEntry> txList;
-        Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
-            qDebug() << "checkPendingDeposits: retrieveTxs failed for" << slateId << "-" << res.errorMessage();
+        if (slateId.isEmpty()) {
             continue;
         }
 
-        for (const TxLogEntry &entry : txList) {
-            if (entry.txSlateId().isNull()) {
-                qDebug()<<"entry.txSlateId().isNull()";
-                continue;
-            }
-
-            QString strSlate = entry.txSlateId().toString().replace("{","").replace("}","");
-            if (strSlate != slateId) {
-                continue;
-            }
-
-            if (!entry.confirmed()) {
-                qDebug() << "checkPendingDeposits: tx" << entry.id() << "not confirmed yet";
-                continue;
-            }
-
-            qlonglong creditedAmount = pending.amount;
-            quint64 amountNano = entry.amountCredited() > 0 ? entry.amountCredited() : entry.amountDebited();
-            if (amountNano > 0) {
-                creditedAmount = static_cast<qlonglong>(amountNano);
-            }
-            if (creditedAmount <= 0) {
-                creditedAmount = pending.amount;
-            }
-
-            qDebug() << "checkPendingDeposits: crediting" << creditedAmount << "GRIN to" << pending.userId << "for tx" << entry.id();
-            m_db->updateBalance(pending.userId, creditedAmount);
-            m_db->recordTransaction("", pending.userId, creditedAmount, "deposit");
-
-            QString reply = QString("%1 GRIN deposit confirmed and credited to your balance.").arg(formatGrin(creditedAmount));
-            QString msg;
-            if (!pending.firstName.isEmpty()) {
-                msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
-            } else {
-                msg = reply;
-            }
-            sendUserDirectMessage(pending.userId, msg, true);
-
+        if (!txBySlate.contains(slateId)) {
+            qDebug() << "checkPendingDeposits: slate" << slateId << "not found; assuming cleanup removed tx";
             if (!m_db->markPendingDepositCompleted(slateId)) {
-                qWarning() << "Failed to mark pending deposit completed" << slateId;
-            } else {
-                qDebug() << "checkPendingDeposits: marked pending deposit completed" << slateId;
+                qWarning() << "Failed to mark missing pending deposit completed" << slateId;
             }
-            break;
+            QString notice = QString("Hi %1,\ndeine Deposit-Transaktion (%2) wurde vom Wallet zurückgezogen. Bitte sende erneut.")
+                                 .arg(pending.firstName.isEmpty() ? pending.userId : pending.firstName)
+                                 .arg(formatGrin(pending.amount));
+            sendUserDirectMessage(pending.userId, notice, true);
+            continue;
+        }
+
+        const TxLogEntry entry = txBySlate.value(slateId);
+        if (!entry.confirmed()) {
+            qDebug() << "checkPendingDeposits: tx" << entry.id() << "not confirmed yet";
+            continue;
+        }
+
+        qlonglong creditedAmount = pending.amount;
+        quint64 amountNano = entry.amountCredited() > 0 ? entry.amountCredited() : entry.amountDebited();
+        if (amountNano > 0) {
+            creditedAmount = static_cast<qlonglong>(amountNano);
+        }
+        if (creditedAmount <= 0) {
+            creditedAmount = pending.amount;
+        }
+
+        qDebug() << "checkPendingDeposits: crediting" << creditedAmount << "GRIN to" << pending.userId << "for tx" << entry.id();
+        m_db->updateBalance(pending.userId, creditedAmount);
+        m_db->recordTransaction("", pending.userId, creditedAmount, "deposit");
+
+        QString reply = QString("%1 GRIN deposit confirmed and credited to your balance.").arg(formatGrin(creditedAmount));
+        QString msg;
+        if (!pending.firstName.isEmpty()) {
+            msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
+        } else {
+            msg = reply;
+        }
+        sendUserDirectMessage(pending.userId, msg, true);
+
+        if (!m_db->markPendingDepositCompleted(slateId)) {
+            qWarning() << "Failed to mark pending deposit completed" << slateId;
+        } else {
+            qDebug() << "checkPendingDeposits: marked pending deposit completed" << slateId;
         }
     }
 }
@@ -1168,38 +1191,52 @@ void TippingWorker::checkPendingWithdrawConfirmations()
         return;
     }
 
+    QHash<QString, TxLogEntry> txBySlate;
+    for (const TxLogEntry &entry : txList) {
+        QString slateId = normalizedSlateId(entry);
+        if (slateId.isEmpty()) {
+            continue;
+        }
+        txBySlate.insert(slateId, entry);
+    }
+
     for (const PendingWithdrawConfirmationRecord &pending : pendingList) {
-        qDebug()<<"pendingList:  "<<pending.firstName<<"   "<<pending.slateId;
-        for (const TxLogEntry &entry : txList) {
-            if (entry.txSlateId().isNull()) {
-                continue;
-            }
+        qDebug() << "pendingList:  " << pending.firstName << "   " << pending.slateId;
 
-            QString strSlate = entry.txSlateId().toString().replace("{", "").replace("}", "");
-            if (strSlate != pending.slateId) {
-                continue;
-            }
+        if (pending.slateId.isEmpty()) {
+            continue;
+        }
 
-            if (!entry.confirmed()) {
-                qDebug() << "checkPendingWithdrawConfirmations: tx" << entry.id() << "not confirmed yet for slate" << pending.slateId;
-                continue;
-            }
-
-            QString reply = QString("%1 GRIN withdraw confirmed on the blockchain (tx id %2).")
-                            .arg(formatGrin(pending.amount))
-                            .arg(entry.id());
-            QString msg;
-            if (!pending.firstName.isEmpty()) {
-                msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
-            } else {
-                msg = reply;
-            }
-            sendUserDirectMessage(pending.userId, msg, true);
-
+        if (!txBySlate.contains(pending.slateId)) {
+            qDebug() << "checkPendingWithdrawConfirmations: slate" << pending.slateId << "not found; assuming cleanup removed tx";
             if (!m_db->markPendingWithdrawConfirmationCompleted(pending.slateId)) {
-                qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
+                qWarning() << "Failed to mark missing pending withdraw confirmation" << pending.slateId;
             }
-            break;
+            QString notice = QString("Hi %1,\ndeine Auszahlungs-Transaktion wurde vom Wallet zurückgezogen. Bitte erneut anstoßen.")
+                                 .arg(pending.firstName.isEmpty() ? pending.userId : pending.firstName);
+            sendUserDirectMessage(pending.userId, notice, true);
+            continue;
+        }
+
+        const TxLogEntry entry = txBySlate.value(pending.slateId);
+        if (!entry.confirmed()) {
+            qDebug() << "checkPendingWithdrawConfirmations: tx" << entry.id() << "not confirmed yet for slate" << pending.slateId;
+            continue;
+        }
+
+        QString reply = QString("%1 GRIN withdraw confirmed on the blockchain (tx id %2).")
+                        .arg(formatGrin(pending.amount))
+                        .arg(entry.id());
+        QString msg;
+        if (!pending.firstName.isEmpty()) {
+            msg = QString("Hi %1,\n%2").arg(pending.firstName).arg(reply);
+        } else {
+            msg = reply;
+        }
+        sendUserDirectMessage(pending.userId, msg, true);
+
+        if (!m_db->markPendingWithdrawConfirmationCompleted(pending.slateId)) {
+            qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
         }
     }
 }
