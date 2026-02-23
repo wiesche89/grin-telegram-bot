@@ -416,7 +416,7 @@ Result<Slate> WalletOwnerApi::initSendTx(InitTxArgs args)
     auto res = JsonUtil::extractOkObject(postEncrypted("init_send_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -446,7 +446,7 @@ Result<Slate> WalletOwnerApi::issueInvoiceTx(QString amount, QString destAcctNam
     auto res = JsonUtil::extractOkObject(postEncrypted("issue_invoice_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -471,7 +471,7 @@ Result<NodeHeight> WalletOwnerApi::nodeHeight()
     auto res = JsonUtil::extractOkObject(postEncrypted("node_height", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -499,7 +499,7 @@ Result<Slate> WalletOwnerApi::finalizeTx(const Slate slate)
     auto res = JsonUtil::extractOkObject(postEncrypted("finalize_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -521,7 +521,7 @@ Result<QString> WalletOwnerApi::getMnemonic(QString name, QString password)
     auto res = JsonUtil::extractOkValue(postEncrypted("get_mnemonic", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -546,7 +546,7 @@ Result<RewindHash> WalletOwnerApi::getRewindHash()
     auto res = JsonUtil::extractOkValue(postEncrypted("get_rewind_hash", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -578,7 +578,7 @@ Result<QString> WalletOwnerApi::getSlatepackAddress(int derivationIndex)
     auto res = JsonUtil::extractOkValue(postEncrypted("get_slatepack_address", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -599,7 +599,7 @@ Result<QString> WalletOwnerApi::getSlatepackSecretKey(int derivationIndex)
     auto res = JsonUtil::extractOkValue(postEncrypted("get_slatepack_secret_key", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -628,7 +628,7 @@ Result<Slate> WalletOwnerApi::getStoredTx(QString slateId, int id)
     auto res = JsonUtil::extractOkObject(postEncrypted("get_stored_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -652,7 +652,7 @@ Result<QString> WalletOwnerApi::getTopLevelDirectory()
     auto res = JsonUtil::extractOkValue(postEncrypted("get_top_level_directory", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -678,7 +678,7 @@ Result<StatusMessage> WalletOwnerApi::getUpdaterMessages(QString &message, quint
     auto res = JsonUtil::extractOkObject(postEncrypted("get_updater_messages", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -730,7 +730,7 @@ Result<WalletInfo> WalletOwnerApi::retrieveSummaryInfo(bool refreshFromNode, int
     auto res = JsonUtil::extractOkValue(postEncrypted("retrieve_summary_info", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -765,7 +765,7 @@ Result<QList<TxLogEntry> > WalletOwnerApi::retrieveTxs(bool refreshFromNode, int
     auto res = JsonUtil::extractOkValue(postEncrypted("retrieve_txs", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -811,7 +811,7 @@ Result<bool> WalletOwnerApi::scan(int startHeight, bool deleteUnconfirmed)
     auto res = JsonUtil::extractOkValue(postEncrypted("scan", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -836,7 +836,7 @@ Result<ViewWallet> WalletOwnerApi::scanRewindHash(RewindHash rewindHash, int sta
     auto res = JsonUtil::extractOkObject(postEncrypted("scan_rewind_hash", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -859,7 +859,7 @@ Result<bool> WalletOwnerApi::setActiveAccount(QString label)
     auto res = JsonUtil::extractOkValue(obj);
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -881,7 +881,7 @@ Result<bool> WalletOwnerApi::setTopLevelDirectory(QString dir)
     auto res = JsonUtil::extractOkValue(postEncrypted("set_top_level_directory", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -903,7 +903,7 @@ Result<bool> WalletOwnerApi::setTorConfig(TorConfig torConfig)
     auto res = JsonUtil::extractOkValue(postEncrypted("set_tor_config", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -927,7 +927,7 @@ Result<Slate> WalletOwnerApi::slateFromSlatepackMessage(QString message, QJsonAr
     auto res = JsonUtil::extractOkObject(postEncrypted("slate_from_slatepack_message", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -957,7 +957,7 @@ Result<bool> WalletOwnerApi::startUpdater(int frequency)
     auto res = JsonUtil::extractOkValue(postEncrypted("start_updater", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -977,7 +977,7 @@ Result<bool> WalletOwnerApi::stopUpdater()
     auto res = JsonUtil::extractOkValue(postEncrypted("stop_updater", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1004,7 +1004,7 @@ Result<bool> WalletOwnerApi::cancelTx(QString txSlateId, int id)
     auto res = JsonUtil::extractOkValue(postEncrypted("cancel_tx", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1032,7 +1032,7 @@ Result<bool> WalletOwnerApi::changePassword(QString name, QString oldPw, QString
     auto res = JsonUtil::extractOkValue(postEncrypted("change_password", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1053,7 +1053,7 @@ Result<bool> WalletOwnerApi::closeWallet(QString name)
     auto res = JsonUtil::extractOkValue(postEncrypted("close_wallet", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1078,7 +1078,7 @@ Result<QString> WalletOwnerApi::createAccountPath(QString label)
     auto res = JsonUtil::extractOkValue(postEncrypted("create_account_path", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1135,7 +1135,7 @@ Result<bool> WalletOwnerApi::postTx(Slate slate, bool fluff)
     auto res = JsonUtil::extractOkValue(postEncrypted("post_tx", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1167,7 +1167,7 @@ Result<Slate> WalletOwnerApi::processInvoiceTx(Slate slate, QJsonObject args)
     auto res = JsonUtil::extractOkObject(postEncrypted("process_invoice_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1189,7 +1189,7 @@ Result<QList<TxLogEntry> > WalletOwnerApi::queryTxs(bool refreshFromNode, Query 
     auto res = JsonUtil::extractOkValue(postEncrypted("query_txs", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1230,7 +1230,7 @@ Result<QList<OutputCommitMapping> > WalletOwnerApi::retrieveOutputs(bool include
     auto res = JsonUtil::extractOkValue(postEncrypted("retrieve_outputs", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1276,7 +1276,7 @@ Result<PaymentProof> WalletOwnerApi::retrievePaymentProof(bool refreshFromNode, 
     auto res = JsonUtil::extractOkObject(postEncrypted("retrieve_payment_proof", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1305,7 +1305,7 @@ Result<bool> WalletOwnerApi::txLockOutputs(Slate slate)
     auto res = JsonUtil::extractOkValue(postEncrypted("tx_lock_outputs", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1330,7 +1330,7 @@ Result<VerifyPaymentProofStatus> WalletOwnerApi::verifyPaymentProof(PaymentProof
     auto res = JsonUtil::extractOkValue(postEncrypted("verify_payment_proof", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1385,7 +1385,7 @@ Result<QList<Account> > WalletOwnerApi::accounts()
     auto res = JsonUtil::extractOkValue(postEncrypted("accounts", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1416,7 +1416,7 @@ Result<BuiltOutput> WalletOwnerApi::buildOutputs(QString features, QString amoun
     auto res = JsonUtil::extractOkObject(postEncrypted("build_output", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1442,7 +1442,7 @@ Result<QString> WalletOwnerApi::openWallet(QString name, QString password)
     auto res = JsonUtil::extractOkValue(postEncrypted("open_wallet", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1474,7 +1474,7 @@ Result<QString> WalletOwnerApi::createSlatepackMessage(Slate slate, QJsonArray r
     auto res = JsonUtil::extractOkValue(postEncrypted("create_slatepack_message", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1506,7 +1506,7 @@ Result<bool> WalletOwnerApi::createWallet(QString name, QString mnemonic, int mn
     auto res = JsonUtil::extractOkValue(postEncrypted("create_wallet", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1530,7 +1530,7 @@ Result<Slatepack> WalletOwnerApi::decodeSlatepackMessage(QJsonArray secretIndice
     auto res = JsonUtil::extractOkObject(postEncrypted("decode_slatepack_message", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -1554,7 +1554,7 @@ Result<bool> WalletOwnerApi::deleteWallet(QString name)
     auto res = JsonUtil::extractOkValue(postEncrypted("delete_wallet", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 

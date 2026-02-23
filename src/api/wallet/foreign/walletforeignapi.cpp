@@ -34,7 +34,7 @@ Result<Coinbase> WalletForeignApi::buildCoinbase(int fees, int height, QString k
     auto res = JsonUtil::extractOkObject(post("build_coinbase", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -53,7 +53,7 @@ Result<Version> WalletForeignApi::checkVersion()
     auto res = JsonUtil::extractOkObject(post("check_version", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -81,7 +81,7 @@ Result<Slate> WalletForeignApi::finalizeTx(Slate slate)
     auto res = JsonUtil::extractOkObject(post("finalize_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -116,7 +116,7 @@ Result<Slate> WalletForeignApi::receiveTx(Slate slate, QString destAcctName, QSt
     auto res = JsonUtil::extractOkObject(post("receive_tx", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 

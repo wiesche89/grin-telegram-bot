@@ -443,7 +443,7 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
 
     Slate slate;
     Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-    if (!res.unwrapOrLog(slate)) {
+    if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
         sendUserMessage(message, QString("Error: %1").arg(res.errorMessage()), false);
         return true;
     }
@@ -458,7 +458,7 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
         }
         Result<QString> result = handleSlateI2State(slate, message);
         QString info;
-        if (!result.unwrapOrLog(info)) {
+        if (!result.unwrapOrLog(info, Q_FUNC_INFO)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
             return true;
         }
@@ -474,7 +474,7 @@ bool TippingWorker::handleSlatepackDocument(TelegramBotMessage &message)
         PendingWithdrawRecord pending = m_pendingWithdraws.value(slateId);
         Result<QString> result = handleSlateS2State(slate, message, pending);
         QString info;
-        if (!result.unwrapOrLog(info)) {
+        if (!result.unwrapOrLog(info, Q_FUNC_INFO)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
             return true;
         }
@@ -509,7 +509,7 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
 
     Slate slate;
     Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(text);
-    if (!res.unwrapOrLog(slate)) {
+    if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
         sendUserMessage(message, QString("Error: %1").arg(res.errorMessage()), false);
         return true;
     }
@@ -524,7 +524,7 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
         }
         Result<QString> result = handleSlateI2State(slate, message);
         QString info;
-        if (!result.unwrapOrLog(info)) {
+        if (!result.unwrapOrLog(info, Q_FUNC_INFO)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
             return true;
         }
@@ -540,7 +540,7 @@ bool TippingWorker::handleSlatepackText(TelegramBotMessage &message, const QStri
         PendingWithdrawRecord pending = m_pendingWithdraws.value(slateId);
         Result<QString> result = handleSlateS2State(slate, message, pending);
         QString info;
-        if (!result.unwrapOrLog(info)) {
+        if (!result.unwrapOrLog(info, Q_FUNC_INFO)) {
             sendUserMessage(message, QString("Error: %1").arg(result.errorMessage()), false);
             return true;
         }
@@ -573,7 +573,7 @@ QString TippingWorker::handleDepositCommand(const QString &senderId, int amount,
     QString slateId;
     Result<QString> res = createInvoiceSlatepack(nanogrin, slateId);
     QString slatepack;
-    if (!res.unwrapOrLog(slatepack)) {
+    if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
         return QString("Error creating deposit slatepack: %1").arg(res.errorMessage());
     }
 
@@ -608,7 +608,7 @@ QString TippingWorker::handleWithdrawCommand(const QString &senderId, int amount
 
     Result<QString> res = createSendSlatepack(amountNano, senderId);
     QString slatepack;
-    if (!res.unwrapOrLog(slatepack)) {
+    if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
         return QString("Error creating withdraw slatepack: %1").arg(res.errorMessage());
     }
 
@@ -628,7 +628,7 @@ QString TippingWorker::handleOpenTransactionsCommand(const QString &sender)
     Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
 
     QStringList lines;
-    if (!res.unwrapOrLog(txList)) {
+    if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
         lines << QString("Error fetching open transactions: %1").arg(res.errorMessage());
     } else {
         for (const TxLogEntry &entry : txList) {
@@ -750,7 +750,7 @@ Result<QString> TippingWorker::createInvoiceSlatepack(qlonglong nanogrin, QStrin
     qDebug() << "createInvoiceSlatepack: requesting invoice for" << nanogrin << "nanogrin";
     Result<Slate> slateResult = m_walletOwnerApi->issueInvoiceTx(QString::number(nanogrin), "", "");
     Slate slate;
-    if (!slateResult.unwrapOrLog(slate)) {
+    if (!slateResult.unwrapOrLog(slate, Q_FUNC_INFO)) {
         return slateResult.error();
     }
 
@@ -759,7 +759,7 @@ Result<QString> TippingWorker::createInvoiceSlatepack(qlonglong nanogrin, QStrin
 
     Result<QString> slatepackResult = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
     QString slatepack;
-    if (slatepackResult.unwrapOrLog(slatepack)) {
+    if (slatepackResult.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
         qDebug() << "createInvoiceSlatepack: slatepack size" << slatepack.size();
     }
     return slatepackResult;
@@ -792,14 +792,14 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
              << "selectionUseAll=" << args.selectionStrategyIsUseAll();
     Result<Slate> slateResult = m_walletOwnerApi->initSendTx(args);
     Slate slate;
-    if (!slateResult.unwrapOrLog(slate)) {
+    if (!slateResult.unwrapOrLog(slate, Q_FUNC_INFO)) {
         return slateResult.error();
     }
 
     {
         Result<bool> lockResult = m_walletOwnerApi->txLockOutputs(slate);
         bool locked = false;
-        if (!lockResult.unwrapOrLog(locked)) {
+        if (!lockResult.unwrapOrLog(locked, Q_FUNC_INFO)) {
             return lockResult.error();
         }
         qDebug() << "createSendSlatepack: txLockOutputs" << locked;
@@ -817,7 +817,7 @@ Result<QString> TippingWorker::createSendSlatepack(qlonglong nanogrin, const QSt
 
     Result<QString> slatepackResult = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
     QString slatePackMessage;
-    if (slatepackResult.unwrapOrLog(slatePackMessage)) {
+    if (slatepackResult.unwrapOrLog(slatePackMessage, Q_FUNC_INFO)) {
         qDebug() << "createSendSlatepack: slatepack length" << slatePackMessage.length();
     }
     return slatepackResult;
@@ -833,7 +833,7 @@ Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessag
     {
         qDebug() << "handleSlateI2State: finalizing deposit slate for" << message.from.firstName;
         Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
-        if (!res.unwrapOrLog(finalized)) {
+        if (!res.unwrapOrLog(finalized, Q_FUNC_INFO)) {
             return res.error();
         }
         qDebug() << "handleSlateI2State: finalizeTx successful, slate amount" << finalized.amt();
@@ -842,7 +842,7 @@ Result<QString> TippingWorker::handleSlateI2State(Slate slate, TelegramBotMessag
     {
         bool posted = false;
         Result<bool> res = m_walletOwnerApi->postTx(finalized, false);
-        if (!res.unwrapOrLog(posted)) {
+        if (!res.unwrapOrLog(posted, Q_FUNC_INFO)) {
             QString err = res.errorMessage();
             if (err.contains("no result element", Qt::CaseInsensitive)) {
                 qWarning() << "handleSlateI2State: postTx reported missing result element";
@@ -882,7 +882,7 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
     {
         qDebug() << "handleSlateS2State: finalizing withdraw slate for" << message.from.firstName;
         Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
-        if (!res.unwrapOrLog(finalized)) {
+        if (!res.unwrapOrLog(finalized, Q_FUNC_INFO)) {
             qDebug()<<"error finalize!";
             return res.error();
         }
@@ -892,7 +892,7 @@ Result<QString> TippingWorker::handleSlateS2State(Slate slate, TelegramBotMessag
     {
         bool posted = false;
         Result<bool> res = m_walletOwnerApi->postTx(finalized, false);
-        if (!res.unwrapOrLog(posted)) {
+        if (!res.unwrapOrLog(posted, Q_FUNC_INFO)) {
             return res.error();
         }
         qDebug() << "handleSlateS2State: postTx completed (posted=" << posted << ")";
@@ -946,7 +946,7 @@ bool TippingWorker::resolveTippingAccountLabel()
 
     Result<QList<Account>> accountsRes = m_walletOwnerApi->accounts();
     QList<Account> accounts;
-    if (!accountsRes.unwrapOrLog(accounts)) {
+    if (!accountsRes.unwrapOrLog(accounts, Q_FUNC_INFO)) {
         qWarning() << "TippingWorker: failed to list wallet accounts:" << accountsRes.errorMessage();
         return false;
     }
@@ -973,7 +973,7 @@ Result<WalletInfo> TippingWorker::fetchAccountSummary(const QString &accountLabe
 {
     Result<bool> setRes = m_walletOwnerApi->setActiveAccount(accountLabel);
     bool activated = false;
-    if (!setRes.unwrapOrLog(activated)) {
+    if (!setRes.unwrapOrLog(activated, Q_FUNC_INFO)) {
         return Error(ErrorType::Unknown, setRes.errorMessage());
     }
     if (!activated) {
@@ -992,7 +992,7 @@ bool TippingWorker::activateWalletAccount(const QString &accountLabel)
 
     Result<bool> res = m_walletOwnerApi->setActiveAccount(accountLabel);
     bool activated = false;
-    if (!res.unwrapOrLog(activated)) {
+    if (!res.unwrapOrLog(activated, Q_FUNC_INFO)) {
         qWarning() << "Failed to activate wallet account" << accountLabel << ":" << res.errorMessage();
         return false;
     }
@@ -1033,7 +1033,7 @@ QString TippingWorker::handleAdminAmountsCommand()
     QString info;
     QList<Account> accounts;
     Result<QList<Account>> accountsRes = m_walletOwnerApi->accounts();
-    if (!accountsRes.unwrapOrLog(accounts)) {
+    if (!accountsRes.unwrapOrLog(accounts, Q_FUNC_INFO)) {
         return "Unable to list wallet accounts.";
     }
 
@@ -1044,7 +1044,7 @@ QString TippingWorker::handleAdminAmountsCommand()
 
         WalletInfo summary;
         Result<WalletInfo> accountSummary = fetchAccountSummary(account.label());
-        if (!accountSummary.unwrapOrLog(summary)) {
+        if (!accountSummary.unwrapOrLog(summary, Q_FUNC_INFO)) {
             info.append(QString("Account %1 (%2) summary error: %3\n\n")
                         .arg(account.label(), account.path(), accountSummary.errorMessage()));
         } else {
@@ -1101,7 +1101,7 @@ void TippingWorker::checkPendingDeposits()
         qDebug() << "checkPendingDeposits: querying txs for slate" << slateId;
         QList<TxLogEntry> txList;
         Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList)) {
+        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
             qDebug() << "checkPendingDeposits: retrieveTxs failed for" << slateId << "-" << res.errorMessage();
             continue;
         }
@@ -1168,7 +1168,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
 
     QList<TxLogEntry> txList;
     Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-    if (!res.unwrapOrLog(txList)) {
+    if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
         qWarning() << "checkPendingWithdrawConfirmations: retrieveTxs failed -" << res.errorMessage();
         return;
     }
@@ -1224,7 +1224,7 @@ void TippingWorker::cleanupRetrieveTxs(bool cleanAll)
     QList<TxLogEntry> txList;
     {
         Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList)) {
+        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
             qDebug() << QString("Error message: %1").arg(res.errorMessage());
             return;
         }
@@ -1241,7 +1241,7 @@ void TippingWorker::cleanupRetrieveTxs(bool cleanAll)
                 bool cancelTx = false;
                 {
                     Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
-                    if (!res.unwrapOrLog(cancelTx)) {
+                    if (!res.unwrapOrLog(cancelTx, Q_FUNC_INFO)) {
                         qDebug() << QString("Error message: %1").arg(res.errorMessage());
                     } else {
                         qDebug() << "cancelTx =" << cancelTx;

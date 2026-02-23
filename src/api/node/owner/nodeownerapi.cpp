@@ -26,7 +26,7 @@ Result<bool> NodeOwnerApi::banPeer(QString peerAddr)
     auto res = JsonUtil::extractOkValue(post("ban_peer", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -46,7 +46,7 @@ Result<bool> NodeOwnerApi::compactChain()
     auto res = JsonUtil::extractOkValue(post("compact_chain", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -67,7 +67,7 @@ Result<QList<PeerInfoDisplay> > NodeOwnerApi::getConnectedPeers()
     auto res = JsonUtil::extractOkValue(post("get_connected_peers", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -101,7 +101,7 @@ Result<QList<PeerData> > NodeOwnerApi::getPeers(QString peerAddr)
     auto res = JsonUtil::extractOkValue(post("get_peers", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -133,7 +133,7 @@ Result<Status> NodeOwnerApi::getStatus()
     auto res = JsonUtil::extractOkObject(post("get_status", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -156,7 +156,7 @@ Result<bool> NodeOwnerApi::unbanPeer(QString peerAddr)
     auto res = JsonUtil::extractOkValue(post("unban_peer", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -178,7 +178,7 @@ Result<bool> NodeOwnerApi::validateChain(bool assumeValidRangeproofsKernels)
     auto res = JsonUtil::extractOkValue(post("validate_chain", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 

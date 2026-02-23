@@ -27,7 +27,7 @@ Result<BlockPrintable> NodeForeignApi::getBlock(int height, QString hash, QStrin
     auto res = JsonUtil::extractOkObject(post("get_block", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -56,7 +56,7 @@ Result<BlockListing> NodeForeignApi::getBlocks(int startHeight, int endHeight, i
     auto res = JsonUtil::extractOkObject(post("get_blocks", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -85,7 +85,7 @@ Result<BlockHeaderPrintable> NodeForeignApi::getHeader(int height, QString hash,
     auto res = JsonUtil::extractOkObject(post("get_header", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -117,7 +117,7 @@ Result<LocatedTxKernel> NodeForeignApi::getKernel(QString excess, int minHeight,
     auto res = JsonUtil::extractOkObject(post("get_kernel", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -153,7 +153,7 @@ Result<QList<OutputPrintable> > NodeForeignApi::getOutputs(QJsonArray commits, i
     auto res = JsonUtil::extractOkValue(post("get_outputs", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -188,7 +188,7 @@ Result<OutputListing> NodeForeignApi::getPmmrIndices(int startHeight, int endHei
     auto res = JsonUtil::extractOkObject(post("get_pmmr_indices", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -207,7 +207,7 @@ Result<int> NodeForeignApi::getPoolSize()
     auto res = JsonUtil::extractOkValue(post("get_pool_size", params));
     QJsonValue okVal;
 
-    if (!res.unwrapOrLog(okVal)) {
+    if (!res.unwrapOrLog(okVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -230,7 +230,7 @@ Result<int> NodeForeignApi::getStempoolSize()
     auto res = JsonUtil::extractOkValue(post("get_stempool_size", params));
     QJsonValue okVal;
 
-    if (!res.unwrapOrLog(okVal)) {
+    if (!res.unwrapOrLog(okVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -253,7 +253,7 @@ Result<Tip> NodeForeignApi::getTip()
     auto res = JsonUtil::extractOkObject(post("get_tip", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -273,7 +273,7 @@ Result<QList<PoolEntry> > NodeForeignApi::getUnconfirmedTransactions()
     auto res = JsonUtil::extractOkValue(post("get_unconfirmed_transactions", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -311,7 +311,7 @@ Result<BlockListing> NodeForeignApi::getUnspentOutputs(int startHeight, int endH
     auto res = JsonUtil::extractOkObject(post("get_unspent_outputs", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -333,7 +333,7 @@ Result<NodeVersion> NodeForeignApi::getVersion()
     auto res = JsonUtil::extractOkObject(post("get_version", params));
     QJsonObject okObj;
 
-    if (!res.unwrapOrLog(okObj)) {
+    if (!res.unwrapOrLog(okObj, Q_FUNC_INFO)) {
         return res.error();
     }
 
@@ -357,7 +357,7 @@ Result<bool> NodeForeignApi::pushTransaction(Transaction tx, bool fluff)
     auto res = JsonUtil::extractOkValue(post("push_transaction", params));
     QJsonValue OkVal;
 
-    if (!res.unwrapOrLog(OkVal)) {
+    if (!res.unwrapOrLog(OkVal, Q_FUNC_INFO)) {
         return res.error();
     }
 

@@ -260,7 +260,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString str;
         {
             Result<QString> res = m_walletOwnerApi->getSlatepackAddress(0);
-            if (!res.unwrapOrLog(str)) {
+            if (!res.unwrapOrLog(str, Q_FUNC_INFO)) {
                 str = QString("Error message: %1").arg(res.errorMessage());
             } else {
                 str = QString("Hi %2,\nhere is my slatepack address:\n`%1`").arg(str).arg(message.chat.firstName);
@@ -289,13 +289,13 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
 
                 Result<Slate> resIssueInvoiceTx =  m_walletOwnerApi->issueInvoiceTx(QString::number(amount),"","");
                 Slate slate;
-                if (!resIssueInvoiceTx.unwrapOrLog(slate)) {
+                if (!resIssueInvoiceTx.unwrapOrLog(slate, Q_FUNC_INFO)) {
                     response = resIssueInvoiceTx.errorMessage();
                 }
                 else
                 {
                     Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
-                    if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
+                    if (!resCreateSlatepackMessage.unwrapOrLog(response, Q_FUNC_INFO)) {
                         response = resCreateSlatepackMessage.errorMessage();
                     }
                 }
@@ -370,7 +370,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -382,7 +382,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateS1State(slate, message);
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -439,7 +439,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -451,7 +451,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateS2State(slate, message);
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -508,7 +508,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -520,7 +520,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateS3State(slate, message);
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -555,7 +555,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -568,7 +568,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         {
             Result<QString> res = handleSlateI1State(slate, message);
 
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -624,7 +624,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -636,7 +636,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateI2State(slate, message);
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -693,7 +693,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(slatepack);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -705,7 +705,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         QString msg;
         {
             Result<QString> res = handleSlateI3State(slate, message);
-            if (!res.unwrapOrLog(msg)) {
+            if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -723,7 +723,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         Slate slate;
         {
             Result<Slate> res = m_walletOwnerApi->slateFromSlatepackMessage(message.text);
-            if (!res.unwrapOrLog(slate)) {
+            if (!res.unwrapOrLog(slate, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -739,7 +739,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             QString msg;
             {
                 Result<QString> res = handleSlateS1State(slate, message);
-                if (!res.unwrapOrLog(msg)) {
+                if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
@@ -753,7 +753,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             QString msg;
             {
                 Result<QString> res = handleSlateS2State(slate, message);
-                if (!res.unwrapOrLog(msg)) {
+                if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
@@ -767,7 +767,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             QString msg;
             {
                 Result<QString> res = handleSlateS3State(slate, message);
-                if (!res.unwrapOrLog(msg)) {
+                if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
@@ -781,7 +781,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
                 QString msg;
                 {
                     Result<QString> res = handleSlateI1State(slate, message);
-                    if (!res.unwrapOrLog(msg)) {
+                    if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                         sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                         return;
                     }
@@ -798,7 +798,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             QString msg;
             {
                 Result<QString> res = handleSlateI2State(slate, message);
-                if (!res.unwrapOrLog(msg)) {
+                if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
@@ -812,7 +812,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             QString msg;
             {
                 Result<QString> res = handleSlateI3State(slate, message);
-                if (!res.unwrapOrLog(msg)) {
+                if (!res.unwrapOrLog(msg, Q_FUNC_INFO)) {
                     sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                     return;
                 }
@@ -863,7 +863,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
 
         Result<Slate> resInitSendTx =  m_walletOwnerApi->initSendTx(args);
         Slate slate;
-        if (!resInitSendTx.unwrapOrLog(slate)) {
+        if (!resInitSendTx.unwrapOrLog(slate, Q_FUNC_INFO)) {
             response = resInitSendTx.errorMessage();
             sendUserMessage(message, response, true);
             return;
@@ -873,7 +873,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         {
             qDebug()<<debugJsonString(slate);
             Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
-            if (!resCreateSlatepackMessage.unwrapOrLog(response)) {
+            if (!resCreateSlatepackMessage.unwrapOrLog(response, Q_FUNC_INFO)) {
                 response = resCreateSlatepackMessage.errorMessage();
                 sendUserMessage(message, response, true);
                 return;
@@ -887,7 +887,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         bool lockOutputs = false;
         {
             Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
-            if (!res.unwrapOrLog(lockOutputs)) {
+            if (!res.unwrapOrLog(lockOutputs, Q_FUNC_INFO)) {
                 response = res.errorMessage();
             } else {
                 qDebug() << "txLockOutputs: " << lockOutputs;
@@ -965,7 +965,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         RewindHash rewindHash;
         {
             Result<RewindHash> res = m_walletOwnerApi->getRewindHash();
-            if (!res.unwrapOrLog(rewindHash)) {
+            if (!res.unwrapOrLog(rewindHash, Q_FUNC_INFO)) {
                 sendUserMessage(message, QString("Error message: %1").arg(res.errorMessage()), false);
                 return;
             }
@@ -1172,7 +1172,7 @@ Result<QString> GgcWorker::handleSlateS1State(Slate slate, TelegramBotMessage me
     Slate slate2;
     {
         Result<Slate> res = m_walletForeignApi->receiveTx(slate, "", "");
-        if (!res.unwrapOrLog(slate2)) {
+        if (!res.unwrapOrLog(slate2, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1182,7 +1182,7 @@ Result<QString> GgcWorker::handleSlateS1State(Slate slate, TelegramBotMessage me
     QString slatepack;
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
-        if (!res.unwrapOrLog(slatepack)) {
+        if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1231,7 +1231,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     WalletInfo walletInfo;
     {
         Result<WalletInfo> res = m_walletOwnerApi->retrieveSummaryInfo(true, 1);
-        if (!res.unwrapOrLog(walletInfo)) {
+        if (!res.unwrapOrLog(walletInfo, Q_FUNC_INFO)) {
             return QString("Error message: %1").arg(res.errorMessage());
         }
     }
@@ -1261,7 +1261,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     Slate slate2;
     {
         Result<Slate> res = m_walletOwnerApi->processInvoiceTx(slate, txData);
-        if (!res.unwrapOrLog(slate2)) {
+        if (!res.unwrapOrLog(slate2, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1272,7 +1272,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     bool lockOutputs = false;
     {
         Result<bool> res = m_walletOwnerApi->txLockOutputs(slate);
-        if (!res.unwrapOrLog(lockOutputs)) {
+        if (!res.unwrapOrLog(lockOutputs, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         } else {
             qDebug() << "txLockOutputs: " << lockOutputs;
@@ -1285,7 +1285,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     QString slatepack;
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
-        if (!res.unwrapOrLog(slatepack)) {
+        if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1318,7 +1318,7 @@ Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage me
     Slate slate3;
     {
         Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
-        if (!res.unwrapOrLog(slate3)) {
+        if (!res.unwrapOrLog(slate3, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1326,7 +1326,7 @@ Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage me
     bool posted = false;
     {
         Result<bool> res = m_walletOwnerApi->postTx(slate3, false);
-        if (!res.unwrapOrLog(posted)) {
+        if (!res.unwrapOrLog(posted, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
         qDebug() << "postTx result:" << posted;
@@ -1335,7 +1335,7 @@ Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage me
     QString slatepack;
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate3, QJsonArray(), 0);
-        if (!res.unwrapOrLog(slatepack)) {
+        if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1370,7 +1370,7 @@ Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage me
     Slate slate3;
     {
         Result<Slate> res = m_walletOwnerApi->finalizeTx(slate);
-        if (!res.unwrapOrLog(slate3)) {
+        if (!res.unwrapOrLog(slate3, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1378,7 +1378,7 @@ Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage me
     bool posted = false;
     {
         Result<bool> res = m_walletOwnerApi->postTx(slate3, false);
-        if (!res.unwrapOrLog(posted)) {
+        if (!res.unwrapOrLog(posted, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
         qDebug() << "postTx result:" << posted;
@@ -1387,7 +1387,7 @@ Result<QString> GgcWorker::handleSlateI2State(Slate slate, TelegramBotMessage me
     QString slatepack;
     {
         Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate3, QJsonArray(), 0);
-        if (!res.unwrapOrLog(slatepack)) {
+        if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
     }
@@ -1435,7 +1435,7 @@ bool GgcWorker::resolveAccountLabelFromSettings()
 
     Result<QList<Account>> accountRes = m_walletOwnerApi->accounts();
     QList<Account> accounts;
-    if (!accountRes.unwrapOrLog(accounts)) {
+    if (!accountRes.unwrapOrLog(accounts, Q_FUNC_INFO)) {
         qWarning() << "GGC Worker: failed to list wallet accounts:" << accountRes.errorMessage();
         return false;
     }
@@ -1477,7 +1477,7 @@ bool GgcWorker::activateWalletAccount(const QString &accountLabel)
 
     Result<bool> res = m_walletOwnerApi->setActiveAccount(labelToActivate);
     bool activated = false;
-    if (!res.unwrapOrLog(activated)) {
+    if (!res.unwrapOrLog(activated, Q_FUNC_INFO)) {
         qWarning() << "Failed to activate wallet account" << labelToActivate << ":" << res.errorMessage();
         return false;
     }
@@ -1502,7 +1502,7 @@ void GgcWorker::cleanupRetrieveTxs(bool cleanAll)
     QList<TxLogEntry> txList;
     {
         Result<QList<TxLogEntry> > res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList)) {
+        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
             qDebug() << QString("Error message: %1").arg(res.errorMessage());
             return;
         }
@@ -1521,7 +1521,7 @@ void GgcWorker::cleanupRetrieveTxs(bool cleanAll)
                 bool cancelTx = false;
                 {
                     Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
-                    if (!res.unwrapOrLog(cancelTx)) {
+                    if (!res.unwrapOrLog(cancelTx, Q_FUNC_INFO)) {
                         qDebug() << QString("Error message: %1").arg(res.errorMessage());
                     } else {
                         qDebug() << "cancelTx = " << cancelTx;
@@ -1615,7 +1615,7 @@ bool GgcWorker::scanWallet()
     bool scan = false;
     {
         Result<bool> res = m_walletOwnerApi->scan(1, true);
-        if (!res.unwrapOrLog(scan)) {
+        if (!res.unwrapOrLog(scan, Q_FUNC_INFO)) {
             qDebug() << res.errorMessage();
             scan = false;
         } else {

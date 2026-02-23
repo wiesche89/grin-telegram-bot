@@ -57,13 +57,20 @@ public:
     /**
      * @brief unwrapOrLog
      * @param out
+     * @param funcInfo function identifier that is always logged on failure
+     * @param info optional additional context to append to the log
      * @return
      */
-    bool unwrapOrLog(T &out) const
+    bool unwrapOrLog(T &out, const char *funcInfo, const QString &info = QString()) const
     {
         if (m_hasError) {
             QString msg = m_error.message;
-            qDebug() << "Error:" << msg;
+            QString prefix = funcInfo ? QString::fromUtf8(funcInfo) : QString();
+            if (info.isEmpty()) {
+                qDebug() << prefix << "- Error:" << msg;
+            } else {
+                qDebug() << prefix << "(" << info << ")" << "- Error:" << msg;
+            }
             return false;
         }
         out = m_value;
