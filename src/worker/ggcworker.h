@@ -21,18 +21,16 @@
 #include "txlogentry.h"
 #include "debugutils.h"
 
+class CleanupWorker;
+
 class GgcWorker : public QObject
 {
     Q_OBJECT
 
 public:
-    GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi);
+    GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi, CleanupWorker *cleanupWorker);
     bool init();
     void handleUpdate(TelegramBotUpdate update);
-
-private slots:
-    void cleanupRetrieveTxs(bool cleanAll);
-
 private:
     QString readFileToString(const QString &filePath);
     bool isAdmin(qlonglong id);
@@ -60,6 +58,7 @@ private:
     NodeForeignApi *m_nodeForeignApi;
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi;
+    CleanupWorker *m_cleanupWorker;
     QString m_ggcAccountLabel;
     QString m_ggcAccountPath;
     QSettings *m_settings;

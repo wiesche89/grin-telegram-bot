@@ -1,4 +1,5 @@
 #include "ggcworker.h"
+#include "cleanupworker.h"
 #include <QByteArray>
 #include <QJsonValue>
 #include <QList>
@@ -94,13 +95,14 @@ QString parseAccountPathHex(const QString &hexPath)
 /**
  * @brief GgcWorker::GgcWorker
  */
-GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
+GgcWorker::GgcWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi, CleanupWorker *cleanupWorker) :
     m_dbManager(nullptr),
     m_bot(bot),
     m_nodeOwnerApi(nullptr),
     m_nodeForeignApi(nullptr),
     m_walletOwnerApi(walletOwnerApi),
     m_walletForeignApi(nullptr),
+    m_cleanupWorker(cleanupWorker),
     m_ggcAccountLabel(),
     m_ggcAccountPath(),
     m_settings(settings),
@@ -193,18 +195,6 @@ bool GgcWorker::init()
         success = false;
     }
 
-
-    // Helper transactions cleanup
-    QTimer *cleanupTimer = new QTimer(this);
-
-    // Connect timer's timeout signal to your slot/function
-    connect(cleanupTimer, &QTimer::timeout, this, [this]() { cleanupRetrieveTxs(false); });
-
-    // Set interval to 5 minutes (300,000 milliseconds)
-    cleanupTimer->start(5 * 60 * 1000);
-
-    // Optional: call it once immediately at startup
-    cleanupRetrieveTxs(true);
 
     return success;
 }
@@ -1102,8 +1092,12 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         // command admincleanup
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (text.contains("/admincleanup")) {
-            cleanupRetrieveTxs(true);
-            sendUserMessage(message, "cleanup success!", true);
+            if (m_cleanupWorker) {
+                m_cleanupWorker->triggerCleanup(true);
+                sendUserMessage(message, "cleanup success!", true);
+            } else {
+                sendUserMessage(message, "cleanup worker is not configured.", false);
+            }
         }
     }
 }
@@ -1487,49 +1481,6 @@ bool GgcWorker::activateWalletAccount(const QString &accountLabel)
     }
 
     return activated;
-}
-
-/**
- * @brief GgcWorker::outputRetrieveTxs
- */
-void GgcWorker::cleanupRetrieveTxs(bool cleanAll)
-{
-    if (!activateWalletAccount()) {
-        qWarning() << "cleanupRetrieveTxs: wallet account could not be activated";
-        return;
-    }
-
-    QList<TxLogEntry> txList;
-    {
-        Result<QList<TxLogEntry> > res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
-            qDebug() << QString("Error message: %1").arg(res.errorMessage());
-            return;
-        }
-    }
-
-    for (int i = 0; i < txList.length(); i++) {
-        // broken transactions
-        if (txList[i].confirmed() == false && (txList[i].txType() == "TxReceived" || txList[i].txType() == "TxSent")) {
-            QDateTime now = QDateTime::currentDateTimeUtc();
-
-            if (txList[i].creationTs().secsTo(now) > 36000 || cleanAll) { // Older than 10 hours
-                qDebug() << "Transaction is older than 10 hours:";
-                qInfo().noquote() << debugJsonString(txList[i]);
-
-                // Cancel the old transaction
-                bool cancelTx = false;
-                {
-                    Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
-                    if (!res.unwrapOrLog(cancelTx, Q_FUNC_INFO)) {
-                        qDebug() << QString("Error message: %1").arg(res.errorMessage());
-                    } else {
-                        qDebug() << "cancelTx = " << cancelTx;
-                    }
-                }
-            }
-        }
-    }
 }
 
 /**

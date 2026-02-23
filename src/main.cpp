@@ -14,6 +14,7 @@
 #include "gateioworker.h"
 #include "messagehub.h"
 #include "worker/alivehandler.h"
+#include "worker/cleanupworker.h"
 #include "api/wallet/owner/walletownerapi.h"
 #include "logging/logginghandler.h"
 
@@ -79,7 +80,11 @@ void initializeBotComponents()
     walletOwnerApi->initSecureApi();
     walletOwnerApi->openWallet("", settings->value("wallet/password").toString());
 
-    GgcWorker *ggcWorker = new GgcWorker(bot, settings, walletOwnerApi);
+    CleanupWorker *cleanupWorker = new CleanupWorker(walletOwnerApi, bot);
+    cleanupWorker->start();
+    cleanupWorker->triggerCleanup(true);
+
+    GgcWorker *ggcWorker = new GgcWorker(bot, settings, walletOwnerApi, cleanupWorker);
     if (!ggcWorker->init()) {
         qDebug() << "GGC Worker init failed!";
         QCoreApplication::quit();

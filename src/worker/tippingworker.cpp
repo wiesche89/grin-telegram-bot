@@ -212,11 +212,6 @@ bool TippingWorker::init()
         qDebug() << "init: restored pending withdraw" << withdraw.slateId << "amount" << withdraw.amount;
     }
 
-    QTimer *cleanupTimer = new QTimer(this);
-    connect(cleanupTimer, &QTimer::timeout, this, [this]() { cleanupRetrieveTxs(false); });
-    cleanupTimer->start(5 * 60 * 1000);
-    cleanupRetrieveTxs(true);
-
     return true;
 }
 
@@ -1205,49 +1200,6 @@ void TippingWorker::checkPendingWithdrawConfirmations()
                 qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
             }
             break;
-        }
-    }
-}
-
-void TippingWorker::cleanupRetrieveTxs(bool cleanAll)
-{
-    if (m_tippingAccountLabel.isEmpty()) {
-        qWarning() << "cleanupRetrieveTxs: tipping account label not configured";
-        return;
-    }
-
-    if (!activateWalletAccount(m_tippingAccountLabel)) {
-        qWarning() << "cleanupRetrieveTxs: wallet account could not be activated";
-        return;
-    }
-
-    QList<TxLogEntry> txList;
-    {
-        Result<QList<TxLogEntry>> res = m_walletOwnerApi->retrieveTxs(true, 0, "");
-        if (!res.unwrapOrLog(txList, Q_FUNC_INFO)) {
-            qDebug() << QString("Error message: %1").arg(res.errorMessage());
-            return;
-        }
-    }
-
-    for (int i = 0; i < txList.length(); ++i) {
-        if (!txList[i].confirmed() &&
-            (txList[i].txType() == "TxReceived" || txList[i].txType() == "TxSent")) {
-            QDateTime now = QDateTime::currentDateTimeUtc();
-            if (txList[i].creationTs().secsTo(now) > 36000 || cleanAll) {
-                qDebug() << "Tipping cleanup: transaction older than 10 hours";
-                qInfo().noquote() << debugJsonString(txList[i]);
-
-                bool cancelTx = false;
-                {
-                    Result<bool> res = m_walletOwnerApi->cancelTx("", txList[i].id());
-                    if (!res.unwrapOrLog(cancelTx, Q_FUNC_INFO)) {
-                        qDebug() << QString("Error message: %1").arg(res.errorMessage());
-                    } else {
-                        qDebug() << "cancelTx =" << cancelTx;
-                    }
-                }
-            }
         }
     }
 }

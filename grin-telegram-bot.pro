@@ -125,6 +125,7 @@ SOURCES += \
   src/ggcdatabase/attributes/faucet.cpp \
   src/util/debugutils.cpp \
   src/worker/alivehandler.cpp \
+  src/worker/cleanupworker.cpp \
   src/worker/dexworker.cpp \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
@@ -218,6 +219,7 @@ HEADERS += \
   src/ggcdatabase/attributes/faucet.h \
   src/util/debugutils.h \
   src/worker/alivehandler.h \
+  src/worker/cleanupworker.h \
   src/worker/dexworker.h \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \

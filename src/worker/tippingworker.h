@@ -65,8 +65,6 @@ private:
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain, bool sendToUserChat = true);
     QString resolveRecipientId(const QString &target, const TelegramBotMessage &message) const;
 
-    void cleanupRetrieveTxs(bool cleanAll);
-
     TelegramBot *m_bot;
     QSettings *m_settings;
 
