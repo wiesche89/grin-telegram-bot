@@ -1201,41 +1201,41 @@ void TippingWorker::checkPendingWithdrawConfirmations()
     }
 
     QList<PendingWithdrawRecord> withdrawList = m_db->pendingWithdrawals();
-    qint64 nowSecs = QDateTime::currentSecsSinceEpoch();
+
+    const QString cancellationReason = "was pulled back by the wallet. The amount has been re-credited to your balance.";
     for (const PendingWithdrawRecord &pending : withdrawList) {
         if (pending.slateId.isEmpty()) {
             continue;
         }
 
-        if (txBySlate.contains(pending.slateId)) {
+        if (!txBySlate.contains(pending.slateId)) {
             continue;
         }
 
-        qint64 age = nowSecs - pending.createdAt;
-        constexpr qint64 graceSecs = 60;
-        if (age < graceSecs) {
-            continue;
-        }
+        const TxLogEntry &entry = txBySlate.value(pending.slateId);
+        QString type = entry.txType();
+        if (type == "TxSentCancelled" || type == "TxReceivedCancelled") {
+            qDebug() << "checkPendingWithdrawConfirmations: withdraw slate" << pending.slateId << "was cancelled via tx log";
+            if (pending.amount > 0 && m_db->updateBalance(pending.userId, pending.amount)) {
+                m_db->recordTransaction("", pending.userId, pending.amount, "withdraw_reverted");
+            } else {
+                qWarning() << "checkPendingWithdrawConfirmations: failed to refund user" << pending.userId << "for slate" << pending.slateId;
+            }
 
-        qDebug() << "checkPendingWithdrawConfirmations: withdraw slate" << pending.slateId << "missing; cleaning up after" << age << "s";
-        if (pending.amount > 0 && m_db->updateBalance(pending.userId, pending.amount)) {
-            m_db->recordTransaction("", pending.userId, pending.amount, "withdraw_reverted");
-        } else {
-            qWarning() << "checkPendingWithdrawConfirmations: failed to refund user" << pending.userId << "for slate" << pending.slateId;
-        }
+            m_pendingWithdraws.remove(pending.slateId);
+            QString name = m_db->usernameByUserId(pending.userId);
+            if (name.isEmpty()) {
+                name = pending.userId;
+            }
+            QString notice = QString("Hi %1,\nyour withdrawal transaction (%2 GRIN) %3")
+                                 .arg(name)
+                                 .arg(formatGrin(pending.amount))
+                                 .arg(cancellationReason);
+            sendUserDirectMessage(pending.userId, notice, true);
 
-        m_pendingWithdraws.remove(pending.slateId);
-        QString displayName = m_db->usernameByUserId(pending.userId);
-        if (displayName.isEmpty()) {
-            displayName = pending.userId;
-        }
-        QString notice = QString("Hi %1,\nyour withdrawal transaction (%2 GRIN) was pulled back by the wallet. The amount has been re-credited to your balance.")
-                             .arg(displayName)
-                             .arg(formatGrin(pending.amount));
-        sendUserDirectMessage(pending.userId, notice, true);
-
-        if (!m_db->markPendingWithdrawCompleted(pending.slateId)) {
-            qWarning() << "Failed to mark pending withdraw completed" << pending.slateId;
+            if (!m_db->markPendingWithdrawCompleted(pending.slateId)) {
+                qWarning() << "Failed to mark pending withdraw completed" << pending.slateId;
+            }
         }
     }
 
