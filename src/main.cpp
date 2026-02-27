@@ -91,11 +91,17 @@ void initializeBotComponents()
         return;
     }
 
-    TippingWorker *tippingWorker = new TippingWorker(bot, settings, walletOwnerApi);
-    if (!tippingWorker->init()) {
-        qDebug() << "Tipping Worker init failed!";
-        QCoreApplication::quit();
-        return;
+    bool tippingEnabled = settings->value("tipping/enabled", true).toBool();
+    TippingWorker *tippingWorker = nullptr;
+    if (tippingEnabled) {
+        tippingWorker = new TippingWorker(bot, settings, walletOwnerApi);
+        if (!tippingWorker->init()) {
+            qDebug() << "Tipping Worker init failed!";
+            QCoreApplication::quit();
+            return;
+        }
+    } else {
+        qInfo() << "Tipping worker disabled via settings.";
     }
 
     GateIoWorker *gateIoWorker = new GateIoWorker(bot, settings);

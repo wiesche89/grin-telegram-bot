@@ -15,6 +15,7 @@
 #include "walletforeignapi.h"
 #include "nodeforeignapi.h"
 #include "account.h"
+#include "result.h"
 
 #include "slate.h"
 #include "walletinfo.h"
@@ -51,6 +52,9 @@ private:
     void sendUserMarkdownMessage(TelegramBotMessage message, QString content, bool plain);
     QString sanitizeTelegramMarkdown(const QString &input);
     bool scanWallet();
+    QString handleAdminAmountsCommand();
+    Result<WalletInfo> fetchAccountSummary(const QString &accountLabel);
+    QString formatWalletSummary(const WalletInfo &walletInfo) const;
 
     GgcDatabaseManager *m_dbManager;
     TelegramBot *m_bot;

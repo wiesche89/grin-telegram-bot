@@ -972,6 +972,14 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (isAdmin(message.from.id)) {
         // --------------------------------------------------------------------------------------------------------------------------------------
+        // command adminamounts
+        // --------------------------------------------------------------------------------------------------------------------------------------
+        if (text.contains("/adminamounts") || text.contains("/adminamount")) {
+            sendUserMessage(message, handleAdminAmountsCommand(), true);
+            return;
+        }
+
+        // --------------------------------------------------------------------------------------------------------------------------------------
         // command adminenabledisabledeposits
         // --------------------------------------------------------------------------------------------------------------------------------------
         if (text.contains("/adminenabledisabledeposits")) {
@@ -1481,6 +1489,74 @@ bool GgcWorker::activateWalletAccount(const QString &accountLabel)
     }
 
     return activated;
+}
+
+QString GgcWorker::handleAdminAmountsCommand()
+{
+    QString info;
+    QList<Account> accounts;
+    Result<QList<Account>> accountsRes = m_walletOwnerApi->accounts();
+    if (!accountsRes.unwrapOrLog(accounts, Q_FUNC_INFO)) {
+        return "Unable to list wallet accounts.";
+    }
+
+    for (const Account &account : accounts) {
+        if (account.label().isEmpty()) {
+            continue;
+        }
+
+        WalletInfo summary;
+        Result<WalletInfo> accountSummary = fetchAccountSummary(account.label());
+        if (!accountSummary.unwrapOrLog(summary, Q_FUNC_INFO)) {
+            info.append(QString("Account %1 (%2) summary error: %3\n\n")
+                        .arg(account.label(), account.path(), accountSummary.errorMessage()));
+            continue;
+        }
+
+        info.append(QString("Account %1 (%2) summary:\n%3\n\n")
+                    .arg(account.label(), account.path(), formatWalletSummary(summary)));
+    }
+
+    activateWalletAccount(m_ggcAccountLabel);
+
+    if (info.trimmed().isEmpty()) {
+        return "No wallet account summary available.";
+    }
+
+    return info.trimmed();
+}
+
+Result<WalletInfo> GgcWorker::fetchAccountSummary(const QString &accountLabel)
+{
+    Result<bool> setRes = m_walletOwnerApi->setActiveAccount(accountLabel);
+    bool activated = false;
+    if (!setRes.unwrapOrLog(activated, Q_FUNC_INFO)) {
+        return Error(ErrorType::Unknown, setRes.errorMessage());
+    }
+    if (!activated) {
+        return Error(ErrorType::Unknown, QString("Failed to activate account %1").arg(accountLabel));
+    }
+
+    return m_walletOwnerApi->retrieveSummaryInfo(true, 1);
+}
+
+QString GgcWorker::formatWalletSummary(const WalletInfo &walletInfo) const
+{
+    auto toGrin = [](quint64 nano) {
+        return static_cast<qlonglong>(nano / 1000000000ULL);
+    };
+
+    QStringList lines;
+    lines << QString("amountAwaitingConfirmation: %1 GRIN").arg(toGrin(walletInfo.amountAwaitingConfirmation()));
+    lines << QString("amountAwaitingFinalization: %1 GRIN").arg(toGrin(walletInfo.amountAwaitingFinalization()));
+    lines << QString("amountCurrentlySpendable: %1 GRIN").arg(toGrin(walletInfo.amountCurrentlySpendable()));
+    lines << QString("amountImmature: %1 GRIN").arg(toGrin(walletInfo.amountImmature()));
+    lines << QString("amountLocked: %1 GRIN").arg(toGrin(walletInfo.amountLocked()));
+    lines << QString("amountReverted: %1 GRIN").arg(toGrin(walletInfo.amountReverted()));
+    lines << QString("total: %1 GRIN").arg(toGrin(walletInfo.total()));
+    lines << QString("lastConfirmedHeight: %1").arg(walletInfo.lastConfirmedHeight());
+    lines << QString("minimumConfirmations: %1").arg(walletInfo.minimumConfirmations());
+    return lines.join("\n");
 }
 
 /**
