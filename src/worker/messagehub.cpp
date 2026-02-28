@@ -17,6 +17,8 @@ MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker
 
 void MessageHub::onBotMessage(TelegramBotUpdate update)
 {
+
+
     if (!update || update.isNull()) {
         qDebug() << "MessageHub::onBotMessage - empty update";
         return;
@@ -28,6 +30,8 @@ void MessageHub::onBotMessage(TelegramBotUpdate update)
     }
 
     qDebug() << "MessageHub::onBotMessage - from:" << update->message->from.firstName << update->message->text;
+    qDebug() << "MessageHub::onBotMessage - Username:" << update->message->from.username;
+    qDebug() << "MessageHub::onBotMessage - from Id chat Id:" << update->message->from.id << update->message->chat.id;
 
     if (m_tippingWorker && m_tippingWorker->handleUpdate(update)) {
         qDebug() << "MessageHub::onBotMessage - tipping worker handled update";

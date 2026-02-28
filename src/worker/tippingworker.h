@@ -80,7 +80,7 @@ private:
     bool activateWalletAccount(const QString &accountLabel);
     bool activateTippingWalletAccount();
 
-    void sendUserDirectMessage(const QString &userId, QString content, bool plain = false);
+    void sendUserDirectMessage(const QString &userId, QString content, bool plain = false, const TelegramBotMessage *context = nullptr, bool sendToUserChat = true);
 };
 #endif // TIPPINGWORKER_H
 

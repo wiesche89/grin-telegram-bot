@@ -115,7 +115,7 @@ struct TelegramBotWebHookInfo : public TelegramBotObject {
 
 // TelegramBotUser - This object represents a Telegram user or bot.
 struct TelegramBotUser : public TelegramBotObject {
-    qint32 id; // Unique identifier for this user or bot
+    qlonglong  id = 0; // Unique identifier for this user or bot
     QString firstName; // User‘s or bot’s first name
     QString lastName; // Optional. User‘s or bot’s last name
     QString username; // Optional. User‘s or bot’s username
@@ -130,10 +130,20 @@ struct TelegramBotUser : public TelegramBotObject {
         this->fromJson(object);
     }
 
+    void clear()
+    {
+        id = 0;
+        firstName.clear();
+        lastName.clear();
+        username.clear();
+        languageCode.clear();
+    }
+
     // parse logic
     virtual void fromJson(QJsonObject &object)
     {
-        JsonHelperT<qint32>::jsonPathGet(object, "id", this->id);
+        clear();
+        JsonHelperT<qlonglong >::jsonPathGet(object, "id", this->id);
         JsonHelperT<QString>::jsonPathGet(object, "first_name", this->firstName);
         JsonHelperT<QString>::jsonPathGet(object, "last_name", this->lastName, false);
         JsonHelperT<QString>::jsonPathGet(object, "username", this->username, false);
@@ -144,14 +154,20 @@ struct TelegramBotUser : public TelegramBotObject {
 // TelegramBotMessageEntity - This object represents one special entity in a text message. For example, hashtags, usernames, URLs, etc.
 struct TelegramBotMessageEntity : public TelegramBotObject {
     QString type; // Type of the entity. Can be mention ((at)username), hashtag, bot_command, url, email, bold (bold text), italic (italic text), code (monowidth string), pre (monowidth block), text_link (for clickable text URLs), text_mention (for users without usernames)
-    qint32 offset; // Offset in UTF-16 code units to the start of the entity
-    qint32 length; // Length of the entity in UTF-16 code units
+    qint32 offset =0; // Offset in UTF-16 code units to the start of the entity
+    qint32 length = 0; // Length of the entity in UTF-16 code units
     QString url; // Optional. For “text_link” only, url that will be opened after user taps on the text
     TelegramBotUser user; // Optional. For “text_mention” only, the mentioned user
 
     // parse logic
     virtual void fromJson(QJsonObject &object)
     {
+        type.clear();
+        offset = 0;
+        length = 0;
+        url.clear();
+        user.clear();
+
         JsonHelperT<QString>::jsonPathGet(object, "type", this->type);
         JsonHelperT<qint32>::jsonPathGet(object, "offset", this->offset);
         JsonHelperT<qint32>::jsonPathGet(object, "length", this->length);
@@ -569,10 +585,10 @@ struct TelegramBotResponseParameters : public TelegramBotObject {
     JsonHelperT<TelegramBotUser>::jsonPathGet(object, "left_chat_member", this->leftChatMember, false); \
     JsonHelperT<QString>::jsonPathGet(object, "new_chat_title", this->newChatTitle, false); \
     JsonHelperT<TelegramBotPhotoSize>::jsonPathGetArray(object, "new_chat_photo", this->newChatPhoto, false); \
-    JsonHelperT<bool>::jsonPathGet(object, "delete_chat_photo = false", this->deleteChatPhoto, false); \
-    JsonHelperT<bool>::jsonPathGet(object, "group_chat_created = false", this->groupChatCreated, false); \
-    JsonHelperT<bool>::jsonPathGet(object, "supergroup_chat_created = false", this->supergroupChatCreated, false); \
-    JsonHelperT<bool>::jsonPathGet(object, "channel_chat_created = false", this->channelChatCreated, false); \
+    JsonHelperT<bool>::jsonPathGet(object, "delete_chat_photo", this->deleteChatPhoto, false); \
+    JsonHelperT<bool>::jsonPathGet(object, "group_chat_created", this->groupChatCreated, false); \
+    JsonHelperT<bool>::jsonPathGet(object, "supergroup_chat_created", this->supergroupChatCreated, false); \
+    JsonHelperT<bool>::jsonPathGet(object, "channel_chat_created", this->channelChatCreated, false); \
     JsonHelperT<qint32>::jsonPathGet(object, "migrate_to_chat_id", this->migrateToChatId, false); \
     JsonHelperT<qint32>::jsonPathGet(object, "migrate_from_chat_id", this->migrateFromChatId, false);
 

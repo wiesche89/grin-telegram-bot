@@ -14,11 +14,24 @@
 #include "txlogentry.h"
 
 namespace {
+//fix var
+constexpr qlonglong nanogrinPerGrin = 1000000000LL;
+
+
+/**
+ * @brief requiredBotMention
+ * @return
+ */
 QString requiredBotMention()
 {
     return qEnvironmentVariable("GRIN_CHAIN_TYPE") == "testnet" ? "@grin_mw_test_bot" : "@grin_mw_bot";
 }
 
+/**
+ * @brief normalizeCommandText
+ * @param text
+ * @return
+ */
 QString normalizeCommandText(const QString &text)
 {
     QString normalized = text.trimmed();
@@ -47,8 +60,11 @@ QString normalizeCommandText(const QString &text)
     return cleaned + remainder;
 }
 
-constexpr qlonglong nanogrinPerGrin = 1000000000LL;
-
+/**
+ * @brief formatGrin
+ * @param nanogrin
+ * @return
+ */
 QString formatGrin(qlonglong nanogrin)
 {
     bool negative = nanogrin < 0;
@@ -72,6 +88,13 @@ QString formatGrin(qlonglong nanogrin)
     return result;
 }
 
+/**
+ * @brief parseTipAmount
+ * @param input
+ * @param nanogrin
+ * @param errorMessage
+ * @return
+ */
 bool parseTipAmount(const QString &input, qlonglong &nanogrin, QString &errorMessage)
 {
     QString trimmed = input.trimmed();
@@ -101,6 +124,11 @@ bool parseTipAmount(const QString &input, qlonglong &nanogrin, QString &errorMes
     return true;
 }
 
+/**
+ * @brief canonicalizeBipPath
+ * @param value
+ * @return
+ */
 QString canonicalizeBipPath(const QString &value)
 {
     QString normalized = value.trimmed().toLower();
@@ -113,6 +141,11 @@ QString canonicalizeBipPath(const QString &value)
     return QStringLiteral("m/") + normalized;
 }
 
+/**
+ * @brief parseAccountPathHex
+ * @param hexPath
+ * @return
+ */
 QString parseAccountPathHex(const QString &hexPath)
 {
     QString trimmed = hexPath.trimmed();
@@ -153,6 +186,11 @@ QString parseAccountPathHex(const QString &hexPath)
 }
 }
 
+/**
+ * @brief normalizedSlateId
+ * @param entry
+ * @return
+ */
 QString normalizedSlateId(const TxLogEntry &entry)
 {
     if (entry.txSlateId().isNull()) {
@@ -162,6 +200,12 @@ QString normalizedSlateId(const TxLogEntry &entry)
     return slateId.remove('{').remove('}');
 }
 
+/**
+ * @brief TippingWorker::TippingWorker
+ * @param bot
+ * @param settings
+ * @param walletOwnerApi
+ */
 TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi) :
     m_bot(bot),
     m_settings(settings),
@@ -174,6 +218,10 @@ TippingWorker::TippingWorker(TelegramBot *bot, QSettings *settings, WalletOwnerA
 {
 }
 
+/**
+ * @brief TippingWorker::init
+ * @return
+ */
 bool TippingWorker::init()
 {
     QString dbPath;
@@ -224,22 +272,55 @@ bool TippingWorker::init()
     return true;
 }
 
+/**
+ * @brief TippingWorker::handleUpdate
+ * @param update
+ * @return
+ */
 bool TippingWorker::handleUpdate(TelegramBotUpdate update)
 {
+
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    // check parameter
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (!update || update.isNull() || update->type != TelegramBotMessageType::Message) {
         return false;
     }
 
+
     TelegramBotMessage &message = *update->message;
     QString text = normalizeCommandText(message.text);
+    const QString senderId = QString::number(message.from.id);
+    const bool isPrivateChat = message.chat.id > 0;
+    const bool knownPrivateChat = !senderId.isEmpty() && m_db && m_db->userHasPrivateChat(senderId);
+
+    const QString username = message.from.username;
+    const QString firstName = message.from.firstName;
+
+    if (message.chat.id < 0 && !knownPrivateChat) {
+        sendUserMessage(message,
+                        "Please send me a private message and press start once so I can reply to you directly in the future and avoid cluttering the group chat.",
+                        false,
+                        false);
+        return true;
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    if (!senderId.isEmpty() && (!username.isEmpty() || !firstName.isEmpty())) {
+        qDebug()<<"ensure user Record: "<<m_db->ensureUserRecord(senderId, username, firstName, isPrivateChat);
+    }
+
+
+    if (text.isEmpty()) {
+        return false;
+    }
 
     if (!message.document.fileId.isEmpty() && !message.document.fileName.isEmpty()) {
         return handleSlatepackDocument(message);
     }
 
-    if (text.isEmpty()) {
-        return false;
-    }
 
     if (text.contains("BEGINSLATEPACK") && text.contains("ENDSLATEPACK")) {
         return handleSlatepackText(message, text);
@@ -248,14 +329,12 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     const QStringList parts = text.split(' ', Qt::SkipEmptyParts);
     if (parts.isEmpty()) return false;
 
-    const QString senderId = QString::number(message.from.id);
-    if (!senderId.isEmpty() && !message.from.username.isEmpty()) {
-        m_db->ensureUserRecord(senderId, message.from.username);
-    }
-
     const QString cmd = parts[0];
     const QString sender = userLabel(message);
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/tipping") {
         QString path;
         QString dataDir = qEnvironmentVariable("DATA_DIR");
@@ -277,23 +356,29 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/adminamounts") {
         if (!isAdmin(message.from.id)) {
-            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false);
+            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false, &message);
             return true;
         }
-        sendUserDirectMessage(senderId, handleAdminAmountsCommand(), false);
+        sendUserDirectMessage(senderId, handleAdminAmountsCommand(), false, &message);
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/adminbalance") {
         if (!isAdmin(message.from.id)) {
-            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false);
+            sendUserDirectMessage(senderId, "You are not authorized to run this command.", false, &message);
             return true;
         }
         QList<BalanceRecord> balances = m_db->listBalances();
         if (balances.isEmpty()) {
-            sendUserDirectMessage(senderId, "No balances available yet.", false);
+            sendUserDirectMessage(senderId, "No balances available yet.", false, &message);
             return true;
         }
         QStringList lines;
@@ -307,56 +392,61 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
             }
             lines << QString("%1: %2 GRIN").arg(label).arg(formatGrin(entry.balance));
         }
-        sendUserDirectMessage(senderId, lines.join("\n"), false);
+        sendUserDirectMessage(senderId, lines.join("\n"), false, &message);
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/deposit") {
         if (parts.size() != 2) {
-            sendUserDirectMessage(senderId, "Usage: /deposit <amount in GRIN>", false);
+            sendUserDirectMessage(senderId, "Usage: /deposit <amount in GRIN>", false, &message);
             return true;
         }
         bool ok;
         int amount = parts[1].toInt(&ok);
         if (!ok || amount <= 0) {
-            sendUserDirectMessage(senderId, "Please provide a positive amount.", false);
+            sendUserDirectMessage(senderId, "Please provide a positive amount.", false, &message);
             return true;
         }
         QString depositResponse = handleDepositCommand(senderId, amount, message);
         if (!depositResponse.isEmpty()) {
-            sendUserDirectMessage(senderId, depositResponse, false);
+            sendUserDirectMessage(senderId, depositResponse, false, &message);
         }
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/withdraw") {
         if (parts.size() != 2) {
-            sendUserDirectMessage(senderId, "Usage: /withdraw <amount in GRIN>", false);
+            sendUserDirectMessage(senderId, "Usage: /withdraw <amount in GRIN>", false, &message);
             return true;
         }
         bool ok;
         int amount = parts[1].toInt(&ok);
         if (!ok || amount <= 0) {
-            sendUserDirectMessage(senderId, "Please provide a positive amount.", false);
+            sendUserDirectMessage(senderId, "Please provide a positive amount.", false, &message);
             return true;
         }
         QString withdrawResponse = handleWithdrawCommand(senderId, amount, message);
         if (!withdrawResponse.isEmpty()) {
-            sendUserDirectMessage(senderId, withdrawResponse, false);
+            sendUserDirectMessage(senderId, withdrawResponse, false, &message);
         }
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/tip") {
         if (parts.size() != 3) {
             sendUserMessage(message, "Usage: /tip @user <amount>", false);
             return true;
         }
         QString toUser = parts[1];
-        if (toUser.startsWith("@")) {
-            toUser = toUser.mid(1);
-        }
-
         qlonglong tipNanogrin = 0;
         QString tipError;
         if (!parseTipAmount(parts[2], tipNanogrin, tipError)) {
@@ -365,9 +455,12 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         }
 
         QString recipientId = resolveRecipientId(toUser, message);
+
+        qDebug()<<"recipientId: "<<recipientId;
+
         if (recipientId.isEmpty()) {
             sendUserMessage(message,
-                            "I could not resolve that recipient. Ask them to send /tipping so I can learn their ID, then try again.",
+                            "I could not resolve that recipient. Ask them to send me a private /tipping message so I can learn their ID, then try again.",
                             false);
             return true;
         }
@@ -388,6 +481,7 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
             displayRecipient = recipientId;
         }
 
+        qDebug()<<"m_db->getBalance(senderId): "<<m_db->getBalance(senderId)<<"  <  "<<tipNanogrin;
         if (m_db->getBalance(senderId) < tipNanogrin) {
             sendUserMessage(message, "Insufficient balance.", false);
             return true;
@@ -410,19 +504,28 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/balance") {
         qlonglong bal = m_db->getBalance(senderId);
-        sendUserDirectMessage(senderId, QString("Your current balance: %1 GRIN").arg(formatGrin(bal)), false);
+        sendUserDirectMessage(senderId, QString("Your current balance: %1 GRIN").arg(formatGrin(bal)), false, &message);
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/ledger") {
-        sendUserDirectMessage(senderId, handleLedgerCommand(senderId, sender), false);
+        sendUserDirectMessage(senderId, handleLedgerCommand(senderId, sender), false, &message);
         return true;
     }
 
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //
+    //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/opentxs") {
-        sendUserDirectMessage(senderId, handleOpenTransactionsCommand(sender), false);
+            sendUserDirectMessage(senderId, handleOpenTransactionsCommand(sender), false, &message);
         return true;
     }
 
@@ -1137,7 +1240,7 @@ void TippingWorker::checkPendingDeposits()
             QString notice = QString("Hi %1,\ndeine Deposit-Transaktion (%2) wurde vom Wallet zurückgezogen. Bitte sende erneut.")
                                  .arg(pending.firstName.isEmpty() ? pending.userId : pending.firstName)
                                  .arg(formatGrin(pending.amount));
-            sendUserDirectMessage(pending.userId, notice, true);
+            sendUserDirectMessage(pending.userId, notice, true, nullptr);
             continue;
         }
 
@@ -1167,7 +1270,7 @@ void TippingWorker::checkPendingDeposits()
         } else {
             msg = reply;
         }
-        sendUserDirectMessage(pending.userId, msg, true);
+        sendUserDirectMessage(pending.userId, msg, true, nullptr);
 
         if (!m_db->markPendingDepositCompleted(slateId)) {
             qWarning() << "Failed to mark pending deposit completed" << slateId;
@@ -1231,7 +1334,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
                                  .arg(name)
                                  .arg(formatGrin(pending.amount))
                                  .arg(cancellationReason);
-            sendUserDirectMessage(pending.userId, notice, true);
+            sendUserDirectMessage(pending.userId, notice, true, nullptr);
 
             if (!m_db->markPendingWithdrawCompleted(pending.slateId)) {
                 qWarning() << "Failed to mark pending withdraw completed" << pending.slateId;
@@ -1258,7 +1361,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
             }
             QString notice = QString("Hi %1,\ndeine Auszahlungs-Transaktion wurde vom Wallet zurückgezogen. Bitte erneut anstoßen.")
                                  .arg(pending.firstName.isEmpty() ? pending.userId : pending.firstName);
-            sendUserDirectMessage(pending.userId, notice, true);
+            sendUserDirectMessage(pending.userId, notice, true, nullptr);
             continue;
         }
 
@@ -1277,7 +1380,7 @@ void TippingWorker::checkPendingWithdrawConfirmations()
         } else {
             msg = reply;
         }
-        sendUserDirectMessage(pending.userId, msg, true);
+        sendUserDirectMessage(pending.userId, msg, true, nullptr);
 
         if (!m_db->markPendingWithdrawConfirmationCompleted(pending.slateId)) {
             qWarning() << "Failed to mark pending withdraw confirmation" << pending.slateId;
@@ -1322,17 +1425,41 @@ void TippingWorker::sendUserMessage(QString user, QString content)
     qDebug() << "Message to " << user << ": " << content;
 }
 
-void TippingWorker::sendUserDirectMessage(const QString &userId, QString content, bool plain)
+void TippingWorker::sendUserDirectMessage(const QString &userId, QString content, bool plain, const TelegramBotMessage *context, bool sendToUserChat)
 {
     Q_UNUSED(plain);
     if (userId.isEmpty()) {
         return;
     }
 
-    bool ok = false;
-    qlonglong chatId = userId.toLongLong(&ok);
-    if (!ok) {
-        qWarning() << "Invalid userId for direct message:" << userId;
+    qlonglong chatId = -1;
+    if (sendToUserChat) {
+        if (m_db && m_db->userHasPrivateChat(userId)) {
+            bool ok = false;
+            qlonglong candidate = userId.toLongLong(&ok);
+            if (ok && candidate > 0) {
+                chatId = candidate;
+            }
+        }
+        if (chatId <= 0 && context) {
+            if (context->chat.id > 0) {
+                chatId = context->chat.id;
+            } else if (context->from.id > 0) {
+                chatId = context->from.id;
+            }
+        }
+    } else if (context) {
+        chatId = context->chat.id;
+    }
+
+    if (chatId <= 0) {
+        qWarning() << "Missing private chat id for user" << userId << "while sending direct message";
+        if (sendToUserChat && context && context->chat.id < 0) {
+            sendUserMessage(*context,
+                            "Please send me a private message and press start once so i can reply to you directly in the future and avoid cluttering the group chat.",
+                            false,
+                            false);
+        }
         return;
     }
 
@@ -1354,7 +1481,26 @@ void TippingWorker::sendUserMessage(TelegramBotMessage message, QString content,
         msg = QString("Hi " + message.from.firstName + ",\n" + content);
     }
 
-    QVariant chatId = sendToUserChat ? QVariant::fromValue(message.from.id) : QVariant::fromValue(message.chat.id);
+    qlonglong targetChatId = message.chat.id;
+    if (sendToUserChat) {
+        QString senderId = QString::number(message.from.id);
+        qlonglong senderChatId = message.from.id;
+        const bool hasPrivateChat = m_db && !senderId.isEmpty() && m_db->userHasPrivateChat(senderId);
+        if (!hasPrivateChat) {
+            senderChatId = -1;
+        }
+        if (senderChatId > 0) {
+            targetChatId = senderChatId;
+        } else if (message.chat.id > 0) {
+            targetChatId = message.chat.id;
+        } else if (message.from.id > 0) {
+            targetChatId = message.from.id;
+        } else {
+            qWarning() << "Cannot determine private chat id for user" << senderId;
+            return;
+        }
+    }
+    QVariant chatId = QVariant::fromValue(targetChatId);
     m_bot->sendMessage(chatId,
                        msg,
                        0,
@@ -1386,7 +1532,26 @@ void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString 
         msg = QString("Hi " + message.from.firstName + ",\n" + content);
     }
 
-    QVariant chatId = sendToUserChat ? QVariant::fromValue(message.from.id) : QVariant::fromValue(message.chat.id);
+    qlonglong targetChatId = message.chat.id;
+    if (sendToUserChat) {
+        QString senderId = QString::number(message.from.id);
+        qlonglong senderChatId = message.from.id;
+        const bool hasPrivateChat = m_db && !senderId.isEmpty() && m_db->userHasPrivateChat(senderId);
+        if (!hasPrivateChat) {
+            senderChatId = -1;
+        }
+        if (senderChatId > 0) {
+            targetChatId = senderChatId;
+        } else if (message.chat.id > 0) {
+            targetChatId = message.chat.id;
+        } else if (message.from.id > 0) {
+            targetChatId = message.from.id;
+        } else {
+            qWarning() << "Cannot determine private chat id for user" << senderId;
+            return;
+        }
+    }
+    QVariant chatId = QVariant::fromValue(targetChatId);
     m_bot->sendMessage(chatId,
                        msg,
                        0,
@@ -1395,45 +1560,154 @@ void TippingWorker::sendUserMarkdownMessage(TelegramBotMessage message, QString 
                        nullptr);
 }
 
-QString TippingWorker::resolveRecipientId(const QString &target, const TelegramBotMessage &message) const
+/**
+ * @brief TippingWorker::resolveRecipientId
+ * @param target
+ * @param message
+ * @return
+ */
+QString TippingWorker::resolveRecipientId(const QString &target,
+                                          const TelegramBotMessage &message) const
 {
+    auto isValidUserId = [](qlonglong id) -> bool {
+        return id > 0;
+    };
+
     QString normalized = target.trimmed();
+
+    qDebug() << "[resolveRecipientId] raw target =" << target;
+    qDebug() << "[resolveRecipientId] normalized =" << normalized;
+    qDebug() << "[resolveRecipientId] message.text =" << message.text;
+    qDebug() << "[resolveRecipientId] from.id =" << message.from.id
+             << "chat.id =" << message.chat.id
+             << "from.username =" << message.from.username
+             << "from.firstName =" << message.from.firstName;
+    qDebug() << "[resolveRecipientId] entities.count =" << message.entities.size();
+
+    // Strip leading "@"
     if (normalized.startsWith("@")) {
-        normalized = normalized.mid(1);
+        normalized = normalized.mid(1).trimmed();
+        qDebug() << "[resolveRecipientId] stripped leading @ =>" << normalized;
+        QString uid = m_db->userIdByUsername(normalized);
+        return uid;
     }
 
+    // Helper: iterate entities safely (offset/length in UTF-16 units)
+    auto entityTextAt = [&](const TelegramBotMessageEntity &entity) -> QString {
+        const int o = qMax(0, entity.offset);
+        const int l = qMax(0, entity.length);
+        if (o >= message.text.size() || l <= 0) return {};
+        return message.text.mid(o, qMin(l, message.text.size() - o));
+    };
+
+    // 0) If user replied to someone: prefer reply_to_message.from.id
+    // (Typical UX: /tip 1 as reply)
+    if (message.replyToMessage.messageId != 0) {
+        const qlonglong replyUid = static_cast<qlonglong>(message.replyToMessage.from.id);
+        if (isValidUserId(replyUid)) {
+            qDebug() << "[resolveRecipientId] using reply_to_message.from.id =" << replyUid;
+            return QString::number(replyUid);
+        }
+        qDebug() << "[resolveRecipientId] reply_to_message.from.id invalid =" << replyUid;
+    }
+
+    // 1) No explicit target:
+    //    Prefer first valid text_mention entity (contains user object with id).
     if (normalized.isEmpty()) {
-        for (const TelegramBotMessageEntity &entity : message.entities) {
-            if (entity.type == "text_mention" && entity.user.id != 0) {
-                return QString::number(entity.user.id);
+        qDebug() << "[resolveRecipientId] no explicit target: scanning for text_mention...";
+        for (int i = 0; i < message.entities.size(); ++i) {
+            const auto &entity = message.entities.at(i);
+            const qlonglong uid = static_cast<qlonglong>(entity.user.id);
+
+            qDebug() << "[resolveRecipientId] entity" << i
+                     << "type=" << entity.type
+                     << "offset=" << entity.offset
+                     << "length=" << entity.length
+                     << "text=" << entityTextAt(entity)
+                     << "user.id=" << uid;
+
+            if (entity.type == "text_mention" && isValidUserId(uid)) {
+                qDebug() << "[resolveRecipientId] FOUND text_mention user.id =" << uid;
+                return QString::number(uid);
             }
         }
+
+        // If no text_mention, we cannot resolve a plain @mention to an ID without a cache.
+        qDebug() << "[resolveRecipientId] no explicit target and no valid text_mention -> return empty";
         return {};
     }
 
-    bool ok = false;
-    normalized.toLongLong(&ok);
-    if (ok) {
-        return normalized;
-    }
+    // 2) Numeric target:
+    //    Accept ONLY positive user ids.
+    {
+        bool ok = false;
+        const qlonglong id = normalized.toLongLong(&ok);
 
-    QString foundId = m_db->userIdByUsername(normalized);
-    if (!foundId.isEmpty()) {
-        return foundId;
-    }
+        qDebug() << "[resolveRecipientId] numeric parse ok=" << ok << "value=" << id;
 
-    for (const TelegramBotMessageEntity &entity : message.entities) {
-        if (entity.type == "text_mention" && entity.user.id != 0) {
-            QString entityText = message.text.mid(entity.offset, entity.length);
-            QString stripped = entityText.trimmed();
-            if (stripped.startsWith("@")) {
-                stripped = stripped.mid(1);
+        if (ok) {
+            if (isValidUserId(id)) {
+                qDebug() << "[resolveRecipientId] numeric target accepted as user id:" << id;
+                return QString::number(id);
             }
+            qDebug() << "[resolveRecipientId] numeric target REJECTED (non-user id, likely chat/group/channel):" << id;
+            return {};
+        }
+    }
+
+    // 3) Entity scan:
+    //    - text_mention => ALWAYS return uid if valid (do NOT depend on text match)
+    //    - mention => can only match username text (no uid provided by Telegram)
+    qDebug() << "[resolveRecipientId] scanning entities for text_mention / mention...";
+    for (int i = 0; i < message.entities.size(); ++i) {
+        const auto &entity = message.entities.at(i);
+
+        const QString entityText = entityTextAt(entity);
+        QString stripped = entityText.trimmed();
+        if (stripped.startsWith("@"))
+            stripped = stripped.mid(1).trimmed();
+
+        const qlonglong uid = static_cast<qlonglong>(entity.user.id);
+
+        qDebug() << "[resolveRecipientId] entity" << i
+                 << "type=" << entity.type
+                 << "offset=" << entity.offset
+                 << "length=" << entity.length
+                 << "entityText=" << entityText
+                 << "stripped=" << stripped
+                 << "user.id=" << uid;
+
+        if (entity.type == "text_mention") {
+            if (isValidUserId(uid)) {
+                qDebug() << "[resolveRecipientId] FOUND text_mention user.id =" << uid
+                         << "(ignoring text match; entityText=" << entityText << ")";
+                return QString::number(uid);
+            }
+            qDebug() << "[resolveRecipientId] REJECT text_mention user.id (invalid/non-user):" << uid;
+            continue;
+        }
+
+        if (entity.type == "mention") {
+            // mention gives only username text, no uid. We can confirm match,
+            // but we cannot convert to id without a username->id cache.
             if (!stripped.isEmpty() && stripped.compare(normalized, Qt::CaseInsensitive) == 0) {
-                return QString::number(entity.user.id);
+                qDebug() << "[resolveRecipientId] MATCH mention username (no user.id provided by Telegram):"
+                         << "normalized=" << normalized
+                         << "mentionText=" << stripped
+                         << "-> cannot resolve without cache";
+                return {};
             }
         }
     }
 
+    // 4) Optional: fallback to cache lookup (username/firstName -> id)
+    // If you have something like:
+    //   qlonglong uid = this->userCacheResolve(normalized);
+    // then enable it here:
+    //
+    // const qlonglong cached = userCacheResolve(normalized);
+    // if (isValidUserId(cached)) return QString::number(cached);
+
+    qDebug() << "[resolveRecipientId] no resolvable recipient id found -> return empty";
     return {};
 }

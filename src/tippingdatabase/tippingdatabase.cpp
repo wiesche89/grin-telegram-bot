@@ -76,11 +76,16 @@ bool TippingDatabase::ensureTables()
 
     const char *usersSQL = "CREATE TABLE IF NOT EXISTS users ("
                            "user_id TEXT PRIMARY KEY,"
-                           "username TEXT)";
+                           "username TEXT,"
+                           "first_name TEXT,"
+                           "has_private_chat INTEGER NOT NULL DEFAULT 0)";
     if (!m_query->exec(usersSQL)) {
         qWarning() << "Failed to create users table:" << m_query->lastError().text();
         return false;
     }
+
+    m_query->exec("ALTER TABLE users ADD COLUMN first_name TEXT");
+    m_query->exec("ALTER TABLE users ADD COLUMN has_private_chat INTEGER NOT NULL DEFAULT 0");
 
     const char *pendingSQL = "CREATE TABLE IF NOT EXISTS pending_deposits ("
                              "slate_id TEXT PRIMARY KEY,"
@@ -172,15 +177,29 @@ QList<TxLedgerEntry> TippingDatabase::ledgerEntries(int limit)
     return entries;
 }
 
-bool TippingDatabase::ensureUserRecord(const QString &userId, const QString &username)
+bool TippingDatabase::ensureUserRecord(const QString &userId, const QString &username, const QString &firstName, bool hasPrivateChat)
 {
-    if (!m_query || userId.isEmpty() || username.isEmpty()) {
+    if (!m_query || userId.isEmpty() || (username.isEmpty() && firstName.isEmpty())) {
         return false;
     }
 
-    m_query->prepare("REPLACE INTO users (user_id, username) VALUES (?, ?)");
+    bool cachedHasPrivateChat = false;
+    if (!hasPrivateChat) {
+        QSqlQuery select(m_db);
+        select.prepare("SELECT has_private_chat FROM users WHERE user_id = ?");
+        select.addBindValue(userId);
+        if (select.exec() && select.next()) {
+            cachedHasPrivateChat = select.value(0).toBool();
+        }
+    }
+
+    bool effectivePrivateChat = hasPrivateChat || cachedHasPrivateChat;
+
+    m_query->prepare("INSERT OR REPLACE INTO users (user_id, username, first_name, has_private_chat) VALUES (?, ?, ?, ?)");
     m_query->addBindValue(userId);
     m_query->addBindValue(username);
+    m_query->addBindValue(firstName);
+    m_query->addBindValue(effectivePrivateChat ? 1 : 0);
     return m_query->exec();
 }
 
@@ -243,6 +262,21 @@ bool TippingDatabase::updateBalance(const QString &userId, qlonglong amountDelta
         return false;
     }
     return setBalance(userId, next);
+}
+
+bool TippingDatabase::userHasPrivateChat(const QString &userId)
+{
+    if (userId.isEmpty()) {
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare("SELECT has_private_chat FROM users WHERE user_id = ?");
+    query.addBindValue(userId);
+    if (!query.exec() || !query.next()) {
+        return false;
+    }
+    return query.value(0).toBool();
 }
 
 /**

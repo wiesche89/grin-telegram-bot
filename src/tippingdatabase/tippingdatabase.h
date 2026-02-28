@@ -9,6 +9,7 @@
 #include <QDateTime>
 #include <QString>
 #include <QList>
+#include <QtGlobal>
 
 struct PendingDepositRecord
 {
@@ -88,9 +89,10 @@ public:
 
     QList<TxLedgerEntry> ledgerEntries(int limit = 20);
 
-    bool ensureUserRecord(const QString &userId, const QString &username);
+    bool ensureUserRecord(const QString &userId, const QString &username, const QString &firstName, bool hasPrivateChat);
     QString userIdByUsername(const QString &username);
     QString usernameByUserId(const QString &userId);
+    bool userHasPrivateChat(const QString &userId);
     QList<BalanceRecord> listBalances();
 
 private:

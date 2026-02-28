@@ -13,12 +13,23 @@ public:
     template<typename T>
     static bool jsonPathGet(QJsonValue data, QString path, T &target, bool showWarnings = true)
     {
-        // get value and exit if value is invalid, or is not convertable to T
-        QVariant jPathValue = JsonHelper::jsonPathGetImpl(data, path, showWarnings);
-        target = jPathValue.value<T>();
+        QVariant v = JsonHelper::jsonPathGetImpl(data, path, showWarnings);
 
-        // return true if convert was successfull otherwise false
-        return jPathValue != QJsonValue(QJsonValue::Undefined) && !jPathValue.canConvert<T>();
+        // Undefined / invalid -> NICHT überschreiben!
+        if (!v.isValid() || v.isNull()) {
+            return false;
+        }
+
+        if (!v.canConvert<T>()) {
+            if (showWarnings) {
+                qWarning() << "JsonHelper::jsonPathGet cannot convert path" << path
+                           << "type=" << v.typeName();
+            }
+            return false;
+        }
+
+        target = v.value<T>();
+        return true;
     }
 
     static inline QVariant jsonPathGet(QJsonValue data, QString path)
