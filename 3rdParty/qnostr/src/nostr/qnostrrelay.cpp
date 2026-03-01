@@ -5,6 +5,7 @@
 #include "secp256k1_schnorrsig.h"
 
 #include <QUuid>
+#include <QAbstractSocket>
 #include <QWebSocket>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -233,7 +234,12 @@ void QNostrRelay::init()
     connect(p->ws, &QWebSocket::connected, this, &QNostrRelay::serverConnected);
     connect(p->ws, &QWebSocket::disconnected, this, &QNostrRelay::serverDisonnected);
     connect(p->ws, &QWebSocket::sslErrors, this, &QNostrRelay::sslErrors);
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     connect(p->ws, &QWebSocket::errorOccurred, this, &QNostrRelay::error);
+    #else
+    connect(p->ws, static_cast<void (QWebSocket::*)(QAbstractSocket::SocketError)>(&QWebSocket::error),
+            this, &QNostrRelay::error);
+    #endif
     connect(p->ws, &QWebSocket::textMessageReceived, this, &QNostrRelay::analizeData);
 }
 
