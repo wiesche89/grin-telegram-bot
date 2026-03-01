@@ -10,10 +10,10 @@ constexpr qlonglong NanogrinPerGrin = 1000000000LL;
 
 QString instructionText()
 {
-    return QStringLiteral("Bitte sende einen Slatepack als Nostr-Nachricht:\n"
-                          "- I1 (Invoice) mit maximal 1 GRIN, wenn du eine Auszahlung anforderst\n"
-                          "- oder S1, wenn du mir GRIN senden möchtest.\n"
-                          "Ich antworte mit dem passenden I2 bzw. S2.");
+    return QStringLiteral("Please send a Slatepack as a Nostr message:\n"
+                          "- I1 (Invoice) asking for up to 1 GRIN if you're requesting a payout\n"
+                          "- or S1 if you want to send GRIN to me.\n"
+                          "I will reply with the corresponding I2 or S2.");
 }
 
 QString normalizeRecipient(const QNostrRelay::Event &event)
@@ -39,7 +39,7 @@ bool NostrWorker::init()
         return false;
     }
 
-    m_bridge = new NostrBridge(this);
+    m_bridge = new NostrBridge(m_settings,this);
     connect(m_bridge, &NostrBridge::eventReceived, this, &NostrWorker::onNostrEvent);
 
     QStringList relays = m_settings ? m_settings->value("nostr/relays").toStringList() : QStringList();
@@ -94,7 +94,7 @@ void NostrWorker::onNostrEvent(const QNostrRelay::Event &event, const QUrl &rela
     Result<Slate> slateRes = m_walletOwnerApi->slateFromSlatepackMessage(content);
     if (slateRes.hasError()) {
         sendTextReply(recipient,
-                      QStringLiteral("Slatepack konnte nicht entschlüsselt werden: %1").arg(slateRes.errorMessage()));
+                      QStringLiteral("Failed to decode Slatepack: %1").arg(slateRes.errorMessage()));
         return;
     }
 
@@ -109,6 +109,7 @@ void NostrWorker::handleTextEvent(const QString &recipient)
 
 void NostrWorker::handleSlatepackEvent(const QString &recipient, const Slate &slate)
 {
+    qInfo() << "[NostrWorker] slatepack event from" << recipient << "- state" << slate.sta() << "amount" << slate.amt();
     SlateState state = Slate::slateStateFromString(slate.sta());
     Result<QString> response = Error(ErrorType::Unknown, QStringLiteral("No handler"));
     bool hasResponse = false;
@@ -121,7 +122,7 @@ void NostrWorker::handleSlatepackEvent(const QString &recipient, const Slate &sl
     case SlateState::I1: {
         qlonglong amount = slateAmount(slate);
         if (amount > NanogrinPerGrin) {
-            sendTextReply(recipient, QStringLiteral("I1-Slatepacks dürfen maximal 1 GRIN anfordern."));
+            sendTextReply(recipient, QStringLiteral("I1 Slatepacks may request at most 1 GRIN."));
             return;
         }
         response = respondWithI2(slate);
@@ -134,11 +135,11 @@ void NostrWorker::handleSlatepackEvent(const QString &recipient, const Slate &sl
     }
 
     if (!hasResponse || response.hasError()) {
-        sendTextReply(recipient, QStringLiteral("Slatepack konnte nicht beantwortet werden: %1").arg(response.errorMessage()));
+        sendTextReply(recipient, QStringLiteral("Slatepack could not be answered: %1").arg(response.errorMessage()));
         return;
     }
 
-    QString reply = QStringLiteral("Slatepack-Antwort: %1").arg(response.value());
+    QString reply = QStringLiteral("%1").arg(response.value());
     sendTextReply(recipient, reply);
 }
 
@@ -154,11 +155,13 @@ void NostrWorker::sendTextReply(const QString &recipient, const QString &text)
     }
 
     qDebug() << "[NostrWorker] sending reply to" << recipient;
+    qInfo() << "[NostrWorker] reply text length" << text.size();
     m_bridge->sendMessage(text, recipient);
 }
 
 Result<QString> NostrWorker::respondWithS2(const Slate &slate)
 {
+    qInfo() << "[NostrWorker] finalizing S2 slate for amount" << slate.amt();
     Result<Slate> finalizeRes = m_walletOwnerApi->finalizeTx(slate);
     if (finalizeRes.hasError()) {
         return finalizeRes.error();
@@ -170,6 +173,7 @@ Result<QString> NostrWorker::respondWithS2(const Slate &slate)
         return slatepackRes.error();
     }
 
+    qInfo() << "[NostrWorker] S2 response ready, finalized slate id" << finalized.id();
     return slatepackRes.value();
 }
 
@@ -185,6 +189,7 @@ qlonglong NostrWorker::slateAmount(const Slate &slate) const
 
 Result<QString> NostrWorker::respondWithI2(const Slate &slate)
 {
+    qInfo() << "[NostrWorker] processing invoice (I1) slate for amount" << slate.amt();
     QJsonObject txData;
     txData["src_acct_name"] = QJsonValue::Null;
     txData["amount"] = slate.amt();
@@ -215,6 +220,8 @@ Result<QString> NostrWorker::respondWithI2(const Slate &slate)
     if (slatepackRes.hasError()) {
         return slatepackRes.error();
     }
+
+    qInfo() << "[NostrWorker] I2 response ready, processed slate id" << processed.id();
 
     return slatepackRes.value();
 }

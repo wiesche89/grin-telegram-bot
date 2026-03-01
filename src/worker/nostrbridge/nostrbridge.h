@@ -6,6 +6,7 @@
 #include <QSet>
 #include <QStringList>
 #include <QList>
+#include <QSettings>
 
 #include <qnostr.h>
 
@@ -22,7 +23,7 @@ class NostrBridge : public QObject
     Q_PROPERTY(QString recipient READ recipient WRITE setRecipient NOTIFY recipientChanged)
 
 public:
-    explicit NostrBridge(QObject *parent = nullptr);
+    explicit NostrBridge(QSettings *settings,QObject *parent);
 
     QString secretKey() const;
     QString publicKey() const;

@@ -34,20 +34,21 @@ QString publicKeyHexFromBase64(const QString &value)
 }
 } // namespace
 
-NostrBridge::NostrBridge(QObject *parent)
+NostrBridge::NostrBridge(QSettings *settings, QObject *parent)
     : QObject(parent)
     , m_secretKey()
     , m_recipient(QStringLiteral("npub14eftzc986979z74vfpsaj55pjttsynhj082ujctth8ujxacvz0lq65pcmk"))
     , m_defaultRelay(QStringLiteral("wss://relay.damus.io"))
 {
-    QSettings settings;
-    QString storedSecret = settings.value("nostr/secretKey").toString();
+    QString storedSecret = settings->value("nostr/secretKey").toString();
+    qDebug()<<storedSecret;
     if (storedSecret.isEmpty()) {
         storedSecret = QNostr::generateNewSecret();
-        settings.setValue("nostr/secretKey", storedSecret);
+        settings->setValue("nostr/secretKey", storedSecret);
     }
     m_secretKey = storedSecret;
     m_nostr = new QNostr(m_secretKey, this);
+    qInfo()<<"Puk Key: "<<m_nostr->publicKey();
     m_publicKeyHex = publicKeyHexFromBase64(m_nostr->publicKey());
     emit keysChanged();
     updateStatus(QStringLiteral("Ready"));
