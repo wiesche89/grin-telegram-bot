@@ -1,16 +1,14 @@
 #include "messagehub.h"
 
 #include "ggcworker.h"
-#include "nostrworker.h"
 #include "tippingworker.h"
 #include "telegrambot.h"
 
-MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker *ggcWorker, NostrWorker *nostrWorker, QObject *parent) :
+MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker *ggcWorker, QObject *parent) :
     QObject(parent),
     m_bot(bot),
     m_tippingWorker(tippingWorker),
-    m_ggcWorker(ggcWorker),
-    m_nostrWorker(nostrWorker)
+    m_ggcWorker(ggcWorker)
 {
     if (m_bot) {
         connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onBotMessage(TelegramBotUpdate)));
@@ -37,11 +35,6 @@ void MessageHub::onBotMessage(TelegramBotUpdate update)
 
     if (m_tippingWorker && m_tippingWorker->handleUpdate(update)) {
         qDebug() << "MessageHub::onBotMessage - tipping worker handled update";
-        return;
-    }
-
-    if (m_nostrWorker && m_nostrWorker->handleUpdate(update)) {
-        qDebug() << "MessageHub::onBotMessage - nostr worker handled update";
         return;
     }
 

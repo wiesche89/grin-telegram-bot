@@ -133,6 +133,7 @@ SOURCES += \
   src/worker/tippingworker.cpp \
   src/worker/messagehub.cpp \
   src/worker/nostrbridge/nostrbridge.cpp \
+  src/worker/nostrbridge/bech32util.cpp \
   src/worker/nostrworker.cpp \
   3rdParty/qnostr/src/nostr/qnostr.cpp \
   3rdParty/qnostr/src/nostr/qnostrrelay.cpp
@@ -231,6 +232,7 @@ HEADERS += \
   src/worker/tippingworker.h \
   src/worker/messagehub.h \
   src/worker/nostrbridge/nostrbridge.h \
+  src/worker/nostrbridge/bech32util.h \
   src/worker/nostrworker.h \
   3rdParty/qnostr/src/nostr/qnostr.h \
   3rdParty/qnostr/src/nostr/qnostrrelay.h \

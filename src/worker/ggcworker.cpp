@@ -1,5 +1,6 @@
 #include "ggcworker.h"
 #include "cleanupworker.h"
+#include "worker/nostrbridge/bech32util.h"
 #include <QByteArray>
 #include <QJsonValue>
 #include <QList>
@@ -257,6 +258,35 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
             }
         }
         m_bot->sendMessage(message.chat.id, str, 0, TelegramBot::Markdown);
+        return;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    // command nostraddress
+    // ------------------------------------------------------------------------------------------------------------------------------------------
+    if (text.contains("/nostraddress")) {
+        QString nostrKey = m_settings->value("nostr/publicKey").toString().trimmed();
+        QString info;
+        if (nostrKey.isEmpty()) {
+            info = "Nostr public key is not configured yet";
+        } else {
+            QString npub;
+            if (nostrKey.startsWith(QStringLiteral("npub"), Qt::CaseInsensitive)) {
+                npub = nostrKey.toLower();
+            } else {
+                npub = NostBech32::hexToBech32(nostrKey, QStringLiteral("npub"));
+            }
+
+            if (npub.isEmpty()) {
+                info = "Configured Nostr key is invalid; please make sure the stored value is a valid hex key or npub";
+            } else {
+                info = QString("Hi %2,\nsend S1 for donate or I1 max 1 GRIN for faucet via Nostr\n"
+                               "I reply with the matching S2/I2 slatepack\nHere is my Nostr public address:\n`%1`")
+                           .arg(npub, message.chat.firstName);
+            }
+        }
+
+        m_bot->sendMessage(message.chat.id, info, 0, TelegramBot::Markdown);
         return;
     }
 

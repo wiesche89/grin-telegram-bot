@@ -112,12 +112,12 @@ void initializeBotComponents()
         return;
     }
 
-    NostrWorker *nostrWorker = new NostrWorker(bot, settings, walletOwnerApi);
+    NostrWorker *nostrWorker = new NostrWorker(settings, walletOwnerApi, bot);
     if (!nostrWorker->init()) {
         qDebug() << "Nostr Worker init failed!";
     }
 
-    new MessageHub(bot, tippingWorker, ggcWorker, nostrWorker, bot);
+    new MessageHub(bot, tippingWorker, ggcWorker, bot);
 
     AliveHandler *aliveHandler = new AliveHandler(bot, settings, bot);
     aliveHandler->start();

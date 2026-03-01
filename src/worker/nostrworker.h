@@ -1,17 +1,13 @@
 #ifndef NOSTRWORKER_H
 #define NOSTRWORKER_H
 
-#include <QtGlobal>
+#include <QObject>
 #include <QSettings>
-#include <QHash>
 #include <QUrl>
-#include <QJsonArray>
-#include <QDebug>
 
-#include "telegrambot.h"
-#include "result.h"
-#include "slate.h"
-#include "walletownerapi.h"
+#include "api/common/attributes/result.h"
+#include "api/wallet/attributes/slate.h"
+#include "api/wallet/owner/walletownerapi.h"
 #include "worker/nostrbridge/nostrbridge.h"
 
 class NostrWorker : public QObject
@@ -19,43 +15,24 @@ class NostrWorker : public QObject
     Q_OBJECT
 
 public:
-    NostrWorker(TelegramBot *bot, QSettings *settings, WalletOwnerApi *walletOwnerApi);
+    explicit NostrWorker(QSettings *settings, WalletOwnerApi *walletOwnerApi, QObject *parent = nullptr);
     bool init();
-    bool handleUpdate(TelegramBotUpdate update);
 
 private slots:
     void onNostrEvent(const QNostrRelay::Event &event, const QUrl &relay);
 
 private:
-    struct InvoiceResult
-    {
-        QString slatepack;
-        Slate slate;
-    };
-
-    struct PendingInvoice
-    {
-        qlonglong chatId;
-        qlonglong amount;
-        QString recipient;
-        QString userLabel;
-    };
-
-    bool parseAmount(const QString &input, qlonglong &nanogrin, QString &errorMessage) const;
-    void sendUsageMessage(const TelegramBotMessage &message) const;
-    void sendTextToChat(qlonglong chatId, const QString &text, bool markdown = false) const;
-
-    Result<InvoiceResult> createInvoiceSlatepack(qlonglong nanogrin);
-    Result<QString> finalizeSlate(const Slate &slate);
-
-    QString formatGrin(qlonglong nanogrin) const;
+    void handleTextEvent(const QString &recipient);
+    void handleSlatepackEvent(const QString &recipient, const Slate &slate);
+    void sendInstruction(const QString &recipient);
+    void sendTextReply(const QString &recipient, const QString &text);
+    Result<QString> respondWithS2(const Slate &slate);
+    Result<QString> respondWithI2(const Slate &slate);
     qlonglong slateAmount(const Slate &slate) const;
 
-    TelegramBot *m_bot;
     QSettings *m_settings;
     WalletOwnerApi *m_walletOwnerApi;
     NostrBridge *m_bridge = nullptr;
-    QHash<QString, PendingInvoice> m_pendingInvoices;
     bool m_initialized = false;
 };
 
