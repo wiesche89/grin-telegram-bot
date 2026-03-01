@@ -7,13 +7,18 @@
 class TelegramBot;
 class TippingWorker;
 class GgcWorker;
+class NostrWorker;
 
 class MessageHub : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker *ggcWorker, QObject *parent = nullptr);
+    explicit MessageHub(TelegramBot *bot,
+                        TippingWorker *tippingWorker,
+                        GgcWorker *ggcWorker,
+                        NostrWorker *nostrWorker,
+                        QObject *parent = nullptr);
 
 private slots:
     void onBotMessage(TelegramBotUpdate update);
@@ -22,6 +27,7 @@ private:
     TelegramBot *m_bot;
     TippingWorker *m_tippingWorker;
     GgcWorker *m_ggcWorker;
+    NostrWorker *m_nostrWorker;
 };
 
 #endif // MESSAGEHUB_H

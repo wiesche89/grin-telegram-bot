@@ -12,6 +12,7 @@
 #include "ggcworker.h"
 #include "tippingworker.h"
 #include "gateioworker.h"
+#include "nostrworker.h"
 #include "messagehub.h"
 #include "worker/alivehandler.h"
 #include "worker/cleanupworker.h"
@@ -111,7 +112,12 @@ void initializeBotComponents()
         return;
     }
 
-    new MessageHub(bot, tippingWorker, ggcWorker, bot);
+    NostrWorker *nostrWorker = new NostrWorker(bot, settings, walletOwnerApi);
+    if (!nostrWorker->init()) {
+        qDebug() << "Nostr Worker init failed!";
+    }
+
+    new MessageHub(bot, tippingWorker, ggcWorker, nostrWorker, bot);
 
     AliveHandler *aliveHandler = new AliveHandler(bot, settings, bot);
     aliveHandler->start();

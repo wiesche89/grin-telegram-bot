@@ -40,6 +40,7 @@ INCLUDEPATH += \
   3rdParty/secp256k1/include \
   3rdParty/openssl \
   3rdParty/openssl/openssl
+  3rdParty/qnostr/src/nostr
 
 # You can also make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -130,7 +131,11 @@ SOURCES += \
   src/worker/gateioworker.cpp \
   src/worker/ggcworker.cpp \
   src/worker/tippingworker.cpp \
-  src/worker/messagehub.cpp
+  src/worker/messagehub.cpp \
+  src/worker/nostrbridge/nostrbridge.cpp \
+  src/worker/nostrworker.cpp \
+  3rdParty/qnostr/src/nostr/qnostr.cpp \
+  3rdParty/qnostr/src/nostr/qnostrrelay.cpp
 
 # .h
 HEADERS += \
@@ -224,15 +229,22 @@ HEADERS += \
   src/worker/gateioworker.h \
   src/worker/ggcworker.h \
   src/worker/tippingworker.h \
-  src/worker/messagehub.h
+  src/worker/messagehub.h \
+  src/worker/nostrbridge/nostrbridge.h \
+  src/worker/nostrworker.h \
+  3rdParty/qnostr/src/nostr/qnostr.h \
+  3rdParty/qnostr/src/nostr/qnostrrelay.h \
+  3rdParty/qnostr/src/nostr/qtnostr_global.h
 
 # secp256k1
 unix:LIBS += -lsecp256k1
 win32:LIBS += -L$$PWD/3rdParty/secp256k1/.libs -lsecp256k1
 INCLUDEPATH += $$PWD/3rdParty/secp256k1/include
+INCLUDEPATH += $$PWD/3rdParty/qnostr/src/nostr
 
 # openssl
 unix:LIBS += -lcrypto
 win32:LIBS += -L$$PWD/3rdParty/openssl/lib -lcrypto -lssl
 
 DEFINES += OPENSSL_NO_DEPRECATED_3_0
+DEFINES += LIBQTNOSTR_CORE_LIBRARY
