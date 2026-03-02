@@ -31,7 +31,8 @@ QString normalizeRecipient(const QNostrRelay::Event &event)
 NostrWorker::NostrWorker(QSettings *settings, WalletOwnerApi *walletOwnerApi, QObject *parent) :
     QObject(parent),
     m_settings(settings),
-    m_walletOwnerApi(walletOwnerApi)
+    m_walletOwnerApi(walletOwnerApi),
+    m_walletForeignApi(nullptr)
 {
 }
 
@@ -41,6 +42,10 @@ bool NostrWorker::init()
         qWarning() << "[NostrWorker] wallet owner API missing";
         return false;
     }
+
+    // Wallet Foreign Api Instance
+    m_walletForeignApi = new WalletForeignApi(m_settings ? m_settings->value("wallet/foreignUrl").toString()
+                                                        : QString());
 
     QString dataDir = qEnvironmentVariable("DATA_DIR");
     QString dbPath;
@@ -202,20 +207,38 @@ void NostrWorker::sendTextReply(const QString &recipient, const QString &text)
 
 Result<QString> NostrWorker::respondWithS2(const Slate &slate)
 {
-    qInfo() << "[NostrWorker] finalizing S2 slate for amount" << slate.amt();
-    Result<Slate> finalizeRes = m_walletOwnerApi->finalizeTx(slate);
-    if (finalizeRes.hasError()) {
-        return finalizeRes.error();
+
+    if (!m_walletForeignApi) {
+        return Error(ErrorType::Unknown, QStringLiteral("Wallet foreign API is not initialized"));
     }
 
-    Slate finalized = finalizeRes.value();
-    Result<QString> slatepackRes = m_walletOwnerApi->createSlatepackMessage(finalized, QJsonArray(), 0);
-    if (slatepackRes.hasError()) {
-        return slatepackRes.error();
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Debugging
+    ///---------------------------------------------------------------------------------------------------------------------------
+    qDebug() << "donate: " << slate.amt();
+
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling receiveTx
+    ///---------------------------------------------------------------------------------------------------------------------------
+    Slate slate2;
+    {
+        Result<Slate> res = m_walletForeignApi->receiveTx(slate, "", "");
+        if (!res.unwrapOrLog(slate2, Q_FUNC_INFO)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
+    }
+    ///---------------------------------------------------------------------------------------------------------------------------
+    /// Handling createSlatepackMessage
+    ///---------------------------------------------------------------------------------------------------------------------------
+    QString slatepack;
+    {
+        Result<QString> res = m_walletOwnerApi->createSlatepackMessage(slate2, QJsonArray(), 0);
+        if (!res.unwrapOrLog(slatepack, Q_FUNC_INFO)) {
+            return Error(ErrorType::Unknown, res.errorMessage());
+        }
     }
 
-    qInfo() << "[NostrWorker] S2 response ready, finalized slate id" << finalized.id();
-    return slatepackRes.value();
+    return slatepack;
 }
 
 qlonglong NostrWorker::slateAmount(const Slate &slate) const

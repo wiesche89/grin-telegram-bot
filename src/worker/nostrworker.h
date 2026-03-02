@@ -7,6 +7,7 @@
 
 #include "api/common/attributes/result.h"
 #include "api/wallet/attributes/slate.h"
+#include "api/wallet/foreign/walletforeignapi.h"
 #include "api/wallet/owner/walletownerapi.h"
 #include "worker/nostrbridge/nostrbridge.h"
 #include "nostrdatabase/nostrdatabase.h"
@@ -33,6 +34,7 @@ private:
 
     QSettings *m_settings;
     WalletOwnerApi *m_walletOwnerApi;
+    WalletForeignApi *m_walletForeignApi = nullptr;
     NostrBridge *m_bridge = nullptr;
     bool m_initialized = false;
     NostrDatabase *m_database = nullptr;
