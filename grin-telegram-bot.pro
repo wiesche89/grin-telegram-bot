@@ -30,6 +30,7 @@ INCLUDEPATH += \
   src/api/wallet/owner \
   src/telegrambot \
   src/tippingdatabase \
+  src/nostrdatabase \
   src/grinwalletmanager \
   src/ggcdatabase \
   src/ggcdatabase/attributes \
@@ -135,6 +136,7 @@ SOURCES += \
   src/worker/nostrbridge/nostrbridge.cpp \
   src/worker/nostrbridge/bech32util.cpp \
   src/worker/nostrworker.cpp \
+  src/nostrdatabase/nostrdatabase.cpp \
   3rdParty/qnostr/src/nostr/qnostr.cpp \
   3rdParty/qnostr/src/nostr/qnostrrelay.cpp
 
@@ -215,6 +217,7 @@ HEADERS += \
   src/telegrambot/telegramdatainterface.h \
   src/telegrambot/telegramdatastructs.h \
   src/tippingdatabase/tippingdatabase.h \
+  src/nostrdatabase/nostrdatabase.h \
   src/util/jsonutil.h \
   3rdParty/secp256k1/include/secp256k1.h \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \

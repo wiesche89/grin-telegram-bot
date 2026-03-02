@@ -1,9 +1,12 @@
 #include "nostrworker.h"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QDebug>
+#include <QString>
 
 namespace {
 constexpr qlonglong NanogrinPerGrin = 1000000000LL;
@@ -39,6 +42,20 @@ bool NostrWorker::init()
         return false;
     }
 
+    QString dataDir = qEnvironmentVariable("DATA_DIR");
+    QString dbPath;
+    if (dataDir.isEmpty()) {
+        dbPath = QCoreApplication::applicationDirPath() + "/etc/database/nostr.db";
+    } else {
+        dbPath = QDir(dataDir).filePath("etc/database/nostr.db");
+    }
+
+    m_database = new NostrDatabase(dbPath, this);
+    if (!m_database->initialize()) {
+        qWarning() << "[NostrWorker] failed to initialize Nostr database:" << dbPath;
+        return false;
+    }
+
     m_bridge = new NostrBridge(m_settings,this);
     connect(m_bridge, &NostrBridge::eventReceived, this, &NostrWorker::onNostrEvent);
 
@@ -67,9 +84,34 @@ void NostrWorker::onNostrEvent(const QNostrRelay::Event &event, const QUrl &rela
         return;
     }
 
+    if (!event.id.has_value()) {
+        qWarning() << "[NostrWorker] incoming event without id";
+        return;
+    }
+
+    QString eventId = event.id.value();
+    if (eventId.trimmed().isEmpty()) {
+        qWarning() << "[NostrWorker] incoming event with empty id";
+        return;
+    }
+
     QString author = event.pubkey ? event.pubkey.value() : QStringLiteral("unknown");
-    QString eventId = event.id ? event.id.value() : QStringLiteral("unknown");
     QString content = event.content.trimmed();
+
+    if (m_database && m_database->eventExists(eventId)) {
+        qDebug() << "[NostrWorker] ignoring already stored event" << eventId;
+        return;
+    }
+
+    if (m_database) {
+        qint64 createdAt = event.created_at.has_value() ? event.created_at->toSecsSinceEpoch() : -1;
+        if (m_database->recordEvent(eventId, author, event.kind, content, relay.toString(), createdAt)) {
+            qDebug() << "[NostrWorker] recorded event" << eventId;
+        }
+        if (!m_database->acknowledgeEvent(eventId)) {
+            qWarning() << "[NostrWorker] could not acknowledge event" << eventId;
+        }
+    }
 
     qDebug() << "[NostrWorker] incoming event" << eventId << "from" << author << "kind" << event.kind << "relay" << relay << "content:" << content;
 
@@ -79,7 +121,6 @@ void NostrWorker::onNostrEvent(const QNostrRelay::Event &event, const QUrl &rela
         return;
     }
 
-    // content already defined above
     if (content.isEmpty()) {
         qDebug() << "[NostrWorker] ignoring empty content from" << recipient;
         return;

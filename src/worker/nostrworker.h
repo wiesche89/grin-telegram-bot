@@ -9,6 +9,7 @@
 #include "api/wallet/attributes/slate.h"
 #include "api/wallet/owner/walletownerapi.h"
 #include "worker/nostrbridge/nostrbridge.h"
+#include "nostrdatabase/nostrdatabase.h"
 
 class NostrWorker : public QObject
 {
@@ -34,6 +35,7 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     NostrBridge *m_bridge = nullptr;
     bool m_initialized = false;
+    NostrDatabase *m_database = nullptr;
 };
 
 #endif // NOSTRWORKER_H
