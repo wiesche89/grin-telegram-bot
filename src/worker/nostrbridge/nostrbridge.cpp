@@ -75,7 +75,6 @@ NostrBridge::NostrBridge(QSettings *settings, QObject *parent)
         m_lastEventText = QStringLiteral("[%1] %2").arg(relay.host(), event.content);
         emit lastEventTextChanged();
         emit eventReceived(event, relay);
-        qInfo() << "Received event from" << relay << "content:" << event.content;
     });
 
     connect(m_nostr, &QNostr::notice, this, [this](const QString &msg, const QUrl &relay) {
