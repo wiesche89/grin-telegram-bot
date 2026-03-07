@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <QtGlobal>
 #include <QDateTime>
 #include <QDebug>
 #include "httpserver.h"
@@ -150,80 +151,115 @@ void HttpServer::sendMinimal200Response(QTcpSocket *socket)
  */
 bool HttpServer::parseRequest(QTcpSocket &device, HttpServerRequest &request)
 {
-    // parse content
-    QByteArray content = device.readAll();
-    for (auto itr = content.begin(); itr != content.end(); itr++) {
-        // parse method
-        if (request->parseState == HttpServerRequestPrivate::Method) {
-            if (*itr == ' ') {
+    QByteArray chunk = device.readAll();
+    if (!chunk.isEmpty()) {
+        request->buffer.append(chunk);
+    }
+
+    const QByteArray &buffer = request->buffer;
+    while (request->bufferIndex < buffer.size()) {
+        char ch = buffer.at(request->bufferIndex);
+        switch (request->parseState) {
+        case HttpServerRequestPrivate::Method:
+            if (ch == ' ') {
                 request->parseState = HttpServerRequestPrivate::Url;
             } else {
-                request->method += *itr;
+                request->method += ch;
             }
-        }
-        // parse url
-        else if (request->parseState == HttpServerRequestPrivate::Url) {
-            if (*itr == ' ') {
+            request->bufferIndex++;
+            break;
+        case HttpServerRequestPrivate::Url:
+            if (ch == ' ') {
                 request->parseState = HttpServerRequestPrivate::Version;
             } else {
-                request->url += *itr;
+                request->url += ch;
             }
-        }
-        // parse version
-        else if (request->parseState == HttpServerRequestPrivate::Version) {
-            if (*itr == '\r') {
-                itr++;
+            request->bufferIndex++;
+            break;
+        case HttpServerRequestPrivate::Version:
+            if (ch == '\r') {
+                if (request->bufferIndex + 1 >= buffer.size()) {
+                    return false;
+                }
+                if (buffer.at(request->bufferIndex + 1) != '\n') {
+                    request->version += ch;
+                    request->bufferIndex++;
+                    break;
+                }
+                request->bufferIndex += 2;
                 request->parseState = HttpServerRequestPrivate::Headers;
             } else {
-                request->version += *itr;
+                request->version += ch;
+                request->bufferIndex++;
             }
-        }
-        // parse headers
-        else if (request->parseState == HttpServerRequestPrivate::Headers) {
-            // switch from key to value
-            if (*itr == ':') {
-                request->currentHeaderValue = &request->headers.insert(request->currentHeaderKey, QString("")).value();
-                itr++;
-            } else {
-                // end header
-                if (*itr == '\r') {
-                    itr++;
-                    if (*(itr + 1) == '\r') {
-                        itr++;
-                        itr++;
-                        request->parseState = HttpServerRequestPrivate::Content;
-                    }
-                    request->currentHeaderKey = QString();
+            break;
+        case HttpServerRequestPrivate::Headers:
+            if (ch == '\r') {
+                if (request->bufferIndex + 1 >= buffer.size()) {
+                    return false;
+                }
+                if (buffer.at(request->bufferIndex + 1) != '\n') {
+                    request->bufferIndex++;
+                    break;
+                }
+                request->bufferIndex += 2;
+                if (request->currentHeaderKey.isEmpty()) {
+                    request->currentHeaderValue = 0;
+                    request->parseState = HttpServerRequestPrivate::Content;
+                } else {
+                    request->currentHeaderKey.clear();
                     request->currentHeaderValue = 0;
                 }
-                // append to value
-                else if (request->currentHeaderValue) {
-                    *request->currentHeaderValue += *itr;
-                }
-                // append to key
-                else {
-                    request->currentHeaderKey += *itr;
-                }
+                continue;
             }
-        }
-        // parse content
-        else if (request->parseState == HttpServerRequestPrivate::Content) {
+            if (ch == ':' && !request->currentHeaderValue) {
+                request->currentHeaderValue = &request->headers.insert(request->currentHeaderKey, QString("")).value();
+                request->bufferIndex++;
+                break;
+            }
+            if (request->currentHeaderValue) {
+                *request->currentHeaderValue += ch;
+            } else {
+                request->currentHeaderKey += ch;
+            }
+            request->bufferIndex++;
+            break;
+        case HttpServerRequestPrivate::Content:
             if (request->contentLength == -1) {
                 request->contentLength = request->headers.value("Content-Length").toInt();
             }
-            if (request->contentLength <= 1) {
+            if (request->contentLength <= 0) {
                 request->parseState = HttpServerRequestPrivate::Done;
+                continue;
             }
+            {
+                int remaining = buffer.size() - request->bufferIndex;
+                if (remaining <= 0) {
+                    break;
+                }
+                int toRead = qMin<int>(remaining, request->contentLength);
+                request->content.append(buffer.mid(request->bufferIndex, toRead));
+                request->bufferIndex += toRead;
+                request->contentLength -= toRead;
+                if (request->contentLength <= 0) {
+                    request->parseState = HttpServerRequestPrivate::Done;
+                }
+            }
+            break;
+        default:
+            request->bufferIndex++;
+            break;
+        }
 
-            // append to content
-            if (request->contentLength) {
-                request->content += *itr;
-                request->contentLength--;
-            }
+        if (request->parseState == HttpServerRequestPrivate::Done) {
+            break;
         }
     }
 
-    // demoralize data
+    if (request->parseState != HttpServerRequestPrivate::Done) {
+        return false;
+    }
+
     QString hostHeader = request->headers.value("Host");
     int colonPos = hostHeader.indexOf(':');
     if (colonPos != -1) {
@@ -231,6 +267,7 @@ bool HttpServer::parseRequest(QTcpSocket &device, HttpServerRequest &request)
     }
     request->host = hostHeader;
 
-    // if we are done return true, otherwise false
-    return request->parseState == HttpServerRequestPrivate::Done;
+    request->buffer.clear();
+    request->bufferIndex = 0;
+    return true;
 }

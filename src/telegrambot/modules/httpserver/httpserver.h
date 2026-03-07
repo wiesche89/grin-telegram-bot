@@ -2,6 +2,7 @@
 #define HTTPSERVER_H
 
 #include <QObject>
+#include <QByteArray>
 #include <QHostAddress>
 #include <QNetworkRequest>
 #include <QSharedPointer>
@@ -188,6 +189,8 @@ struct HttpServerRequestPrivate
     QString version;
     QMap<QString, QString> headers;
     QByteArray content;
+    QByteArray buffer;
+    qint32 bufferIndex = 0;
 
 private:
     enum ParseState {
