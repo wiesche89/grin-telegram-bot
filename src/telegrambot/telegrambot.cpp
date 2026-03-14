@@ -1369,7 +1369,14 @@ void TelegramBot::checkWebhookHealth()
         return;
     }
 
-    TelegramBotWebHookInfo info = this->getWebhookInfo();
+    const QJsonObject webhookResponse = this->callApiJson("getWebhookInfo");
+    if (!webhookResponse.value("ok").toBool()) {
+        qWarning() << "TelegramBot::checkWebhookHealth - getWebhookInfo failed:"
+                   << webhookResponse.value("description").toString();
+        return;
+    }
+
+    TelegramBotWebHookInfo info(webhookResponse.value("result").toObject());
     qDebug() << "TelegramBot::checkWebhookHealth - webhook" << sanitizeWebhookUrl(info.url)
              << "ipAddress" << info.ipAddress
              << "lastErrorDate" << info.lastErrorDate
