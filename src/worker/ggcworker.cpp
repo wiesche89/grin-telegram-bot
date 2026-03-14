@@ -265,9 +265,12 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // command nostraddress
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (text.contains("/nostraddress")) {
+        bool nostrEnabled = m_settings->value("nostr/enabled", true).toBool();
         QString nostrKey = m_settings->value("nostr/publicKey").toString().trimmed();
         QString info;
-        if (nostrKey.isEmpty()) {
+        if (!nostrEnabled) {
+            info = "Nostr function is currently disabled.";
+        } else if (nostrKey.isEmpty()) {
             info = "Nostr public key is not configured yet";
         } else {
             QString npub;

@@ -112,9 +112,14 @@ void initializeBotComponents()
         return;
     }
 
-    NostrWorker *nostrWorker = new NostrWorker(settings, walletOwnerApi, bot);
-    if (!nostrWorker->init()) {
-        qDebug() << "Nostr Worker init failed!";
+    bool nostrEnabled = settings->value("nostr/enabled", true).toBool();
+    if (nostrEnabled) {
+        NostrWorker *nostrWorker = new NostrWorker(settings, walletOwnerApi, bot);
+        if (!nostrWorker->init()) {
+            qDebug() << "Nostr Worker init failed!";
+        }
+    } else {
+        qInfo() << "Nostr worker disabled via settings.";
     }
 
     new MessageHub(bot, tippingWorker, ggcWorker, bot);
