@@ -15,6 +15,7 @@
 
 namespace {
 LoggingHandler *g_loggingHandler = nullptr;
+QtMessageHandler g_previousMessageHandler = nullptr;
 
 const char *messageLevelText(QtMsgType type)
 {
@@ -72,6 +73,11 @@ LoggingHandler::LoggingHandler(const QString &logFilePath)
 
 LoggingHandler::~LoggingHandler()
 {
+    if (g_loggingHandler == this) {
+        g_loggingHandler = nullptr;
+        qInstallMessageHandler(g_previousMessageHandler);
+    }
+
     if (m_logFile.isOpen()) {
         m_logFile.flush();
         m_logFile.close();
@@ -110,7 +116,8 @@ bool LoggingHandler::ensureFileOpen()
     }
 
     if (!m_logFile.open(QIODevice::Append | QIODevice::Text)) {
-        qWarning() << "LoggingHandler: failed to open log file" << m_logFilePath;
+        fprintf(stderr, "LoggingHandler: failed to open log file %s\n", qPrintable(m_logFilePath));
+        fflush(stderr);
         return false;
     }
 
@@ -120,5 +127,5 @@ bool LoggingHandler::ensureFileOpen()
 void LoggingHandler::installMessageHandler(LoggingHandler *handler)
 {
     g_loggingHandler = handler;
-    qInstallMessageHandler(qtMessageHandler);
+    g_previousMessageHandler = qInstallMessageHandler(qtMessageHandler);
 }
