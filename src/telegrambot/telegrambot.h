@@ -235,6 +235,18 @@ private:
     QTimer *m_webhookHealthTimer = nullptr;
     bool m_webhookFallbackTriggered = false;
     qint32 m_lastWebhookErrorDate = 0;
+    qint16 m_webhookListenPort = 0;
+    qint16 m_webhookPublicPort = 0;
+    QString m_webhookPublicHost;
+    QString m_webhookScheme = "https";
+    int m_webhookMaxConnections = 10;
+    TelegramPollMessageTypes m_webhookMessageTypes = TelegramPollMessageTypes::All;
+    int m_webhookReconnectionAttempts = 0;
+    int m_webhookReconnectionLimit = 3;
+    bool m_webhookConfigStored = false;
+
+    bool hasWebhookConfiguration() const;
+    bool attemptWebhookReconnect(const QString &reason = QString());
 };
 
 /*

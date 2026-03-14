@@ -1098,6 +1098,17 @@ bool TelegramBot::setHttpServerWebhook(qint16 listenPort, QString publicHost, qi
     if (scheme != "http" && scheme != "https") {
         scheme = "https";
     }
+
+    bool storeConfiguration = listenPort > 0 && publicPort > 0 && !publicHost.isEmpty();
+    if (storeConfiguration) {
+        this->m_webhookListenPort = listenPort;
+        this->m_webhookPublicPort = publicPort;
+        this->m_webhookPublicHost = publicHost;
+        this->m_webhookScheme = scheme;
+        this->m_webhookMaxConnections = maxConnections;
+        this->m_webhookMessageTypes = messageTypes;
+        this->m_webhookConfigStored = true;
+    }
     HttpServer *httpServer = nullptr;
     auto mark = [](const char *msg) {
         fprintf(stderr, "[WEBHOOK] %s\n", msg);
@@ -1367,26 +1378,66 @@ void TelegramBot::checkWebhookHealth()
              << "maxConnections" << info.maxConnections
              << "allowedUpdates" << info.allowedUpdates;
 
+    bool shouldFallback = false;
+
     if (info.url.isEmpty()) {
+        if (this->attemptWebhookReconnect("webhook missing")) {
+            return;
+        }
+        shouldFallback = true;
+    } else if (info.lastErrorMessage.isEmpty()) {
+        this->m_webhookReconnectionAttempts = 0;
         return;
+    } else if (info.lastErrorDate <= this->m_lastWebhookErrorDate) {
+        return;
+    } else {
+        this->m_lastWebhookErrorDate = info.lastErrorDate;
+        if (this->attemptWebhookReconnect(info.lastErrorMessage)) {
+            return;
+        }
+        shouldFallback = true;
     }
 
-    if (info.lastErrorMessage.isEmpty()) {
-        return;
+    if (shouldFallback) {
+        qDebug() << "TelegramBot::checkWebhookHealth - detected webhook error, switching to polling";
+        this->deleteWebhook();
+        this->startMessagePulling();
+        this->m_webhookFallbackTriggered = true;
+        if (this->m_webhookHealthTimer) {
+            this->m_webhookHealthTimer->stop();
+        }
+    }
+}
+
+bool TelegramBot::hasWebhookConfiguration() const
+{
+    return this->m_webhookConfigStored && this->m_webhookListenPort > 0 && this->m_webhookPublicPort > 0
+           && !this->m_webhookPublicHost.isEmpty();
+}
+
+bool TelegramBot::attemptWebhookReconnect(const QString &reason)
+{
+    if (!this->hasWebhookConfiguration()) {
+        qDebug() << "TelegramBot::attemptWebhookReconnect - webhook configuration missing";
+        return false;
     }
 
-    if (info.lastErrorDate <= this->m_lastWebhookErrorDate) {
-        return;
+    if (this->m_webhookReconnectionAttempts >= this->m_webhookReconnectionLimit) {
+        qDebug() << "TelegramBot::attemptWebhookReconnect - reconnection limit reached for" << reason;
+        return false;
     }
 
-    this->m_lastWebhookErrorDate = info.lastErrorDate;
-    qDebug() << "TelegramBot::checkWebhookHealth - detected webhook error, switching to polling";
-    this->deleteWebhook();
-    this->startMessagePulling();
-    this->m_webhookFallbackTriggered = true;
-    if (this->m_webhookHealthTimer) {
-        this->m_webhookHealthTimer->stop();
+    this->m_webhookReconnectionAttempts++;
+    qDebug() << "TelegramBot::attemptWebhookReconnect - reconnect webhook attempt" << this->m_webhookReconnectionAttempts
+             << "of" << this->m_webhookReconnectionLimit << "reason" << reason;
+
+    bool success = this->setHttpServerWebhook(this->m_webhookListenPort, this->m_webhookPublicHost,
+                                             this->m_webhookPublicPort, this->m_webhookScheme,
+                                             this->m_webhookMaxConnections, this->m_webhookMessageTypes);
+    if (success) {
+        this->m_webhookReconnectionAttempts = 0;
     }
+    return true;
 }
 
 template<typename T>
