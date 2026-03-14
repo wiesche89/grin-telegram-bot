@@ -1514,15 +1514,39 @@ QJsonObject TelegramBot::callApiJson(QString method, QUrlQuery params, QHttpMult
 {
     // exec request
     // qDebug()<<Q_FUNC_INFO <<" "<<method;
-    QNetworkReply *reply = this->callApi(method, params, true, multiPart);
+    QNetworkReply *reply = this->callApi(method, params, false, multiPart);
 
     // wait async for answer
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
+    const QNetworkReply::NetworkError networkError = reply->error();
+    const QString errorString = reply->errorString();
+    const QByteArray payload = reply->readAll();
+    reply->deleteLater();
+
+    if (networkError != QNetworkReply::NoError) {
+        qWarning() << "TelegramBot::callApiJson -" << method << "network error" << networkError << errorString;
+        return QJsonObject{
+            {"ok", false},
+            {"error_code", static_cast<int>(networkError)},
+            {"description", errorString}
+        };
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "TelegramBot::callApiJson -" << method << "JSON parse error" << parseError.errorString();
+        return QJsonObject{
+            {"ok", false},
+            {"description", parseError.errorString()}
+        };
+    }
+
     // parse answer
-    return QJsonDocument::fromJson(reply->readAll()).object();
+    return document.object();
 }
 
 /**
