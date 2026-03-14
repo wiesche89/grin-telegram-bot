@@ -41,10 +41,14 @@ bool HttpServer::listen(const QHostAddress &address, quint16 port)
  */
 void HttpServer::addRewriteRule(QString host, QString path, QDelegate<void(HttpServerRequest, HttpServerResponse)> delegate)
 {
+    host = host.trimmed();
+    path = path.trimmed();
     if (!this->rewriteRules.contains(host)) {
         this->rewriteRules.insert(host, QMultiMap<QString, QDelegate<void(HttpServerRequest, HttpServerResponse)> >());
     }
-    this->rewriteRules.find(host).value().insert(path, delegate);
+    auto &routes = this->rewriteRules.find(host).value();
+    routes.remove(path);
+    routes.insert(path, delegate);
 }
 
 /**
