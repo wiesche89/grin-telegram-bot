@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QIODevice>
 #include <QMetaObject>
+#include <QDateTime>
 #include <QTextStream>
 #include <QUrl>
 #include "telegrambot.h"
@@ -1211,6 +1212,10 @@ bool TelegramBot::setHttpServerWebhook(qint16 listenPort, QString publicHost, qi
         qWarning() << "Telegram setWebhook failed:" << description;
         mark("E: after callApiJson (failed)");
     } else {
+        // Telegram can keep reporting an old last_error_date for a while after a
+        // successful webhook re-registration. Treat everything up to "now" as stale
+        // so the health timer does not reconnect in a loop.
+        this->m_lastWebhookErrorDate = QDateTime::currentSecsSinceEpoch();
         mark("E: after callApiJson (succeeded)");
     }
     mark("F: leaving setHttpServerWebhook");
