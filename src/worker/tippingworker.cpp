@@ -88,6 +88,23 @@ QString formatGrin(qlonglong nanogrin)
     return result;
 }
 
+QString displayUserLabel(const TelegramBotUser &user)
+{
+    if (!user.username.trimmed().isEmpty()) {
+        return QString("@%1").arg(user.username.trimmed());
+    }
+
+    if (!user.firstName.trimmed().isEmpty()) {
+        return user.firstName.trimmed();
+    }
+
+    if (user.id > 0) {
+        return QString::number(user.id);
+    }
+
+    return {};
+}
+
 /**
  * @brief parseTipAmount
  * @param input
@@ -312,6 +329,19 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         qDebug()<<"ensure user Record: "<<m_db->ensureUserRecord(senderId, username, firstName, isPrivateChat);
     }
 
+    if (message.replyToMessage.messageId != 0) {
+        const QString replyUserId = QString::number(message.replyToMessage.from.id);
+        const QString replyUsername = message.replyToMessage.from.username;
+        const QString replyFirstName = message.replyToMessage.from.firstName;
+        if (!replyUserId.isEmpty() && message.replyToMessage.from.id > 0
+            && (!replyUsername.isEmpty() || !replyFirstName.isEmpty())) {
+            qDebug() << "ensure reply user Record:" << m_db->ensureUserRecord(replyUserId,
+                                                                               replyUsername,
+                                                                               replyFirstName,
+                                                                               false);
+        }
+    }
+
 
     if (text.isEmpty()) {
         return false;
@@ -442,14 +472,16 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
     //
     //-----------------------------------------------------------------------------------------------------------------------------------
     if (cmd == "/tip") {
-        if (parts.size() != 3) {
-            sendUserMessage(message, "Usage: /tip @user <amount>", false);
+        if (parts.size() != 2 && parts.size() != 3) {
+            sendUserMessage(message, "Usage: /tip @user <amount> or reply with /tip <amount>", false);
             return true;
         }
-        QString toUser = parts[1];
+
+        const QString toUser = parts.size() == 3 ? parts[1] : QString();
+        const QString amountInput = parts.size() == 3 ? parts[2] : parts[1];
         qlonglong tipNanogrin = 0;
         QString tipError;
-        if (!parseTipAmount(parts[2], tipNanogrin, tipError)) {
+        if (!parseTipAmount(amountInput, tipNanogrin, tipError)) {
             sendUserMessage(message, tipError, false);
             return true;
         }
@@ -459,9 +491,15 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         qDebug()<<"recipientId: "<<recipientId;
 
         if (recipientId.isEmpty()) {
-            sendUserMessage(message,
-                            "I could not resolve that recipient. Ask them to send me a private /tipping message so I can learn their ID, then try again.",
-                            false);
+            if (parts.size() == 2) {
+                sendUserMessage(message,
+                                "Reply to a user's message with /tip <amount> or use /tip @user <amount>.",
+                                false);
+            } else {
+                sendUserMessage(message,
+                                "I could not resolve that recipient. Ask them to send me a private /tipping message so I can learn their ID, then try again.",
+                                false);
+            }
             return true;
         }
 
@@ -471,12 +509,25 @@ bool TippingWorker::handleUpdate(TelegramBotUpdate update)
         }
 
         QString recipientLabel = m_db->usernameByUserId(recipientId);
+        bool recipientLabelIsUsername = !recipientLabel.isEmpty();
         if (recipientLabel.isEmpty()) {
-            recipientLabel = toUser;
+            const QString replyUserId = QString::number(message.replyToMessage.from.id);
+            if (replyUserId == recipientId) {
+                recipientLabel = displayUserLabel(message.replyToMessage.from);
+            } else {
+                recipientLabel = toUser;
+                recipientLabelIsUsername = recipientLabel.startsWith("@");
+            }
         }
         QString displayRecipient;
         if (!recipientLabel.isEmpty()) {
-            displayRecipient = recipientLabel.startsWith("@") ? recipientLabel : QString("@%1").arg(recipientLabel);
+            if (recipientLabel.startsWith("@")) {
+                displayRecipient = recipientLabel;
+            } else if (recipientLabelIsUsername) {
+                displayRecipient = QString("@%1").arg(recipientLabel);
+            } else {
+                displayRecipient = recipientLabel;
+            }
         } else {
             displayRecipient = recipientId;
         }
