@@ -144,6 +144,8 @@ void HttpServer::sendMinimal200Response(QTcpSocket *socket)
         return;
     }
     socket->write(this->minimal200Answer);
+    socket->flush();
+    socket->waitForBytesWritten(3000);
     socket->disconnectFromHost();
 }
 
@@ -264,7 +266,7 @@ bool HttpServer::parseRequest(QTcpSocket &device, HttpServerRequest &request)
         return false;
     }
 
-    QString hostHeader = request->headers.value("Host");
+    QString hostHeader = request->headers.value("Host").trimmed();
     int colonPos = hostHeader.indexOf(':');
     if (colonPos != -1) {
         hostHeader = hostHeader.left(colonPos);
