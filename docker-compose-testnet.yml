@@ -12,6 +12,7 @@ services:
       RUST_BACKTRACE: "1"
       GRIN_CHAIN_TYPE: "testnet"
       DATA_DIR: "/opt/grin-telegram-bot/data"
+      QT_LOGGING_RULES: "*.debug=false;bot.memory.info=true;bot.memory.debug=false"
     ports:
       - "13415:13415"
       - "13420:13420"
@@ -27,6 +28,11 @@ services:
     stdin_open: true
     tty: true
     restart: "no"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 networks:
   grin-network:
