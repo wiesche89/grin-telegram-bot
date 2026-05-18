@@ -41,7 +41,7 @@ bool GateIoWorker::init()
 
         connect(m_client, &GateIoClient::errorOccurred, this, [](const QString &msg) {
             qWarning() << "[GateIoClient]" << msg;
-        }, Qt::UniqueConnection);
+        });
     }
 
     connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)), Qt::UniqueConnection);

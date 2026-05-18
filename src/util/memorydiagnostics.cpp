@@ -14,6 +14,8 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <psapi.h>
+#else
+#include <unistd.h>
 #endif
 
 Q_LOGGING_CATEGORY(memoryDiag, "bot.memory")
@@ -76,6 +78,19 @@ qint64 MemoryDiagnostics::currentRssKb()
         const QRegularExpressionMatch match = vmRssPattern.match(line);
         if (match.hasMatch()) {
             return match.captured(1).toLongLong();
+        }
+    }
+
+    QFile statmFile("/proc/self/statm");
+    if (statmFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QByteArray statm = statmFile.readAll();
+        const QList<QByteArray> fields = statm.simplified().split(' ');
+        if (fields.size() >= 2) {
+            bool ok = false;
+            const qint64 residentPages = fields.at(1).toLongLong(&ok);
+            if (ok) {
+                return residentPages * static_cast<qint64>(sysconf(_SC_PAGESIZE)) / 1024;
+            }
         }
     }
     return -1;
