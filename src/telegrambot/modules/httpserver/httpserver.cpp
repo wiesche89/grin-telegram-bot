@@ -56,7 +56,18 @@ void HttpServer::addRewriteRule(QString host, QString path, QDelegate<void(HttpS
  */
 void HttpServer::handleNewConnection()
 {
-    QObject::connect(this->nextPendingConnection(), &QTcpSocket::readyRead, this, &HttpServer::handleNewData);
+    QTcpSocket *socket = this->nextPendingConnection();
+    if (!socket) {
+        return;
+    }
+
+    QObject::connect(socket, &QTcpSocket::readyRead, this, &HttpServer::handleNewData);
+    QObject::connect(socket, &QTcpSocket::disconnected, this, [this, socket]() {
+        cleanupConnection(socket);
+    });
+    QObject::connect(socket, &QTcpSocket::destroyed, this, [this, socket]() {
+        this->pendingRequests.remove(socket);
+    });
 }
 
 /**
@@ -147,6 +158,17 @@ void HttpServer::sendMinimal200Response(QTcpSocket *socket)
     socket->flush();
     socket->waitForBytesWritten(3000);
     socket->disconnectFromHost();
+}
+
+void HttpServer::cleanupConnection(QObject *connection)
+{
+    QTcpSocket *socket = qobject_cast<QTcpSocket *>(connection);
+    if (!socket) {
+        return;
+    }
+
+    this->pendingRequests.remove(socket);
+    socket->deleteLater();
 }
 
 /**

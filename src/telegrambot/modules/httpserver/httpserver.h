@@ -220,6 +220,7 @@ public:
 private:
     void handleNewConnection();
     void handleNewData();
+    void cleanupConnection(QObject *connection);
 
     void sendMinimal200Response(QTcpSocket *socket);
     static const QByteArray minimal200Answer;
