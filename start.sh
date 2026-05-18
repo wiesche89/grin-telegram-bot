@@ -55,25 +55,13 @@ echo "[INFO] Waiting 10 seconds for Tor/wallet to initialize..."
 sleep 10
 
 if [ -x ./grin-telegram-bot ]; then
-    echo "[INFO] Starting grin-telegram-bot under gdb..."
-    gdb -batch \
-        -ex run \
-        -ex bt \
-        -ex "thread apply all bt" \
-        -ex "frame 0" \
-        -ex "info locals" \
-        --args ./grin-telegram-bot > /tmp/gdb-backtrace.txt 2>&1
-
+    echo "[INFO] Starting grin-telegram-bot..."
+    ./grin-telegram-bot
     BOT_RC=$?
-    echo "[INFO] gdb exit code: $BOT_RC"
-    echo "[INFO] ===== GDB BACKTRACE BEGIN ====="
-    cat /tmp/gdb-backtrace.txt
-    echo "[INFO] ===== GDB BACKTRACE END ====="
+    echo "[ERROR] grin-telegram-bot exited with code $BOT_RC"
+    exit "$BOT_RC"
 else
     echo "[ERROR] grin-telegram-bot not found or not executable!"
     ls -la .
     exit 1
 fi
-
-echo "[INFO] Container kept alive for inspection"
-sleep infinity

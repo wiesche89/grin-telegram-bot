@@ -27,7 +27,7 @@ services:
       - seccomp:unconfined
     stdin_open: true
     tty: true
-    restart: "no"
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:

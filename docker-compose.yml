@@ -13,6 +13,7 @@ services:
       RUST_BACKTRACE: "1"        # Enable Rust backtraces for debugging
       GRIN_CHAIN_TYPE: "mainnet" # Run on the main grin network
       DATA_DIR: "/opt/grin-telegram-bot/data" # Path to persistent data
+      QT_LOGGING_RULES: "*.debug=false;bot.memory.info=true;bot.memory.debug=false"
     ports:
       - "3415:3415"              # Wallet owner API port
       - "3420:3420"              # Foreign API port (Tor listener, etc.)
@@ -21,6 +22,12 @@ services:
       - /home/grin/grin-telegram-bot-data:/opt/grin-telegram-bot/data # Bind Mount persistent
     networks:
       - grin-network            # Connect to custom network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 networks:
   grin-network:
