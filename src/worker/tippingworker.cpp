@@ -6,12 +6,14 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 #include <QVariant>
 #include <QJsonArray>
 #include <QStringList>
 #include <QHash>
 #include <cmath>
 #include "txlogentry.h"
+#include "memorydiagnostics.h"
 
 namespace {
 //fix var
@@ -1254,6 +1256,8 @@ void TippingWorker::checkPendingDeposits()
     }
 
     QList<PendingDepositRecord> pendingList = m_db->pendingDeposits();
+    qInfo() << "[memory] tipping pendingDeposits" << pendingList.size()
+            << "pendingWithdrawsInMemory" << m_pendingWithdraws.size();
     if (pendingList.isEmpty()) {
         return;
     }
@@ -1355,6 +1359,8 @@ void TippingWorker::checkPendingWithdrawConfirmations()
     }
 
     QList<PendingWithdrawRecord> withdrawList = m_db->pendingWithdrawals();
+    qInfo() << "[memory] tipping pendingWithdrawals" << withdrawList.size()
+            << "pendingWithdrawsInMemory" << m_pendingWithdraws.size();
 
     const QString cancellationReason = "was pulled back by the wallet. The amount has been re-credited to your balance.";
     for (const PendingWithdrawRecord &pending : withdrawList) {
@@ -1453,9 +1459,15 @@ QString TippingWorker::downloadFileToQString(const QUrl &url)
     QNetworkRequest request(url);
 
     QNetworkReply *reply = manager.get(request);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("tipping-download"));
 
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
     loop.exec();
 
     QString result;

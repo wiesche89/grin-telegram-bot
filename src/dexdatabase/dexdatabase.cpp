@@ -21,6 +21,15 @@ bool DexDatabase::initialize()
     return ensureTables();
 }
 
+DexDatabase::~DexDatabase()
+{
+    if (m_db.isOpen()) {
+        m_db.close();
+    }
+    m_db = QSqlDatabase();
+    QSqlDatabase::removeDatabase(m_connectionName);
+}
+
 bool DexDatabase::ensureTables()
 {
     QSqlQuery q(m_db);

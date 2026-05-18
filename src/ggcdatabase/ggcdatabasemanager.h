@@ -43,6 +43,7 @@ public:
 
 private:
     QSqlDatabase db;
+    QString m_connectionName;
 };
 
 #endif // GGCDATABASEMANAGER_H

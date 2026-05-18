@@ -18,6 +18,7 @@ public:
     // Abfragen
     bool ensureTables();
     QSqlDatabase database() const;
+    ~DexDatabase();
 
 private:
     QSqlDatabase m_db;

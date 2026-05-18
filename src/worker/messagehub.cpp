@@ -11,7 +11,7 @@ MessageHub::MessageHub(TelegramBot *bot, TippingWorker *tippingWorker, GgcWorker
     m_ggcWorker(ggcWorker)
 {
     if (m_bot) {
-        connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onBotMessage(TelegramBotUpdate)));
+        connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onBotMessage(TelegramBotUpdate)), Qt::UniqueConnection);
     }
 }
 

@@ -16,7 +16,7 @@ bool DexWorker::init()
         return false;
     }
 
-    connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
+    connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)), Qt::UniqueConnection);
     return true;
 }
 

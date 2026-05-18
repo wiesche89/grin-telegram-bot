@@ -6,6 +6,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -50,6 +51,7 @@ class WalletOwnerApi : public QObject
 
 public:
     WalletOwnerApi(const QString &apiUrl, const QString &apiUser, const QString &apiPassword, QObject *parent = nullptr);
+    ~WalletOwnerApi();
 
     bool hasConnection() const;
 

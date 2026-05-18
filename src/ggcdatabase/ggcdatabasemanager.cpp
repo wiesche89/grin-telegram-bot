@@ -6,7 +6,8 @@
  */
 GgcDatabaseManager::GgcDatabaseManager(QObject *parent) : QObject(parent)
 {
-    db = QSqlDatabase::addDatabase("QSQLITE");
+    m_connectionName = "ggc_" + QString::number(reinterpret_cast<quintptr>(this));
+    db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
 }
 
 /**
@@ -15,6 +16,8 @@ GgcDatabaseManager::GgcDatabaseManager(QObject *parent) : QObject(parent)
 GgcDatabaseManager::~GgcDatabaseManager()
 {
     closeDatabase();
+    db = QSqlDatabase();
+    QSqlDatabase::removeDatabase(m_connectionName);
 }
 
 /**
@@ -67,7 +70,7 @@ QSqlDatabase GgcDatabaseManager::getDatabase() const
  */
 bool GgcDatabaseManager::insertDonate(const Donate &donate)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("INSERT INTO DONATE (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
     query.addBindValue(donate.userId());
     query.addBindValue(donate.username());
@@ -92,7 +95,7 @@ bool GgcDatabaseManager::insertDonate(const Donate &donate)
  */
 Donate GgcDatabaseManager::getDonateById(int id)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM DONATE WHERE Id = ?");
     query.addBindValue(id);
     if (query.exec() && query.next()) {
@@ -114,7 +117,7 @@ Donate GgcDatabaseManager::getDonateById(int id)
 QList<Donate> GgcDatabaseManager::getAllDonate()
 {
     QList<Donate> list;
-    QSqlQuery query;
+    QSqlQuery query(db);
 
     query.exec("SELECT Id, UserId, Username, Amount, Date FROM DONATE");
 
@@ -137,7 +140,7 @@ QList<Donate> GgcDatabaseManager::getAllDonate()
  */
 bool GgcDatabaseManager::updateDonate(const Donate &donate)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("UPDATE DONATE SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
     query.addBindValue(donate.userId());
     query.addBindValue(donate.username());
@@ -154,7 +157,7 @@ bool GgcDatabaseManager::updateDonate(const Donate &donate)
  */
 bool GgcDatabaseManager::deleteDonate(int id)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("DELETE FROM DONATE WHERE Id = ?");
     query.addBindValue(id);
     return query.exec();
@@ -168,7 +171,7 @@ bool GgcDatabaseManager::deleteDonate(int id)
  */
 bool GgcDatabaseManager::insertFaucet(const Faucet &faucet)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("INSERT INTO FAUCET (UserId, Username, Amount, Date) VALUES (?, ?, ?, ?)");
     query.addBindValue(faucet.userId());
     query.addBindValue(faucet.username());
@@ -192,7 +195,7 @@ bool GgcDatabaseManager::insertFaucet(const Faucet &faucet)
  */
 Faucet GgcDatabaseManager::getFaucetById(int id)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("SELECT Id, UserId, Username, Amount, Date FROM FAUCET WHERE Id = ?");
     query.addBindValue(id);
     if (query.exec() && query.next()) {
@@ -212,7 +215,7 @@ Faucet GgcDatabaseManager::getFaucetById(int id)
  */
 bool GgcDatabaseManager::updateFaucet(const Faucet &faucet)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("UPDATE FAUCET SET UserId = ?, Username = ?, Amount = ?, Date = ? WHERE Id = ?");
     query.addBindValue(faucet.userId());
     query.addBindValue(faucet.username());
@@ -229,7 +232,7 @@ bool GgcDatabaseManager::updateFaucet(const Faucet &faucet)
  */
 bool GgcDatabaseManager::deleteFaucet(int id)
 {
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare("DELETE FROM FAUCET WHERE Id = ?");
     query.addBindValue(id);
     return query.exec();
@@ -244,7 +247,7 @@ QString GgcDatabaseManager::getFaucetAmountForToday(const QString &userId)
 {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare(R"(
         SELECT IFNULL(SUM(CAST(Amount AS REAL)), 0)
         FROM FAUCET
@@ -272,7 +275,7 @@ QList<Faucet> GgcDatabaseManager::getAllFaucetAmountForToday()
     QList<Faucet> list;
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.prepare(R"(SELECT Id, UserId, Username, Amount, Date FROM FAUCET WHERE Date = ?)");
     query.addBindValue(today);
     query.exec();
@@ -299,7 +302,7 @@ QList<Faucet> GgcDatabaseManager::getAllFaucet()
 {
     QList<Faucet> list;
 
-    QSqlQuery query;
+    QSqlQuery query(db);
     query.exec(R"(SELECT Id, UserId, Username, Amount, Date FROM FAUCET)");
 
     while (query.next())

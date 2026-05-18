@@ -1,14 +1,16 @@
 #include "walletforeignapi.h"
+#include "memorydiagnostics.h"
 
 /**
  * @brief WalletForeignApi::WalletForeignApi
  * @param apiUrl
  */
-WalletForeignApi::WalletForeignApi(QString apiUrl) :
+WalletForeignApi::WalletForeignApi(QString apiUrl, QObject *parent) :
+    QObject(parent),
     m_apiUrl(apiUrl),
     m_networkManager(nullptr)
 {
-    m_networkManager = new QNetworkAccessManager();
+    m_networkManager = new QNetworkAccessManager(this);
 }
 
 /**
@@ -143,7 +145,13 @@ QJsonObject WalletForeignApi::post(const QString &method, const QJsonObject &par
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     QEventLoop loop;
     QNetworkReply *reply = m_networkManager->post(request, QJsonDocument(payload).toJson());
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("wallet-foreign:%1").arg(method));
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
     loop.exec();
 
     if (reply->error() != QNetworkReply::NoError) {

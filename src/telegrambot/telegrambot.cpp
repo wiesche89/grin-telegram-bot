@@ -7,7 +7,9 @@
 #include <QDateTime>
 #include <QTextStream>
 #include <QUrl>
+#include <QTimer>
 #include "telegrambot.h"
+#include "memorydiagnostics.h"
 
 QMap<qint16, HttpServer *> TelegramBot::webHookWebServers = QMap<qint16, HttpServer *>();
 
@@ -1032,6 +1034,7 @@ void TelegramBot::pull()
     // cleanup
     if (this->replyPull) {
         this->replyPull->deleteLater();
+        this->replyPull = nullptr;
     }
 
     // call api
@@ -1044,7 +1047,10 @@ void TelegramBot::pull()
  */
 void TelegramBot::handlePullResponse()
 {
-    if (!this->replyPull) {
+    QNetworkReply *reply = this->replyPull;
+    this->replyPull = nullptr;
+
+    if (!reply) {
         qDebug() << "TelegramBot::handlePullResponse - missing reply, scheduling next pull";
         QTimer::singleShot(1000, this, &TelegramBot::pull);
         return;
@@ -1053,10 +1059,11 @@ void TelegramBot::handlePullResponse()
     // remove update id from request
     this->pullParams.removeQueryItem("offset");
 
-    QNetworkReply::NetworkError networkError = this->replyPull->error();
+    QNetworkReply::NetworkError networkError = reply->error();
     if (networkError != QNetworkReply::NoError) {
         qDebug() << "TelegramBot::handlePullResponse - network error" << networkError
-                 << this->replyPull->errorString();
+                 << reply->errorString();
+        reply->deleteLater();
         if (this->updateId) {
             this->pullParams.addQueryItem("offset", QString::number(this->updateId + 1));
         }
@@ -1065,7 +1072,8 @@ void TelegramBot::handlePullResponse()
     }
 
     // parse response
-    QByteArray data = this->replyPull->readAll();
+    QByteArray data = reply->readAll();
+    reply->deleteLater();
     //qDebug() << "TelegramBot::handlePullResponse - received" << data.size() << "bytes";
     this->parseMessage(data);
 
@@ -1506,6 +1514,13 @@ QNetworkReply *TelegramBot::callApi(QString method, QUrlQuery params, bool delet
     // execute
     QNetworkRequest request(url);
     QNetworkReply *reply = multiPart ? this->aManager.post(request, multiPart) : this->aManager.get(request);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("telegram:%1").arg(method));
+    QTimer::singleShot(60000, reply, [reply, method]() {
+        if (reply->isRunning()) {
+            qWarning() << "TelegramBot::callApi timeout, aborting" << method;
+            reply->abort();
+        }
+    });
     if (multiPart) {
         multiPart->setParent(reply);
     }

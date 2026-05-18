@@ -1,11 +1,13 @@
 #include "nodeforeignapi.h"
+#include "memorydiagnostics.h"
 
-NodeForeignApi::NodeForeignApi(QString apiUrl, QString apiKey) :
+NodeForeignApi::NodeForeignApi(QString apiUrl, QString apiKey, QObject *parent) :
+    QObject(parent),
     m_apiUrl(apiUrl),
     m_apiKey(apiKey),
     m_networkManager(nullptr)
 {
-    m_networkManager = new QNetworkAccessManager();
+    m_networkManager = new QNetworkAccessManager(this);
 }
 
 /**
@@ -377,8 +379,6 @@ QJsonObject NodeForeignApi::post(const QString &method, const QJsonArray &params
     QNetworkRequest request(url);
     QEventLoop loop;
 
-    QObject::connect(m_networkManager, &QNetworkAccessManager::finished, &loop, &QEventLoop::quit);
-
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", m_apiKey.toUtf8());
 
@@ -395,6 +395,13 @@ QJsonObject NodeForeignApi::post(const QString &method, const QJsonArray &params
 
     // POST
     QNetworkReply *reply = m_networkManager->post(request, jsonData);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("node-foreign:%1").arg(method));
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
 
     loop.exec();
 

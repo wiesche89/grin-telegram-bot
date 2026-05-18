@@ -9,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 
 #include "blockheaderprintable.h"
 #include "blockprintable.h"
@@ -28,7 +29,7 @@ class NodeForeignApi : public QObject
     Q_OBJECT
 
 public:
-    NodeForeignApi(QString apiUrl, QString apiKey);
+    NodeForeignApi(QString apiUrl, QString apiKey, QObject *parent = nullptr);
 
     Result<BlockPrintable> getBlock(int height, QString hash, QString commit);
     Result<BlockListing> getBlocks(int startHeight, int endHeight, int max, bool includeProof);

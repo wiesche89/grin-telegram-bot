@@ -18,6 +18,7 @@
 #include "worker/cleanupworker.h"
 #include "api/wallet/owner/walletownerapi.h"
 #include "logging/logginghandler.h"
+#include "util/memorydiagnostics.h"
 
 namespace {
 void startBotMessagePulling(TelegramBot *bot)
@@ -66,10 +67,10 @@ void initializeBotComponents()
 
     qDebug() << "Settings file found at:" << settingsPath;
 
-    QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat);
+    QSettings *settings = new QSettings(settingsPath, QSettings::IniFormat, qApp);
 
     QString botToken = settings->value("bot/token").toString();
-    TelegramBot *bot = new TelegramBot(botToken);
+    TelegramBot *bot = new TelegramBot(botToken, qApp);
     QString webhookPath = resolveWebhookPath(settings, botToken);
     bot->setWebhookPath(webhookPath);
     qInfo() << "Webhook path configured:" << bot->webhookPath();
@@ -86,6 +87,7 @@ void initializeBotComponents()
     cleanupWorker->triggerCleanup(true);
 
     GgcWorker *ggcWorker = new GgcWorker(bot, settings, walletOwnerApi, cleanupWorker);
+    ggcWorker->setParent(bot);
     if (!ggcWorker->init()) {
         qDebug() << "GGC Worker init failed!";
         QCoreApplication::quit();
@@ -96,6 +98,7 @@ void initializeBotComponents()
     TippingWorker *tippingWorker = nullptr;
     if (tippingEnabled) {
         tippingWorker = new TippingWorker(bot, settings, walletOwnerApi);
+        tippingWorker->setParent(bot);
         if (!tippingWorker->init()) {
             qDebug() << "Tipping Worker init failed!";
             QCoreApplication::quit();
@@ -106,6 +109,7 @@ void initializeBotComponents()
     }
 
     GateIoWorker *gateIoWorker = new GateIoWorker(bot, settings);
+    gateIoWorker->setParent(bot);
     if (!gateIoWorker->init()) {
         qDebug() << "GateIo Worker init failed!";
         QCoreApplication::quit();
@@ -207,6 +211,7 @@ int main(int argc, char *argv[])
 
     LoggingHandler loggingHandler;
     LoggingHandler::installMessageHandler(&loggingHandler);
+    MemoryDiagnostics memoryDiagnostics(&a);
 
     // Manager
     GrinWalletManager manager;

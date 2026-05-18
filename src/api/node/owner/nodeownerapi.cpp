@@ -1,14 +1,16 @@
 #include "nodeownerapi.h"
+#include "memorydiagnostics.h"
 
 /**
  * @brief NodeOwnerApi::NodeOwnerApi
  * @param apiUrl
  * @param apiKey
  */
-NodeOwnerApi::NodeOwnerApi(QString apiUrl, QString apiKey) :
+NodeOwnerApi::NodeOwnerApi(QString apiUrl, QString apiKey, QObject *parent) :
+    QObject(parent),
     m_apiUrl(apiUrl),
     m_apiKey(apiKey),
-    m_networkManager(new QNetworkAccessManager())
+    m_networkManager(new QNetworkAccessManager(this))
 {
 }
 
@@ -198,8 +200,6 @@ QJsonObject NodeOwnerApi::post(const QString &method, const QJsonArray &params)
     QNetworkRequest request(url);
     QEventLoop loop;
 
-    QObject::connect(m_networkManager, &QNetworkAccessManager::finished, &loop, &QEventLoop::quit);
-
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", m_apiKey.toUtf8());
 
@@ -216,6 +216,13 @@ QJsonObject NodeOwnerApi::post(const QString &method, const QJsonArray &params)
 
     // POST
     QNetworkReply *reply = m_networkManager->post(request, jsonData);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("node-owner:%1").arg(method));
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
 
     loop.exec();
 

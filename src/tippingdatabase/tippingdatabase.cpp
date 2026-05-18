@@ -25,6 +25,7 @@ TippingDatabase::~TippingDatabase()
     if (m_db.isOpen()) {
         m_db.close();
     }
+    m_db = QSqlDatabase();
     QSqlDatabase::removeDatabase(m_connectionName);
 }
 

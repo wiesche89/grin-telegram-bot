@@ -1,4 +1,5 @@
 #include "walletownerapi.h"
+#include "memorydiagnostics.h"
 
 /**
  * @brief WalletOwnerApi::WalletOwnerApi
@@ -22,6 +23,14 @@ WalletOwnerApi::WalletOwnerApi(const QString &apiUrl, const QString &apiUser, co
     m_networkManager = new QNetworkAccessManager(this);
     m_secpContext = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     generateKeyPair();
+}
+
+WalletOwnerApi::~WalletOwnerApi()
+{
+    if (m_secpContext) {
+        secp256k1_context_destroy(m_secpContext);
+        m_secpContext = nullptr;
+    }
 }
 
 /**
@@ -82,60 +91,68 @@ QJsonObject WalletOwnerApi::post(const QString &method, const QJsonObject &param
     payload["method"] = method;
     payload["params"] = params;
 
-    QJsonDocument doc(payload);
-    QByteArray body = doc.toJson();
+    QJsonDocument requestDoc(payload);
+    QByteArray body = requestDoc.toJson();
 
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", generateAuthHeader());
 
     // POST
-    QObject::connect(m_networkManager, &QNetworkAccessManager::finished, &loop, &QEventLoop::quit);
     QNetworkReply *reply = m_networkManager->post(request, body);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("wallet-owner:%1").arg(method));
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
 
     loop.exec();
 
     // error
     if (reply->error() != QNetworkReply::NoError) {
         qWarning() << "Request failed: " << reply->errorString();
+        reply->deleteLater();
+        return QJsonObject();
     }
-    // response
-    else {
-        QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
 
-        if (parseError.error == QJsonParseError::NoError) {
-            QJsonObject obj = doc.object();
-
-            // response init_secure_api
-            if (method == "init_secure_api") {
-                if (obj.contains("result") && obj["result"].toObject().contains("Ok")) {
-                    // 3. Get other public key (compress, 33 Byte)
-                    QByteArray theirPubKey = QByteArray::fromHex(obj["result"].toObject()["Ok"].toString().toUtf8());
-                    m_shareSecret = deriveEcdhKeyOpenSSL(m_privateKey.toHex(), theirPubKey);
-                }
-                return obj;
-            }
-            // encrypted request
-            else if (method == "encrypted_request_v3") {
-                if (obj.contains("result") && obj["result"].toObject().contains("Ok")) {
-                    QByteArray body_enc = obj["result"].toObject()["Ok"].toObject()["body_enc"].toString().toUtf8();
-                    QByteArray nonce = obj["result"].toObject()["Ok"].toObject()["nonce"].toString().toUtf8();
-                    nonce = QByteArray::fromHex(nonce);
-
-                    // decrypt
-                    QString result = decrypt(m_shareSecret, body_enc, nonce);
-                    QJsonDocument resultDoc = QJsonDocument::fromJson(result.toUtf8());
-                    return resultDoc.object();
-                }
-                reply->deleteLater();
-            } else {
-                qWarning() << "JSON Parse Error: " << parseError.errorString();
-            }
-        }
-    }
-    // cleanup
+    QJsonParseError parseError;
+    QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll(), &parseError);
     reply->deleteLater();
-    return QJsonObject();
+
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "JSON Parse Error: " << parseError.errorString();
+        return QJsonObject();
+    }
+
+    QJsonObject obj = responseDoc.object();
+
+    // response init_secure_api
+    if (method == "init_secure_api") {
+        if (obj.contains("result") && obj["result"].toObject().contains("Ok")) {
+            // 3. Get other public key (compress, 33 Byte)
+            QByteArray theirPubKey = QByteArray::fromHex(obj["result"].toObject()["Ok"].toString().toUtf8());
+            m_shareSecret = deriveEcdhKeyOpenSSL(m_privateKey.toHex(), theirPubKey);
+        }
+        return obj;
+    }
+
+    // encrypted request
+    if (method == "encrypted_request_v3") {
+        if (obj.contains("result") && obj["result"].toObject().contains("Ok")) {
+            QByteArray body_enc = obj["result"].toObject()["Ok"].toObject()["body_enc"].toString().toUtf8();
+            QByteArray nonce = obj["result"].toObject()["Ok"].toObject()["nonce"].toString().toUtf8();
+            nonce = QByteArray::fromHex(nonce);
+
+            // decrypt
+            QString result = decrypt(m_shareSecret, body_enc, nonce);
+            QJsonDocument resultDoc = QJsonDocument::fromJson(result.toUtf8());
+            return resultDoc.object();
+        }
+        return QJsonObject();
+    }
+
+    return obj;
 }
 
 /**
@@ -155,20 +172,32 @@ QByteArray WalletOwnerApi::deriveEcdhKeyOpenSSL(const QByteArray &secKeyHex, con
 
     // Create private key BIGNUM
     BIGNUM *priv_bn = BN_new();
-    BN_hex2bn(&priv_bn, secKeyHex.constData());
+    if (!priv_bn || !BN_hex2bn(&priv_bn, secKeyHex.constData())) {
+        qCritical() << "Failed to create private key";
+        BN_free(priv_bn);
+        EC_GROUP_free(group);
+        return QByteArray();
+    }
 
     // Load public key from compressed form
     EC_POINT *pub_point = EC_POINT_new(group);
-    if (!EC_POINT_oct2point(group, pub_point, reinterpret_cast<const unsigned char *>(otherPubKeyCompressed.constData()),
+    if (!pub_point || !EC_POINT_oct2point(group, pub_point, reinterpret_cast<const unsigned char *>(otherPubKeyCompressed.constData()),
                             otherPubKeyCompressed.size(), nullptr)) {
         qCritical() << "Invalid public key";
+        EC_POINT_free(pub_point);
+        BN_free(priv_bn);
+        EC_GROUP_free(group);
         return QByteArray();
     }
 
     // Multiply pubkey by privkey: shared_point = priv * pub
     EC_POINT *shared_point = EC_POINT_new(group);
-    if (!EC_POINT_mul(group, shared_point, nullptr, pub_point, priv_bn, nullptr)) {
+    if (!shared_point || !EC_POINT_mul(group, shared_point, nullptr, pub_point, priv_bn, nullptr)) {
         qCritical() << "ECDH multiplication failed";
+        EC_POINT_free(shared_point);
+        EC_POINT_free(pub_point);
+        BN_free(priv_bn);
+        EC_GROUP_free(group);
         return QByteArray();
     }
 

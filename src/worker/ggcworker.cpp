@@ -4,6 +4,11 @@
 #include <QByteArray>
 #include <QJsonValue>
 #include <QList>
+#include <QEventLoop>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QTimer>
+#include "memorydiagnostics.h"
 
 namespace {
 QString requiredBotMention()
@@ -131,14 +136,16 @@ bool GgcWorker::init()
 
     // Node Owner Api Instance
     m_nodeOwnerApi = new NodeOwnerApi(m_settings->value("node/ownerUrl").toString(),
-                                      m_settings->value("node/ownerApiKey").toString());
+                                      m_settings->value("node/ownerApiKey").toString(),
+                                      this);
 
     // need to check connection/online
     m_nodeOwnerApi->getStatus();
 
     // Node Foreign Api Instance
     m_nodeForeignApi = new NodeForeignApi(m_settings->value("node/foreignUrl").toString(),
-                                          m_settings->value("node/foreignApiKey").toString());
+                                          m_settings->value("node/foreignApiKey").toString(),
+                                          this);
 
     // need to check connection/online
     m_nodeForeignApi->getVersion();
@@ -169,10 +176,10 @@ bool GgcWorker::init()
     }
 
     // Wallet Foreign Api Instance
-    m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString());
+    m_walletForeignApi = new WalletForeignApi(m_settings->value("wallet/foreignUrl").toString(), this);
 
     // DB Instance
-    m_dbManager = new GgcDatabaseManager();
+    m_dbManager = new GgcDatabaseManager(this);
 
 
     QString dbPath;
@@ -1603,10 +1610,16 @@ QString GgcWorker::downloadFileToQString(const QUrl &url)
     QNetworkRequest request(url);
 
     QNetworkReply *reply = manager.get(request);
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("ggc-download"));
 
     // Event Loop, um synchron zu warten bis der Download fertig ist
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
     loop.exec();
 
     QString result;

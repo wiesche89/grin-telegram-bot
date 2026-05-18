@@ -3,6 +3,8 @@
 #include <QPainter>
 #include <QStandardPaths>
 #include <QDir>
+#include <QSharedPointer>
+#include <QTimer>
 
 namespace {
 int mapPriceToCanvasY(double price, double paddedMinPrice, double priceRange, int plotBottom, int plotHeight)
@@ -39,10 +41,10 @@ bool GateIoWorker::init()
 
         connect(m_client, &GateIoClient::errorOccurred, this, [](const QString &msg) {
             qWarning() << "[GateIoClient]" << msg;
-        });
+        }, Qt::UniqueConnection);
     }
 
-    connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)));
+    connect(m_bot, SIGNAL(newMessage(TelegramBotUpdate)), this, SLOT(onMessage(TelegramBotUpdate)), Qt::UniqueConnection);
     return true;
 }
 
@@ -57,10 +59,9 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
     //-------/price----------
     if (message.text.startsWith("/price")) {
-        QMetaObject::Connection *conn = new QMetaObject::Connection;
+        QSharedPointer<QMetaObject::Connection> conn(new QMetaObject::Connection);
         *conn = connect(m_client, &GateIoClient::tickerReceived, this, [this, message, conn](const QJsonArray &tickers) {
             disconnect(*conn);
-            delete conn;
             for (const auto &val : tickers) {
                 QJsonObject obj = val.toObject();
                 QString pair = obj["currency_pair"].toString();
@@ -92,6 +93,9 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
                 break;
             }
         });
+        QTimer::singleShot(30000, this, [this, conn]() {
+            disconnect(*conn);
+        });
 
         m_client->getTicker("GRIN_USDT");
         return;
@@ -99,11 +103,10 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
     //-------/orderbook----------
     if (message.text.startsWith("/orderbook")) {
-        QMetaObject::Connection *conn = new QMetaObject::Connection;
+        QSharedPointer<QMetaObject::Connection> conn(new QMetaObject::Connection);
 
         *conn = connect(m_client, &GateIoClient::orderBookReceived, this, [=](const QJsonObject &book) mutable {
             disconnect(*conn);
-            delete conn;
 
             QJsonArray asks = book["asks"].toArray();
             QJsonArray bids = book["bids"].toArray();
@@ -142,6 +145,9 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
             m_bot->sendMessage(message.chat.id, escapeMarkdownV2(text), 0, TelegramBot::TelegramFlags::Markdown);
         });
+        QTimer::singleShot(30000, this, [this, conn]() {
+            disconnect(*conn);
+        });
 
         m_client->getOrderBook("GRIN_USDT",10);
         return;
@@ -149,13 +155,11 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
     //-------/chart----------
     if (message.text.startsWith("/chart")) {
-        QMetaObject::Connection *conn = new QMetaObject::Connection;
+        QSharedPointer<QMetaObject::Connection> conn(new QMetaObject::Connection);
 
         *conn = connect(m_client, &GateIoClient::candlesticksReceived, this, [=](const QJsonArray &chart) mutable {
-            if (chart.isEmpty()) return;
-
             disconnect(*conn);
-            delete conn;
+            if (chart.isEmpty()) return;
 
             QString path = renderChartToFile(chart, "GRIN_USDT");
             qDebug() << "Chart path:" << path;
@@ -173,6 +177,9 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
                 sendUserMessage(message, "❌ Could not generate GRIN/USDT chart.", false);
             }
         });
+        QTimer::singleShot(30000, this, [this, conn]() {
+            disconnect(*conn);
+        });
 
         m_client->getCandlesticks("GRIN_USDT", "4h", 150);
         return;
@@ -180,13 +187,11 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
 
     //-------/history----------
     if (message.text.startsWith("/history")) {
-        QMetaObject::Connection *conn = new QMetaObject::Connection;
+        QSharedPointer<QMetaObject::Connection> conn(new QMetaObject::Connection);
 
         *conn = connect(m_client, &GateIoClient::tradesReceived, this, [=](const QJsonArray &data) mutable {
-            if (data.isEmpty()) return;
-
             disconnect(*conn);
-            delete conn;
+            if (data.isEmpty()) return;
 
             QStringList out;
             out << "📈 Recent Trades for GRIN/USDT\n";
@@ -208,6 +213,9 @@ void GateIoWorker::onMessage(TelegramBotUpdate update)
             }
 
             m_bot->sendMessage(message.chat.id, escapeMarkdownV2(out.join("\n")), 0, TelegramBot::TelegramFlags::Markdown);
+        });
+        QTimer::singleShot(30000, this, [this, conn]() {
+            disconnect(*conn);
         });
 
         m_client->getTrades("GRIN_USDT", 20);

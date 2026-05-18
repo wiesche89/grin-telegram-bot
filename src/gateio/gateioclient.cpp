@@ -1,4 +1,18 @@
 #include "gateioclient.h"
+#include "memorydiagnostics.h"
+#include <QTimer>
+
+namespace {
+void trackGateReply(QNetworkReply *reply)
+{
+    MemoryDiagnostics::trackNetworkReply(reply, QStringLiteral("gateio"));
+    QTimer::singleShot(30000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->abort();
+        }
+    });
+}
+}
 
 /**
  * @brief GateIoClient::GateIoClient
@@ -76,7 +90,7 @@ QNetworkRequest GateIoClient::prepareRequest(const QString &method, const QStrin
  */
 void GateIoClient::getCurrencies()
 {
-    m_manager.get(QNetworkRequest(QUrl(m_baseUrl + "/spot/currencies")));
+    trackGateReply(m_manager.get(QNetworkRequest(QUrl(m_baseUrl + "/spot/currencies"))));
 }
 
 /**
@@ -84,7 +98,7 @@ void GateIoClient::getCurrencies()
  */
 void GateIoClient::getCurrencyPairs()
 {
-    m_manager.get(QNetworkRequest(QUrl(m_baseUrl + "/spot/currency_pairs")));
+    trackGateReply(m_manager.get(QNetworkRequest(QUrl(m_baseUrl + "/spot/currency_pairs"))));
 }
 
 /**
@@ -96,7 +110,7 @@ void GateIoClient::getTicker(const QString &currencyPair)
     QString path = "/spot/tickers";
     QString query = "currency_pair=" + currencyPair;
     QNetworkRequest req(QUrl(m_baseUrl + path + "?" + query));
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -108,7 +122,7 @@ void GateIoClient::getOrderBook(const QString &currencyPair, int limit)
 {
     QString path = "/spot/order_book";
     QString query = QString("currency_pair=%1&limit=%2").arg(currencyPair).arg(limit);
-    m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query)));
+    trackGateReply(m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query))));
 }
 
 /**
@@ -120,7 +134,7 @@ void GateIoClient::getTrades(const QString &currencyPair, int limit)
 {
     QString path = "/spot/trades";
     QString query = QString("currency_pair=%1&limit=%2").arg(currencyPair).arg(limit);
-    m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query)));
+    trackGateReply(m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query))));
 }
 
 /**
@@ -133,7 +147,7 @@ void GateIoClient::getCandlesticks(const QString &currencyPair, const QString &i
 {
     QString path = "/spot/candlesticks";
     QString query = QString("currency_pair=%1&interval=%2&limit=%3").arg(currencyPair).arg(interval).arg(limit);
-    m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query)));
+    trackGateReply(m_manager.get(QNetworkRequest(QUrl(m_baseUrl + path + "?" + query))));
 }
 
 /**
@@ -143,7 +157,7 @@ void GateIoClient::getSpotAccounts()
 {
     QString path = "/spot/accounts";
     QNetworkRequest req = prepareRequest("GET", path, "", QByteArray());
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -155,7 +169,7 @@ void GateIoClient::getSpotFee(const QString &currencyPair)
     QString path = "/spot/fee";
     QString query = QString("currency_pair=%1").arg(currencyPair);
     QNetworkRequest req = prepareRequest("GET", path, query, QByteArray());
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -167,7 +181,7 @@ void GateIoClient::placeSpotOrder(const QJsonObject &orderParams)
     QString path = "/spot/orders";
     QByteArray body = QJsonDocument(orderParams).toJson(QJsonDocument::Compact);
     QNetworkRequest req = prepareRequest("POST", path, "", body);
-    m_manager.post(req, body);
+    trackGateReply(m_manager.post(req, body));
 }
 
 /**
@@ -178,7 +192,7 @@ void GateIoClient::getSpotOrder(const QString &orderId)
 {
     QString path = "/spot/orders/" + orderId;
     QNetworkRequest req = prepareRequest("GET", path, "", QByteArray());
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -189,7 +203,7 @@ void GateIoClient::cancelSpotOrder(const QString &orderId)
 {
     QString path = "/spot/orders/" + orderId;
     QNetworkRequest req = prepareRequest("DELETE", path, "", QByteArray());
-    m_manager.sendCustomRequest(req, "DELETE");
+    trackGateReply(m_manager.sendCustomRequest(req, "DELETE"));
 }
 
 /**
@@ -201,7 +215,7 @@ void GateIoClient::getOpenOrders(const QString &currencyPair)
     QString path = "/spot/open_orders";
     QString query = currencyPair.isEmpty() ? "" : QString("currency_pair=%1").arg(currencyPair);
     QNetworkRequest req = prepareRequest("GET", path, query, QByteArray());
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -216,7 +230,7 @@ void GateIoClient::getMyTrades(const QString &currencyPair, int limit)
     if (!currencyPair.isEmpty())
         query = QString("currency_pair=%1&limit=%2").arg(currencyPair).arg(limit);
     QNetworkRequest req = prepareRequest("GET", path, query, QByteArray());
-    m_manager.get(req);
+    trackGateReply(m_manager.get(req));
 }
 
 /**
@@ -228,7 +242,7 @@ void GateIoClient::placeBatchOrders(const QJsonArray &orders)
     QString path = "/spot/batch_orders";
     QByteArray body = QJsonDocument(orders).toJson(QJsonDocument::Compact);
     QNetworkRequest req = prepareRequest("POST", path, "", body);
-    m_manager.post(req, body);
+    trackGateReply(m_manager.post(req, body));
 }
 
 /**
@@ -240,7 +254,7 @@ void GateIoClient::cancelBatchOrders(const QJsonArray &ids)
     QString path = "/spot/cancel_batch_orders";
     QByteArray body = QJsonDocument(ids).toJson(QJsonDocument::Compact);
     QNetworkRequest req = prepareRequest("POST", path, "", body);
-    m_manager.post(req, body);
+    trackGateReply(m_manager.post(req, body));
 }
 
 /**

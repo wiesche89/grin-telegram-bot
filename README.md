@@ -254,3 +254,28 @@ Tip: message templates can be copied from `deploy/etc/messages/` into your data 
 mkdir -p ~/grin-telegram-bot-data/etc/messages
 cp -av ./deploy/etc/messages/. ~/grin-telegram-bot-data/etc/messages/
 ```
+
+---
+
+### Memory diagnostics and leak checks
+
+The bot logs a memory snapshot every 10 minutes via the `bot.memory` logging category. To enable detailed reply-finish diagnostics:
+
+```bash
+QT_LOGGING_RULES="bot.memory.debug=true;bot.memory.info=true" ./grin-telegram-bot
+```
+
+AddressSanitizer can be enabled for qmake builds with:
+
+```bash
+qmake CONFIG+=asan
+make -j"$(nproc)"
+ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 ./grin-telegram-bot
+```
+
+On Linux, LeakSanitizer is normally included with AddressSanitizer. For a Valgrind soak run:
+
+```bash
+valgrind --leak-check=full --show-leak-kinds=definite,indirect,possible \
+  --track-origins=yes --log-file=valgrind-grin-bot.log ./grin-telegram-bot
+```

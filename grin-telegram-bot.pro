@@ -120,6 +120,7 @@ SOURCES += \
   src/telegrambot/telegrambot.cpp \
   src/tippingdatabase/tippingdatabase.cpp \
   src/util/jsonutil.cpp \
+  src/util/memorydiagnostics.cpp \
   src/api/wallet/foreign/walletforeignapi.cpp \
   src/api/wallet/owner/walletownerapi.cpp \
   src/api/wallet/attributes/slate.cpp \
@@ -219,6 +220,7 @@ HEADERS += \
   src/tippingdatabase/tippingdatabase.h \
   src/nostrdatabase/nostrdatabase.h \
   src/util/jsonutil.h \
+  src/util/memorydiagnostics.h \
   3rdParty/secp256k1/include/secp256k1.h \
   3rdParty/secp256k1/include/secp256k1_ecdh.h \
   3rdParty/openssl/openssl/evp.h \
@@ -250,6 +252,14 @@ INCLUDEPATH += $$PWD/3rdParty/qnostr/src/nostr
 # openssl
 unix:LIBS += -lcrypto
 win32:LIBS += -L$$PWD/3rdParty/openssl/lib -lcrypto -lssl
+win32:LIBS += -lpsapi
+
+asan {
+  QMAKE_CXXFLAGS += -fsanitize=address
+  QMAKE_LFLAGS += -fsanitize=address
+  QMAKE_CXXFLAGS += -fno-omit-frame-pointer
+  QMAKE_LFLAGS += -fno-omit-frame-pointer
+}
 
 DEFINES += OPENSSL_NO_DEPRECATED_3_0
 DEFINES += LIBQTNOSTR_CORE_LIBRARY

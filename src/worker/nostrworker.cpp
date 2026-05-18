@@ -45,7 +45,8 @@ bool NostrWorker::init()
 
     // Wallet Foreign Api Instance
     m_walletForeignApi = new WalletForeignApi(m_settings ? m_settings->value("wallet/foreignUrl").toString()
-                                                        : QString());
+                                                        : QString(),
+                                              this);
 
     QString dataDir = qEnvironmentVariable("DATA_DIR");
     QString dbPath;

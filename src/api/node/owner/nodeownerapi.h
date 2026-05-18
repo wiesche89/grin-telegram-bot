@@ -11,6 +11,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 
 #include "peerinfodisplay.h"
 #include "peerdata.h"
@@ -24,7 +25,7 @@ class NodeOwnerApi : public QObject
     Q_OBJECT
 
 public:
-    NodeOwnerApi(QString apiUrl, QString apiKey);
+    NodeOwnerApi(QString apiUrl, QString apiKey, QObject *parent = nullptr);
 
     Result<bool> banPeer(QString peerAddr);
     Result<bool> compactChain();

@@ -9,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QEventLoop>
+#include <QTimer>
 
 #include "coinbase.h"
 #include "version.h"
@@ -21,7 +22,7 @@ class WalletForeignApi : public QObject
 {
     Q_OBJECT
 public:
-    WalletForeignApi(QString apiUrl);
+    WalletForeignApi(QString apiUrl, QObject *parent = nullptr);
 
     Result<Coinbase> buildCoinbase(int fees, int height, QString keyId);
     Result<Version> checkVersion();
