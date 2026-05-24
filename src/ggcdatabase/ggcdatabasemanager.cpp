@@ -243,13 +243,13 @@ bool GgcDatabaseManager::deleteFaucet(int id)
  * @param userId
  * @return
  */
-QString GgcDatabaseManager::getFaucetAmountForToday(const QString &userId)
+qlonglong GgcDatabaseManager::getFaucetAmountForToday(const QString &userId)
 {
     QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
     QSqlQuery query(db);
     query.prepare(R"(
-        SELECT IFNULL(SUM(CAST(Amount AS REAL)), 0)
+        SELECT IFNULL(SUM(CAST(Amount AS INTEGER)), 0)
         FROM FAUCET
         WHERE UserId = ? AND Date = ?
     )");
@@ -257,13 +257,10 @@ QString GgcDatabaseManager::getFaucetAmountForToday(const QString &userId)
     query.addBindValue(today);
 
     if (query.exec() && query.next()) {
-        qlonglong total = query.value(0).toDouble();
-        return QString::number(total, 'f', 0);
-
-        return query.value(0).toString();
+        return query.value(0).toLongLong();
     }
 
-    return "0";
+    return 0;
 }
 
 /**

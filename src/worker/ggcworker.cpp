@@ -882,9 +882,9 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
         ///---------------------------------------------------------------------------------------------------------------------------
         /// Check functions
         ///---------------------------------------------------------------------------------------------------------------------------
-        QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
+        qlonglong amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
 
-        if (amountToday.toLongLong() >= m_faucetAmount || amount > m_faucetAmount) {
+        if (amountToday >= m_faucetAmount || amount > m_faucetAmount || amountToday + amount > m_faucetAmount) {
             sendUserMessage(message,
                             QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs %1 GRIN per day per user.").arg(m_faucetAmount/1000000000),
                             true);
@@ -1260,9 +1260,10 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     ///---------------------------------------------------------------------------------------------------------------------------
     /// Check functions
     ///---------------------------------------------------------------------------------------------------------------------------
-    QString amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
+    qlonglong amountToday = m_dbManager->getFaucetAmountForToday(QString::number(message.from.id));
 
-    if (amountToday.toLongLong() >= m_faucetAmount || slate.amt().toLongLong() > m_faucetAmount) {
+    qlonglong requestedAmount = slate.amt().toLongLong();
+    if (amountToday >= m_faucetAmount || requestedAmount > m_faucetAmount || amountToday + requestedAmount > m_faucetAmount) {
         return Error(ErrorType::Unknown,
                      QString("Hi " + message.from.firstName + ",\n the faucet currently only outputs %1 GRIN per day per user.").arg(m_faucetAmount/1000000000));
     }
