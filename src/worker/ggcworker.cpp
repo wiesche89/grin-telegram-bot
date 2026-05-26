@@ -2,6 +2,7 @@
 #include "cleanupworker.h"
 #include "worker/nostrbridge/bech32util.h"
 #include <QByteArray>
+#include <QJsonDocument>
 #include <QJsonValue>
 #include <QList>
 #include <QEventLoop>
@@ -95,6 +96,139 @@ QString parseAccountPathHex(const QString &hexPath)
     }
 
     return result;
+}
+
+QString compactJson(const QJsonObject &object)
+{
+    return QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact));
+}
+
+QString abbreviatedText(const QString &value, int maxLength = 500)
+{
+    if (value.size() <= maxLength) {
+        return value;
+    }
+    return value.left(maxLength) + QStringLiteral("...<truncated>");
+}
+
+void logUserDebug(const char *context, const TelegramBotUser &user)
+{
+    qInfo() << "[telegram-user-debug]" << context
+            << "id=" << user.id
+            << "username=" << user.username
+            << "firstName=" << user.firstName
+            << "lastName=" << user.lastName
+            << "languageCode=" << user.languageCode;
+}
+
+void logChatDebug(const char *context, const TelegramBotChat &chat)
+{
+    qInfo() << "[telegram-chat-debug]" << context
+            << "id=" << chat.id
+            << "type=" << chat.type
+            << "title=" << chat.title
+            << "username=" << chat.username
+            << "firstName=" << chat.firstName
+            << "lastName=" << chat.lastName
+            << "allMembersAreAdministrators=" << chat.allMembersAreAdministrators;
+}
+
+void logMessageEntitiesDebug(const char *context, const QList<TelegramBotMessageEntity> &entities, const QString &text)
+{
+    qInfo() << "[telegram-entities-debug]" << context << "count=" << entities.size();
+    for (int i = 0; i < entities.size(); ++i) {
+        const TelegramBotMessageEntity &entity = entities.at(i);
+        const int offset = qMax(0, entity.offset);
+        const int length = qMax(0, entity.length);
+        const QString entityText = offset < text.size() && length > 0
+                                       ? text.mid(offset, qMin(length, text.size() - offset))
+                                       : QString();
+        qInfo() << "[telegram-entity-debug]" << context
+                << "index=" << i
+                << "type=" << entity.type
+                << "offset=" << entity.offset
+                << "length=" << entity.length
+                << "text=" << entityText
+                << "url=" << entity.url
+                << "user.id=" << entity.user.id
+                << "user.username=" << entity.user.username
+                << "user.firstName=" << entity.user.firstName
+                << "user.lastName=" << entity.user.lastName;
+    }
+}
+
+void logTelegramMessageDebug(const char *context, const TelegramBotMessage &message)
+{
+    qInfo() << "[telegram-message-debug]" << context
+            << "messageId=" << message.messageId
+            << "date=" << message.date
+            << "editDate=" << message.editDate
+            << "textLength=" << message.text.size()
+            << "textPreview=" << abbreviatedText(message.text)
+            << "caption=" << message.caption
+            << "forwardFromMessageId=" << message.forwardFromMessageId
+            << "forwardDate=" << message.forwardDate
+            << "document.fileId=" << message.document.fileId
+            << "document.fileName=" << message.document.fileName
+            << "document.mimeType=" << message.document.mimeType
+            << "document.fileSize=" << message.document.fileSize
+            << "reply.messageId=" << message.replyToMessage.messageId
+            << "pinned.messageId=" << message.pinnedMessage.messageId
+            << "contact.userId=" << message.contact.userId
+            << "contact.firstName=" << message.contact.firstName
+            << "contact.lastName=" << message.contact.lastName
+            << "location.latitude=" << message.location.latitude
+            << "location.longitude=" << message.location.longitude
+            << "newChatMember.id=" << message.newChatMember.id
+            << "leftChatMember.id=" << message.leftChatMember.id;
+
+    logUserDebug(context, message.from);
+    logChatDebug(context, message.chat);
+    logUserDebug("forward-from", message.forwardFrom);
+    logChatDebug("forward-from-chat", message.forwardFromChat);
+    if (message.replyToMessage.messageId != 0) {
+        logUserDebug("reply-from", message.replyToMessage.from);
+        logChatDebug("reply-chat", message.replyToMessage.chat);
+    }
+    logMessageEntitiesDebug(context, message.entities, message.text);
+}
+
+void logFaucetSlateDebug(const char *context, const TelegramBotMessage &message, const Slate &slate)
+{
+    const Proof proof = slate.proof();
+    qInfo() << "[faucet-debug]" << context
+            << "telegramUserId=" << message.from.id
+            << "username=" << message.from.username
+            << "firstName=" << message.from.firstName
+            << "chatId=" << message.chat.id
+            << "slateId=" << slate.id()
+            << "state=" << slate.sta()
+            << "amount=" << slate.amt()
+            << "fee=" << slate.fee()
+            << "proof.raddr=" << proof.raddr()
+            << "proof.saddr=" << proof.saddr()
+            << "proof.isEmpty=" << proof.isEmpty()
+            << "sigs=" << slate.sigs().size()
+            << "coms=" << slate.coms().size()
+            << "json=" << compactJson(slate.toJson());
+
+    const QList<Signature> sigs = slate.sigs();
+    for (int i = 0; i < sigs.size(); ++i) {
+        qInfo() << "[faucet-sig-debug]" << context
+                << "index=" << i
+                << "nonce=" << sigs.at(i).nonce()
+                << "xs=" << sigs.at(i).xs()
+                << "part=" << sigs.at(i).part();
+    }
+
+    const QList<Com> coms = slate.coms();
+    for (int i = 0; i < coms.size(); ++i) {
+        qInfo() << "[faucet-com-debug]" << context
+                << "index=" << i
+                << "c=" << coms.at(i).c()
+                << "f=" << coms.at(i).f()
+                << "p=" << coms.at(i).p();
+    }
 }
 }
 
@@ -749,6 +883,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // command Slatepack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (text.contains("BEGINSLATEPACK") && text.contains("ENDSLATEPACK")) {
+        logTelegramMessageDebug("incoming-text-slatepack", message);
         qDebug()<<"message: "<<message.text;
         Slate slate;
         {
@@ -761,6 +896,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
 
         SlateState state = Slate::slateStateFromString(slate.sta());
         qDebug()<<"state: "<<slate.sta();
+        logFaucetSlateDebug("incoming-text-slatepack", message, slate);
 
         if (state == SlateState::S1) {
             // S1 - Standard: Sender created Slate with Inputs, Change, Nonce, Excess
@@ -861,6 +997,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // command faucetpack
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (text.contains("/faucetpack")) {
+        logTelegramMessageDebug("faucetpack-command", message);
 
         QString response;
         InitTxArgs args;
@@ -901,6 +1038,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
 
         else
         {
+            logFaucetSlateDebug("faucetpack-generated-s1", message, slate);
             qDebug()<<debugJsonString(slate);
             Result<QString> resCreateSlatepackMessage = m_walletOwnerApi->createSlatepackMessage(slate, QJsonArray(), 0);
             if (!resCreateSlatepackMessage.unwrapOrLog(response, Q_FUNC_INFO)) {
@@ -938,6 +1076,7 @@ void GgcWorker::handleUpdate(TelegramBotUpdate update)
     // command faucet
     // ------------------------------------------------------------------------------------------------------------------------------------------
     if (text.contains("/faucet")) {
+        logTelegramMessageDebug("faucet-command", message);
         QString path;
         QString dataDir = qEnvironmentVariable("DATA_DIR");
 
@@ -1253,6 +1392,8 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
     /// Debugging
     ///---------------------------------------------------------------------------------------------------------------------------
     qDebug() << "faucet " << message.from.firstName << " :" << slate.amt();
+    logTelegramMessageDebug("incoming-faucet-i1", message);
+    logFaucetSlateDebug("incoming-faucet-i1", message, slate);
     if (!activateWalletAccount()) {
         return Error(ErrorType::Unknown, "Wallet account could not be activated.");
     }
@@ -1307,6 +1448,7 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
         if (!res.unwrapOrLog(slate2, Q_FUNC_INFO)) {
             return Error(ErrorType::Unknown, res.errorMessage());
         }
+        logFaucetSlateDebug("processed-faucet-i2", message, slate2);
     }
 
     ///---------------------------------------------------------------------------------------------------------------------------
@@ -1354,6 +1496,8 @@ Result<QString> GgcWorker::handleSlateI1State(Slate slate, TelegramBotMessage me
 Result<QString> GgcWorker::handleSlateS2State(Slate slate, TelegramBotMessage message)
 {
     qDebug() << "finalize standard slate (S2) from" << message.from.firstName << ":" << slate.amt();
+    logTelegramMessageDebug("incoming-standard-s2", message);
+    logFaucetSlateDebug("incoming-standard-s2", message, slate);
     if (!activateWalletAccount()) {
         return Error(ErrorType::Unknown, "Wallet account could not be activated.");
     }
