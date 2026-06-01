@@ -7,16 +7,51 @@
 #include <QJsonValue>
 #include <QDebug>
 #include <QString>
+#include <QtGlobal>
 
 namespace {
 constexpr qlonglong NanogrinPerGrin = 1000000000LL;
 
-QString instructionText()
+qlonglong configuredFaucetAmount(QSettings *settings)
 {
-    return QStringLiteral("Please send a Slatepack as a Nostr message:\n"
-                          "- I1 (Invoice) asking for up to 1 GRIN if you're requesting a payout\n"
-                          "- or S1 if you want to send GRIN to me.\n"
-                          "I will reply with the corresponding I2 or S2.");
+    if (!settings) {
+        return NanogrinPerGrin;
+    }
+
+    const QString value = settings->value("admin/approvedWithdrawalAmount").toString().trimmed();
+    if (value.isEmpty()) {
+        return NanogrinPerGrin;
+    }
+
+    bool ok = false;
+    const double grin = value.toDouble(&ok);
+    if (!ok || grin <= 0) {
+        qWarning() << "[NostrWorker] invalid admin/approvedWithdrawalAmount:" << value;
+        return NanogrinPerGrin;
+    }
+
+    return qRound64(grin * NanogrinPerGrin);
+}
+
+QString formatGrinAmount(qlonglong nanogrin)
+{
+    QString value = QString::number(static_cast<double>(nanogrin) / NanogrinPerGrin, 'f', 9);
+    while (value.contains('.') && value.endsWith('0')) {
+        value.chop(1);
+    }
+    if (value.endsWith('.')) {
+        value.chop(1);
+    }
+    return value;
+}
+
+QString instructionText(qlonglong faucetAmount)
+{
+    return QString("Please send a Slatepack as a Nostr message:\n"
+                   "- I1 (Invoice) asking for up to %1 GRIN if you're requesting a payout\n"
+                   "- or S1 if you want to send GRIN to me.\n"
+                   "I will reply with the corresponding I2 or S2.")
+        .arg(formatGrinAmount(faucetAmount));
 }
 
 QString normalizeRecipient(const QNostrRelay::Event &event)
@@ -32,7 +67,8 @@ NostrWorker::NostrWorker(QSettings *settings, WalletOwnerApi *walletOwnerApi, QO
     QObject(parent),
     m_settings(settings),
     m_walletOwnerApi(walletOwnerApi),
-    m_walletForeignApi(nullptr)
+    m_walletForeignApi(nullptr),
+    m_faucetAmount(configuredFaucetAmount(settings))
 {
 }
 
@@ -168,8 +204,8 @@ void NostrWorker::handleSlatepackEvent(const QString &recipient, const Slate &sl
         break;
     case SlateState::I1: {
         qlonglong amount = slateAmount(slate);
-        if (amount > NanogrinPerGrin) {
-            sendTextReply(recipient, QStringLiteral("I1 Slatepacks may request at most 1 GRIN."));
+        if (amount > m_faucetAmount) {
+            sendTextReply(recipient, QString("I1 Slatepacks may request at most %1 GRIN.").arg(formatGrinAmount(m_faucetAmount)));
             return;
         }
         response = respondWithI2(slate);
@@ -192,7 +228,7 @@ void NostrWorker::handleSlatepackEvent(const QString &recipient, const Slate &sl
 
 void NostrWorker::sendInstruction(const QString &recipient)
 {
-    sendTextReply(recipient, instructionText());
+    sendTextReply(recipient, instructionText(m_faucetAmount));
 }
 
 void NostrWorker::sendTextReply(const QString &recipient, const QString &text)

@@ -36,6 +36,7 @@ private:
     WalletOwnerApi *m_walletOwnerApi;
     WalletForeignApi *m_walletForeignApi = nullptr;
     NostrBridge *m_bridge = nullptr;
+    qlonglong m_faucetAmount;
     bool m_initialized = false;
     NostrDatabase *m_database = nullptr;
 };
